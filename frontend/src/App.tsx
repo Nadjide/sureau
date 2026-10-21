@@ -25,7 +25,23 @@ function App() {
   const [editing, setEditing] = useState(false)
   const inventory = useInventory()
   const planStore = usePlanDocument()
-  const { plan } = planStore
+  const { plan, undo, redo } = planStore
+
+  useEffect(() => {
+    if (tab !== 'spaces' || !editing) return
+    const shortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || (!event.ctrlKey && !event.metaKey)) return
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      const key = event.key.toLowerCase()
+      if (key === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redo()
+        else undo()
+      } else if (key === 'y') { event.preventDefault(); redo() }
+    }
+    window.addEventListener('keydown', shortcut)
+    return () => window.removeEventListener('keydown', shortcut)
+  }, [tab, editing, undo, redo])
   const locationStore = useLocalLocations()
   const local = {
     ...locationStore,
@@ -108,6 +124,7 @@ function App() {
       ) : (
         <SpatialViewer
           plan={plan}
+          history={planStore}
           editing={editing}
           onEditingChange={(value) => { setEditing(value); setSelectedAssetId(null) }}
           onMove={(id, x, z) => {

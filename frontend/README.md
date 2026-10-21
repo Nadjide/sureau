@@ -43,6 +43,8 @@ Le plan est sauvegardé localement sous un format versionné. Les postes conserv
 
 Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes doivent être replacés.
 
+Les boutons Annuler / Rétablir et les raccourcis Ctrl/⌘ Z, Ctrl/⌘ Maj Z ou Ctrl Y conservent les 50 dernières modifications du plan pendant la session. Un glissement correspond à une seule étape. Les champs de formulaire gardent leur propre annulation de saisie. L’historique ne modifie ni les liens de matériel ni les données de l’inventaire ; supprimer puis annuler restaure le même identifiant de poste.
+
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
 
 Les localisations sont enregistrées uniquement dans le stockage de ce navigateur, séparément de l’inventaire serveur. Elles ne changent pas le statut métier du matériel. Les liens vers un équipement devenu introuvable restent conservés et signalés. Un refus ou une corruption du stockage produit un avertissement ; l’interface reste utilisable pour la session, sans prétendre enregistrer les changements.
