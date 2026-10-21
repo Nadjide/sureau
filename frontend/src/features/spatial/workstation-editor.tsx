@@ -16,9 +16,10 @@ interface Props {
   selectedIds: readonly string[]
   onChange: (plan: SpatialPlan) => void
   onSelect: (id: string | null) => void
+  onSelectionChange: (ids: string[]) => void
 }
 
-export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect }: Props) {
+export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect, onSelectionChange }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
   const furniture = plan.furniture.find((item) => item.id === selectedId)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +91,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
       <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'Chaque changement est conservé dans ce navigateur.' : 'Vos changements restent dans cette session. Exportez pour garder une copie.'}</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
-      {selectedIds.length > 1 ? <SelectionPanel plan={plan} ids={selectedIds} onChange={onChange} /> : furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={onChange} onSelect={onSelect} /> : station ? <>
+      {selectedIds.length > 1 ? <SelectionPanel key={selectedIds.join('|')} plan={plan} ids={selectedIds} onChange={onChange} onSelectionChange={onSelectionChange} /> : furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={onChange} onSelect={onSelect} /> : station ? <>
         <div className="editor-section-title"><h3>{station.label}</h3><span>{plan.workstations.indexOf(station) + 1} / {plan.workstations.length}</span></div>
         <form key={JSON.stringify(station)} className="editor-form" onSubmit={apply}>
           <label>Nom du poste<input name="label" defaultValue={station.label} maxLength={60} required /></label>

@@ -143,7 +143,7 @@ function App() {
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
-            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} /> :
+            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} onSelectionChange={setSelection} /> :
             selectedFurniture ? <aside className="asset-inspector" aria-label="Fiche du mobilier"><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}
