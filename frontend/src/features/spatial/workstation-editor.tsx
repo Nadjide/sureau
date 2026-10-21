@@ -54,12 +54,16 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
     const data = new FormData(event.currentTarget)
     const label = String(data.get('label') || '').trim()
     if (!label || label.length > 60) { setError('Donnez un nom de 1 à 60 caractères au poste.'); return }
-    const x = Number(data.get('x')), z = Number(data.get('z'))
+    const enteredX = Number(data.get('x')), enteredZ = Number(data.get('z'))
     const rotation = Number(data.get('rotation')), width = Number(data.get('width')), depth = Number(data.get('depth'))
+    const x = enteredX === Math.round(station.position[0] * 100) / 100 ? station.position[0] : enteredX
+    const z = enteredZ === Math.round(station.position[2] * 100) / 100 ? station.position[2] : enteredZ
     if (![x, z, rotation, width, depth].every(Number.isFinite) || width < 0.8 || width > 3 || depth < 0.5 || depth > 1.5) {
       setError('Vérifiez les valeurs et les dimensions du bureau.'); return
     }
-    update({ ...station, label, position: [x, 0, z], rotation: normalizeRotation(rotation * Math.PI / 180), width, depth })
+    const angle = rotation === Math.round(station.rotation * 180 / Math.PI)
+      ? station.rotation : normalizeRotation((rotation % 360) * Math.PI / 180)
+    update({ ...station, label, position: [x, 0, z], rotation: angle, width, depth })
   }
 
   return (
@@ -73,13 +77,13 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
         <form key={JSON.stringify(station)} className="editor-form" onSubmit={apply}>
           <label>Nom du poste<input name="label" defaultValue={station.label} maxLength={60} required /></label>
           <div className="editor-field-pair">
-            <label>Position X (m)<input name="x" type="number" step="0.01" defaultValue={Math.round(station.position[0] * 100) / 100} required /></label>
-            <label>Position Z (m)<input name="z" type="number" step="0.01" defaultValue={Math.round(station.position[2] * 100) / 100} required /></label>
+            <label>Position X (m)<input name="x" type="number" step="any" defaultValue={Math.round(station.position[0] * 100) / 100} required /></label>
+            <label>Position Z (m)<input name="z" type="number" step="any" defaultValue={Math.round(station.position[2] * 100) / 100} required /></label>
           </div>
-          <label>Orientation (°)<input name="rotation" type="number" step="1" defaultValue={Math.round(station.rotation * 180 / Math.PI)} required /></label>
+          <label>Orientation (°)<input name="rotation" type="number" step="any" defaultValue={Math.round(station.rotation * 180 / Math.PI)} required /></label>
           <div className="editor-field-pair">
-            <label>Largeur (m)<input name="width" type="number" min="0.8" max="3" step="0.05" defaultValue={station.width} required /></label>
-            <label>Profondeur (m)<input name="depth" type="number" min="0.5" max="1.5" step="0.05" defaultValue={station.depth} required /></label>
+            <label>Largeur (m)<input name="width" type="number" min="0.8" max="3" step="any" defaultValue={station.width} required /></label>
+            <label>Profondeur (m)<input name="depth" type="number" min="0.5" max="1.5" step="any" defaultValue={station.depth} required /></label>
           </div>
           <p className="location-help">Le centre du plateau est le point 0, 0. Le poste reste dans les limites de la pièce, fauteuil compris.</p>
           <Button variant="outline" type="submit" className="w-full">Appliquer au poste</Button>

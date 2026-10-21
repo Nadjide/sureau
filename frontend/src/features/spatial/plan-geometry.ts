@@ -55,10 +55,11 @@ export function clampWorkstation(plan: SpatialPlan, station: Workstation): Works
   if (xRadius * 2 > plan.width + epsilon || zRadius * 2 > plan.depth + epsilon) {
     throw new RangeError('Le poste et son fauteuil ne tiennent pas dans le plateau.')
   }
-  const xShift = Math.max(-plan.width / 2 + xRadius, Math.min(plan.width / 2 - xRadius, box.center[0])) - box.center[0]
-  const zShift = Math.max(-plan.depth / 2 + zRadius, Math.min(plan.depth / 2 - zRadius, box.center[1])) - box.center[1]
-  const x = station.position[0] + xShift
-  const z = station.position[2] + zShift
+  const boundedX = Math.max(-plan.width / 2 + xRadius, Math.min(plan.width / 2 - xRadius, box.center[0]))
+  const boundedZ = Math.max(-plan.depth / 2 + zRadius, Math.min(plan.depth / 2 - zRadius, box.center[1]))
+  // Preserve unchanged coordinates exactly, and avoid cancellation for far-away inputs.
+  const x = boundedX === box.center[0] ? station.position[0] : boundedX - box.axes[1][0] * 0.4 * station.depth
+  const z = boundedZ === box.center[1] ? station.position[2] : boundedZ - box.axes[1][1] * 0.4 * station.depth
   const rotation = normalizeRotation(station.rotation)
   if (x === station.position[0] && z === station.position[2] && station.position[1] === 0 && rotation === station.rotation) return station
   return { ...station, position: [x, 0, z], rotation }

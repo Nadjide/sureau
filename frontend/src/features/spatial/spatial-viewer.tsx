@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Box, Grid2X2, LoaderCircle, MousePointer2, Pencil, RotateCcw } from 'lucide-react'
+import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
@@ -18,6 +18,7 @@ interface Props {
   plan: SpatialPlan
   editing: boolean
   onEditingChange: (editing: boolean) => void
+  onMove: (id: string, x: number, z: number) => void
   view: SpatialView
   onViewChange: (view: SpatialView) => void
   selectedWorkstationId: string | null
@@ -30,6 +31,7 @@ export function SpatialViewer({
   plan,
   editing,
   onEditingChange,
+  onMove,
   view,
   onViewChange: setView,
   selectedWorkstationId: selected,
@@ -41,6 +43,7 @@ export function SpatialViewer({
   const [focusToken, setFocusToken] = useState(0)
   const [retryToken, setRetryToken] = useState(0)
   const [sceneFailed, setSceneFailed] = useState(false)
+  const [snap, setSnap] = useState(true)
   const dark = useSyncExternalStore(subscribeTheme, getTheme)
 
   function selectWorkstation(id: string) {
@@ -72,6 +75,7 @@ export function SpatialViewer({
           </div>
           <span className="spatial-local-label">Votre plan · dans ce navigateur</span>
           <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => onEditingChange(!editing)}><Pencil />{editing ? 'Terminer' : 'Modifier'}</Button>
+          {editing && <Button variant={snap ? 'secondary' : 'outline'} size="icon" aria-label="Aimantation à la grille de 25 cm" aria-pressed={snap} onClick={() => setSnap(!snap)} title="Aimantation à la grille de 25 cm"><Magnet /></Button>}
           <Button
             variant="outline"
             size="icon"
@@ -89,7 +93,7 @@ export function SpatialViewer({
         </div>
         <div className="spatial-stage">
           {view === '2d' ? (
-            <RoomPlan plan={plan} selectedWorkstationId={selected} onSelect={selectWorkstation} />
+            <RoomPlan plan={plan} editing={editing} snap={snap} onMove={onMove} selectedWorkstationId={selected} onSelect={selectWorkstation} />
           ) : (
             <SceneBoundary
               key={retryToken}
@@ -106,6 +110,9 @@ export function SpatialViewer({
               >
                 <RoomScene
                   plan={plan}
+                  editing={editing}
+                  snap={snap}
+                  onMove={onMove}
                   selectedWorkstationId={selected}
                   onSelect={selectWorkstation}
                   resetToken={resetToken}
@@ -118,7 +125,7 @@ export function SpatialViewer({
           )}
           <div className="scene-instructions">
             <MousePointer2 size={12} aria-hidden="true" />
-            {view === '3d'
+            {editing ? (view === '3d' ? 'Glisser un poste pour le déplacer · Échap pour annuler' : 'Glisser un poste · flèches au clavier · Échap pour annuler') : view === '3d'
               ? 'Cliquer pour approcher · glisser pour tourner · molette pour zoomer'
               : 'Sélectionner un poste · Tab puis Entrée au clavier'}
           </div>
