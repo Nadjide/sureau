@@ -4,13 +4,15 @@ import { OrbitControls, OrthographicCamera, RoundedBox, useCursor } from '@react
 import { Plane, Raycaster, Vector2, Vector3, type Group, type OrthographicCamera as ThreeOrthographicCamera } from 'three'
 import type { FurnitureItem, Workstation } from './room-model'
 import type { SpatialPlan } from './plan-document'
-import { snapFurniture, snapWorkstation } from './plan-geometry'
+import { translateSelection } from './plan-selection'
 import { FurnitureModel } from './furniture-model'
 
 type RoomSceneProps = {
   plan: SpatialPlan
   selectedWorkstationId: string | null
-  onSelect: (id: string) => void
+  selectedIds: readonly string[]
+  multipleMode: boolean
+  onSelect: (id: string, additive?: boolean, preserve?: boolean) => void
   resetToken: number
   focusToken: number
   dark: boolean
@@ -23,7 +25,8 @@ type RoomSceneProps = {
 type Vector = [number, number, number]
 type ControlsRef = RefObject<ComponentRef<typeof OrbitControls> | null>
 type RenderedDesks = Record<string, Group | null>
-type ActiveDrag = { id: string; pointerId: number; cancel: () => void }
+type ActiveDrag = { id: string; ids: readonly string[]; pointerId: number; cancel: () => void }
+type MotionRegistry = Record<string, { stop: () => void; restore: () => void } | undefined>
 type SpatialEntity = Workstation | FurnitureItem
 type SceneObject = Pick<Workstation, 'id' | 'label' | 'position' | 'rotation' | 'width' | 'depth'> & {
   height: number
@@ -115,6 +118,8 @@ function objectScale(item: SpatialEntity): Vector {
 function Movable({
   item,
   selected,
+  selectedIds,
+  multipleMode,
   onSelect,
   plan,
   editing,
@@ -124,11 +129,14 @@ function Movable({
   controlsRef,
   renderedDesksRef,
   reducedMotion,
+  motionRegistryRef,
   children,
 }: {
   item: SpatialEntity
   selected: boolean
-  onSelect: (id: string) => void
+  selectedIds: readonly string[]
+  multipleMode: boolean
+  onSelect: RoomSceneProps['onSelect']
   plan: SpatialPlan
   editing: boolean
   snap: boolean
@@ -137,6 +145,7 @@ function Movable({
   controlsRef: ControlsRef
   renderedDesksRef: RefObject<RenderedDesks>
   reducedMotion: boolean
+  motionRegistryRef: RefObject<MotionRegistry>
   children: ReactNode
 }) {
   const { gl, camera, invalidate } = useThree()
@@ -160,6 +169,7 @@ function Movable({
   const suppressClick = useRef(false)
   const colors = plan.colors
   const accent = colors.accent
+  const selectionKey = [...selectedIds].sort().join('|')
 
   const animateTo = useCallback((station: SpatialEntity) => {
     const group = groupRef.current
@@ -185,20 +195,38 @@ function Movable({
   }, [invalidate])
 
   useEffect(() => {
-    if (dragRef.current?.id === item.id) dragRef.current.cancel()
+    if (dragRef.current?.ids.includes(item.id)) dragRef.current.cancel()
     animateTo(item)
   }, [item, dragRef, animateTo])
 
+  useEffect(() => {
+    const registry = motionRegistryRef.current
+    const id = item.id
+    registry[id] = {
+      stop: () => { motion.current = null },
+      restore: () => animateTo(item),
+    }
+    return () => { delete registry[id] }
+  }, [item, animateTo, motionRegistryRef])
+
   useEffect(() => () => {
-    if (dragRef.current?.id === item.id) dragRef.current.cancel()
+    if (dragRef.current?.ids.includes(item.id)) dragRef.current.cancel()
     delete renderedDesksRef.current[item.id]
   }, [dragRef, renderedDesksRef, item.id])
 
   useEffect(() => {
-    if (dragRef.current?.id === item.id) dragRef.current.cancel()
-  }, [editing, snap, plan.width, plan.depth, dragRef, item.id])
+    if (dragRef.current?.ids.includes(item.id)) dragRef.current.cancel()
+  }, [editing, snap, multipleMode, plan.width, plan.depth, dragRef, item.id])
+
+  useEffect(() => {
+    const active = dragRef.current
+    const ids = selectionKey ? selectionKey.split('|') : []
+    if (active?.id === item.id
+      && (active.ids.length !== ids.length || active.ids.some((id) => !ids.includes(id)))) active.cancel()
+  }, [selectionKey, item.id, dragRef])
 
   useFrame(() => {
+    if (dragRef.current?.ids.includes(item.id)) return
     const animation = motion.current
     const group = groupRef.current
     if (!animation || !group) return
@@ -214,12 +242,13 @@ function Movable({
   function choose(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation()
     if (suppressClick.current || event.delta > 3) return
-    onSelect(item.id)
+    onSelect(item.id, multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
   }
 
   function beginDrag(event: ThreeEvent<PointerEvent>) {
     if (event.button === 0 && !dragRef.current) suppressClick.current = false
     if (!editing || event.button !== 0 || dragRef.current) return
+    if (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey) return
     const group = groupRef.current
     if (!group) return
     const floor = new Plane(new Vector3(0, 1, 0), 0)
@@ -241,8 +270,10 @@ function Movable({
     const controlsWereEnabled = controls?.enabled ?? true
     const previousCursor = canvas.style.cursor
     let moved = false
-    let draft = item
-    motion.current = null
+    const dragIds = selectedIds.includes(item.id) ? [...selectedIds] : [item.id]
+    const dragSet = new Set(dragIds)
+    let draft = plan
+    for (const id of dragIds) motionRegistryRef.current[id]?.stop()
     suppressClick.current = false
     if (controls) controls.enabled = false
     canvas.style.setProperty('cursor', 'grabbing')
@@ -261,11 +292,10 @@ function Movable({
       ray.setFromCamera(pointer, camera)
       if (!ray.ray.intersectPlane(floor, point)) return
       moved = true
-      const position: Vector = [point.x + offsetX, 0, point.z + offsetZ]
-      draft = 'kind' in item
-        ? snapFurniture(plan, { ...item, position }, snap)
-        : snapWorkstation(plan, { ...item, position }, snap)
-      group!.position.set(...draft.position)
+      draft = translateSelection(plan, dragIds, item.id, point.x + offsetX, point.z + offsetZ, snap)
+      for (const object of [...draft.workstations, ...draft.furniture]) {
+        if (dragSet.has(object.id)) renderedDesksRef.current[object.id]?.position.set(...object.position)
+      }
       invalidate()
     }
 
@@ -285,7 +315,7 @@ function Movable({
     function cancel() {
       cleanup()
       suppressClick.current = true
-      animateTo(item)
+      for (const id of dragIds) motionRegistryRef.current[id]?.restore()
       invalidate()
     }
 
@@ -303,14 +333,15 @@ function Movable({
     function finish(native: PointerEvent) {
       if (native.pointerId !== pointerId) return
       cleanup()
-      suppressClick.current = moved
+      suppressClick.current = true
       // Return to the current model if the parent rejects this move.
-      animateTo(item)
-      if (moved) onMove(item.id, draft.position[0], draft.position[2])
+      for (const id of dragIds) motionRegistryRef.current[id]?.restore()
+      const anchor = [...draft.workstations, ...draft.furniture].find((object) => object.id === item.id)
+      if (moved && anchor) onMove(item.id, anchor.position[0], anchor.position[2])
       invalidate()
     }
 
-    dragRef.current = { id: item.id, pointerId, cancel }
+    dragRef.current = { id: item.id, ids: dragIds, pointerId, cancel }
     window.addEventListener('pointermove', preview, { capture: true, passive: false })
     window.addEventListener('pointerup', finish, true)
     window.addEventListener('pointercancel', pointerCancelled, true)
@@ -323,7 +354,7 @@ function Movable({
       cancel()
       return
     }
-    onSelect(item.id)
+    onSelect(item.id, false, true)
     invalidate()
   }
 
@@ -443,18 +474,19 @@ function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
 
 type LabelElements = Record<string, HTMLButtonElement | null>
 
-function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstationId }: {
+function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstationId, selectedIds }: {
   labels: RefObject<LabelElements>
   objects: readonly SceneObject[]
   renderedDesksRef: RefObject<RenderedDesks>
   selectedWorkstationId: string | null
+  selectedIds: readonly string[]
 }) {
   const projected = useMemo(() => new Vector3(), [])
   const invalidate = useThree((state) => state.invalidate)
 
   useEffect(() => {
     invalidate()
-  }, [selectedWorkstationId, objects, invalidate])
+  }, [selectedWorkstationId, selectedIds, objects, invalidate])
 
   useFrame(({ camera, size }) => {
     camera.updateMatrixWorld()
@@ -464,6 +496,7 @@ function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstation
       y: number
       visible: boolean
       selected: boolean
+      primary: boolean
       left: number
       right: number
       top: number
@@ -491,7 +524,8 @@ function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstation
       const height = label.offsetHeight
       positions.push({
         label, x, y, visible,
-        selected: object.id === selectedWorkstationId,
+        selected: selectedIds.includes(object.id),
+        primary: object.id === selectedWorkstationId,
         left: x - width / 2 - 2,
         right: x + width / 2 + 2,
         top: y - height / 2 - 2,
@@ -499,7 +533,8 @@ function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstation
       })
     }
 
-    positions.sort((first, second) => Number(second.selected) - Number(first.selected))
+    positions.sort((first, second) => Number(second.primary) - Number(first.primary)
+      || Number(second.selected) - Number(first.selected))
     const accepted: typeof positions = []
     for (const position of positions) {
       const collides = accepted.some((other) => position.left < other.right
@@ -665,11 +700,12 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, object
   )
 }
 
-export default function RoomScene({ plan, selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts, editing, snap, onMove }: RoomSceneProps) {
+export default function RoomScene({ plan, selectedWorkstationId, selectedIds, multipleMode, onSelect, resetToken, focusToken, dark, localizedCounts, editing, snap, onMove }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
   const renderedDesksRef = useRef<RenderedDesks>({})
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   const dragRef = useRef<ActiveDrag | null>(null)
+  const motionRegistryRef = useRef<MotionRegistry>({})
   const reducedMotion = useReducedMotion()
   const objects = useMemo<SceneObject[]>(() => [
     ...plan.workstations.map((station) => ({
@@ -700,7 +736,7 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
         <CameraRig plan={plan} objects={objects} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
-        <LabelProjector labels={labels} objects={objects} renderedDesksRef={renderedDesksRef} selectedWorkstationId={selectedWorkstationId} />
+        <LabelProjector labels={labels} objects={objects} renderedDesksRef={renderedDesksRef} selectedWorkstationId={selectedWorkstationId} selectedIds={selectedIds} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />
         <directionalLight
@@ -729,7 +765,9 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             key={workstation.id}
             item={workstation}
             plan={plan}
-            selected={workstation.id === selectedWorkstationId}
+            selected={selectedIds.includes(workstation.id)}
+            selectedIds={selectedIds}
+            multipleMode={multipleMode}
             onSelect={onSelect}
             editing={editing}
             snap={snap}
@@ -738,8 +776,9 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             controlsRef={controlsRef}
             renderedDesksRef={renderedDesksRef}
             reducedMotion={reducedMotion}
+            motionRegistryRef={motionRegistryRef}
           >
-            <DeskModel workstation={workstation} selected={workstation.id === selectedWorkstationId} colors={plan.colors} />
+            <DeskModel workstation={workstation} selected={selectedIds.includes(workstation.id)} colors={plan.colors} />
           </Movable>
         ))}
         {plan.furniture.filter((item) => plan.display.decor || (item.kind !== 'plant' && item.kind !== 'cabinet')).map((item) => (
@@ -747,7 +786,9 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             key={item.id}
             item={item}
             plan={plan}
-            selected={item.id === selectedWorkstationId}
+            selected={selectedIds.includes(item.id)}
+            selectedIds={selectedIds}
+            multipleMode={multipleMode}
             onSelect={onSelect}
             editing={editing}
             snap={snap}
@@ -756,6 +797,7 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             controlsRef={controlsRef}
             renderedDesksRef={renderedDesksRef}
             reducedMotion={reducedMotion}
+            motionRegistryRef={motionRegistryRef}
           >
             <FurnitureModel item={item} />
           </Movable>
@@ -767,13 +809,13 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             key={object.id}
             ref={(element) => { labels.current[object.id] = element }}
             type="button"
-            className={`scene-label${selectedWorkstationId === object.id ? ' is-selected' : ''}`}
-            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedWorkstationId === object.id ? plan.colors.accent : undefined }}
+            className={`scene-label${selectedIds.includes(object.id) ? ' is-selected' : ''}`}
+            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedIds.includes(object.id) ? plan.colors.accent : undefined }}
             aria-label={`Sélectionner ${object.label} dans la vue 3D`}
             title={object.label}
-            aria-pressed={selectedWorkstationId === object.id}
+            aria-pressed={selectedIds.includes(object.id)}
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => { event.stopPropagation(); onSelect(object.id) }}
+            onClick={(event) => { event.stopPropagation(); onSelect(object.id, multipleMode || event.shiftKey || event.ctrlKey || event.metaKey) }}
           >
             {objects.length > 16 && selectedWorkstationId !== object.id ? index + 1 : object.label}
             {!!localizedCounts[object.id] && <span className="scene-link-count">{localizedCounts[object.id]}</span>}

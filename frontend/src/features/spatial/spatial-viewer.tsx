@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, Redo2, RotateCcw, Undo2 } from 'lucide-react'
+import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, Redo2, RotateCcw, Undo2, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
@@ -23,7 +23,9 @@ interface Props {
   view: SpatialView
   onViewChange: (view: SpatialView) => void
   selectedWorkstationId: string | null
-  onSelectWorkstation: (id: string) => void
+  selectedIds: readonly string[]
+  onSelectionChange: (ids: string[]) => void
+  onSelectWorkstation: (id: string, additive?: boolean, preserve?: boolean) => void
   inspector: ReactNode
   localizedCounts: Readonly<Record<string, number>>
 }
@@ -37,6 +39,8 @@ export function SpatialViewer({
   view,
   onViewChange: setView,
   selectedWorkstationId: selected,
+  selectedIds,
+  onSelectionChange,
   onSelectWorkstation: setSelected,
   inspector,
   localizedCounts,
@@ -46,11 +50,12 @@ export function SpatialViewer({
   const [retryToken, setRetryToken] = useState(0)
   const [sceneFailed, setSceneFailed] = useState(false)
   const [snap, setSnap] = useState(true)
+  const [multipleMode, setMultipleMode] = useState(false)
   const dark = useSyncExternalStore(subscribeTheme, getTheme)
   const dense = plan.workstations.length + plan.furniture.length > 16
 
-  function selectWorkstation(id: string) {
-    setSelected(id)
+  function selectWorkstation(id: string, additive = false, preserve = false) {
+    setSelected(id, editing && (additive || multipleMode), preserve)
     if (view === '3d' && !editing) setFocusToken((value) => value + 1)
   }
 
@@ -84,6 +89,7 @@ export function SpatialViewer({
           <span className="spatial-local-label">Votre plan · dans ce navigateur</span>
           <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => onEditingChange(!editing)}><Pencil />{editing ? 'Terminer' : 'Modifier'}</Button>
           {editing && <Button variant={snap ? 'secondary' : 'outline'} size="icon" aria-label="Aimantation à la grille de 25 cm" aria-pressed={snap} onClick={() => setSnap(!snap)} title="Aimantation à la grille de 25 cm"><Magnet /></Button>}
+          {editing && <Button variant={multipleMode ? 'secondary' : 'outline'} aria-pressed={multipleMode} onClick={() => setMultipleMode(!multipleMode)}><ListChecks />Sélection multiple</Button>}
           {editing && <div className="editor-history" role="group" aria-label="Historique du plan">
             <Button variant="outline" size="icon" aria-label="Annuler la dernière modification" title="Annuler · Ctrl / ⌘ Z" disabled={!history.canUndo} onClick={history.undo}><Undo2 /></Button>
             <Button variant="outline" size="icon" aria-label="Rétablir la modification" title="Rétablir · Ctrl / ⌘ Maj Z" disabled={!history.canRedo} onClick={history.redo}><Redo2 /></Button>
@@ -106,7 +112,7 @@ export function SpatialViewer({
         </div>
         <div className="spatial-stage">
           {view === '2d' ? (
-            <RoomPlan plan={plan} editing={editing} snap={snap} onMove={onMove} selectedWorkstationId={selected} onSelect={selectWorkstation} />
+            <RoomPlan plan={plan} editing={editing} snap={snap} onMove={onMove} selectedWorkstationId={selected} selectedIds={selectedIds} multipleMode={multipleMode} onSelect={selectWorkstation} />
           ) : (
             <SceneBoundary
               key={retryToken}
@@ -127,6 +133,8 @@ export function SpatialViewer({
                   snap={snap}
                   onMove={onMove}
                   selectedWorkstationId={selected}
+                  selectedIds={selectedIds}
+                  multipleMode={multipleMode}
                   onSelect={selectWorkstation}
                   resetToken={resetToken}
                   focusToken={focusToken}
@@ -151,10 +159,10 @@ export function SpatialViewer({
           {plan.workstations.map((item, index) => (
             <button
               key={item.id}
-              aria-pressed={selected === item.id}
-              className={selected === item.id ? 'is-selected' : ''}
+              aria-pressed={selectedIds.includes(item.id)}
+              className={selectedIds.includes(item.id) ? 'is-selected' : ''}
               title={dense ? `${index + 1}. ${item.label}` : item.label}
-              onClick={() => selectWorkstation(item.id)}
+              onClick={(event) => selectWorkstation(item.id, event.shiftKey || event.ctrlKey || event.metaKey)}
             >
               {dense && <span className="workstation-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}.</span>}
               <span className="workstation-label">{item.label}</span>
@@ -174,7 +182,13 @@ export function SpatialViewer({
           </span>
         </div>
         {plan.furniture.length > 0 && <div className="furniture-strip" role="group" aria-label="Sélectionner un meuble">
-          {plan.furniture.map((item, index) => <button key={item.id} aria-pressed={selected === item.id} title={item.label} onClick={() => selectWorkstation(item.id)}>{dense && <span aria-hidden="true">{String(plan.workstations.length + index + 1).padStart(2, '0')}. </span>}{item.label}</button>)}
+          {plan.furniture.map((item, index) => <button key={item.id} aria-pressed={selectedIds.includes(item.id)} title={item.label} onClick={(event) => selectWorkstation(item.id, event.shiftKey || event.ctrlKey || event.metaKey)}>{dense && <span aria-hidden="true">{String(plan.workstations.length + index + 1).padStart(2, '0')}. </span>}{item.label}</button>)}
+        </div>}
+        {editing && <div className="selection-bar" role="group" aria-label="Sélection des objets">
+          <span role="status">{selectedIds.length} objet{selectedIds.length > 1 ? 's' : ''} sélectionné{selectedIds.length > 1 ? 's' : ''}</span>
+          <button onClick={() => onSelectionChange([...plan.workstations, ...plan.furniture].map((item) => item.id))}>Tout sélectionner</button>
+          <button onClick={() => onSelectionChange([])} disabled={selectedIds.length === 0}>Désélectionner</button>
+          <small>Maj / Ctrl / ⌘ + clic pour ajouter ou retirer</small>
         </div>}
       </section>
       {inspector}
