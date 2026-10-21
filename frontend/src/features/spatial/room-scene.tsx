@@ -518,6 +518,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
   const maxZoom = Math.max(zoom * 2.2, Math.min(size.width / 4, size.height / 3.5))
 
   useEffect(() => {
+    dragRef.current?.cancel()
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
@@ -528,7 +529,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
     controls.target.set(0, 0.4, 0)
     controls.update()
     invalidate()
-  }, [zoom, overviewPosition, controlsRef, invalidate])
+  }, [zoom, overviewPosition, controlsRef, dragRef, size.width, size.height, invalidate])
 
   useEffect(() => {
     const reset = lastCommand.current.resetToken !== resetToken

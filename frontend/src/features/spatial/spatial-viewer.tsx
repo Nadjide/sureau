@@ -53,6 +53,11 @@ export function SpatialViewer({
     if (view === '3d' && !editing) setFocusToken((value) => value + 1)
   }
 
+  function changeView(next: SpatialView) {
+    if (next !== '3d') setFocusToken(0)
+    setView(next)
+  }
+
   return (
     <div className="spatial-layout">
       <section className="spatial-workspace" aria-label={`Exploration de ${plan.name}`}>
@@ -61,7 +66,7 @@ export function SpatialViewer({
             <button
               className={view === '3d' ? 'is-active' : ''}
               aria-pressed={view === '3d'}
-              onClick={() => setView('3d')}
+              onClick={() => changeView('3d')}
             >
               <Box size={14} />
               Vue 3D
@@ -69,7 +74,7 @@ export function SpatialViewer({
             <button
               className={view === '2d' ? 'is-active' : ''}
               aria-pressed={view === '2d'}
-              onClick={() => setView('2d')}
+              onClick={() => changeView('2d')}
             >
               <Grid2X2 size={14} />
               Plan 2D
@@ -87,6 +92,7 @@ export function SpatialViewer({
             size="icon"
             onClick={() => {
               if (sceneFailed) {
+                setFocusToken(0)
                 setRetryToken((value) => value + 1)
                 setSceneFailed(false)
               } else setResetToken((value) => value + 1)
@@ -104,7 +110,7 @@ export function SpatialViewer({
             <SceneBoundary
               key={retryToken}
               onFailure={() => setSceneFailed(true)}
-              onFallback={() => setView('2d')}
+              onFallback={() => changeView('2d')}
             >
               <Suspense
                 fallback={
