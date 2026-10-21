@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react'
-import { RoundedBox, useCursor } from '@react-three/drei'
-import type { ThreeEvent } from '@react-three/fiber'
-import { Color, type Group } from 'three'
+import { useMemo } from 'react'
+import { RoundedBox } from '@react-three/drei'
+import { Color } from 'three'
 import type { FurnitureItem } from './room-model'
 
 type Vector = [number, number, number]
@@ -19,7 +18,7 @@ function Piece({ size, position, color, rounded = false, metal = false }: {
     : <mesh position={position} castShadow receiveShadow><boxGeometry args={size} />{material}</mesh>
 }
 
-function FurnitureGeometry({ item }: { item: FurnitureItem }) {
+export function FurnitureModel({ item }: { item: FurnitureItem }) {
   const { color, kind } = item
   const shade = useMemo(() => new Color(color).multiplyScalar(0.7).getStyle(), [color])
 
@@ -75,36 +74,4 @@ function FurnitureGeometry({ item }: { item: FurnitureItem }) {
       <Piece size={[0.38, 0.38, 0.13]} position={[side * 0.2, 0.72, -0.22]} color={color} rounded />
     </group>)}
   </>
-}
-
-export function FurnitureModel({ item, selected, accent, onSelect, onObjectRef }: {
-  item: FurnitureItem
-  selected: boolean
-  accent: string
-  onSelect: (id: string) => void
-  onObjectRef: (id: string, group: Group | null) => void
-}) {
-  const [hovered, setHovered] = useState(false)
-  useCursor(hovered)
-
-  function choose(event: ThreeEvent<MouseEvent>) {
-    event.stopPropagation()
-    if (event.delta <= 3) onSelect(item.id)
-  }
-
-  return <group
-    ref={(group) => onObjectRef(item.id, group)}
-    position={item.position}
-    rotation={[0, item.rotation, 0]}
-    scale={[item.width, item.height, item.depth]}
-    onClick={choose}
-    onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
-    onPointerOut={() => setHovered(false)}
-  >
-    {(selected || hovered) && <mesh position={[0, 0.025 / item.height, 0]}>
-      <boxGeometry args={[1.08, 0.02 / item.height, 1.08]} />
-      <meshBasicMaterial color={accent} transparent opacity={selected ? 0.2 : 0.1} depthWrite={false} />
-    </mesh>}
-    <FurnitureGeometry item={item} />
-  </group>
 }

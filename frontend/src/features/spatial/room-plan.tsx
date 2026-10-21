@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import type { SpatialPlan, Workstation } from './room-model'
-import { snapWorkstation } from './plan-geometry'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
+import { snapFurniture, snapWorkstation } from './plan-geometry'
+
+type PlanItem = Workstation | FurnitureItem
 
 interface Props {
   plan: SpatialPlan
@@ -14,8 +16,8 @@ interface Props {
 interface Drag {
   pointerId: number
   element: SVGGElement
-  original: Workstation
-  candidate: Workstation
+  original: PlanItem
+  candidate: PlanItem
   offsetX: number
   offsetZ: number
   startX: number
@@ -25,7 +27,7 @@ interface Drag {
 
 export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, onSelect }: Props) {
   const drag = useRef<Drag | null>(null)
-  const [preview, setPreview] = useState<Workstation | null>(null)
+  const [preview, setPreview] = useState<PlanItem | null>(null)
   const scale = Math.min(650 / plan.width, 450 / plan.depth)
   const width = plan.width * scale
   const depth = plan.depth * scale
@@ -56,8 +58,45 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
     return { x: (value.x - 410) / scale, z: (value.y - 290) / scale }
   }
 
+  function placeItem(item: PlanItem, x: number, z: number): PlanItem {
+    const candidate = { ...item, position: [x, 0, z] as [number, number, number] }
+    return 'kind' in candidate ? snapFurniture(plan, candidate, snap) : snapWorkstation(plan, candidate, snap)
+  }
+
+  function beginDrag(event: ReactPointerEvent<SVGGElement>, item: PlanItem) {
+    if (!editing || event.button !== 0 || drag.current) return
+    const value = point(event)
+    if (!value) return
+    event.preventDefault()
+    onSelect(item.id)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drag.current = {
+      pointerId: event.pointerId, element: event.currentTarget, original: item, candidate: item,
+      offsetX: value.x - item.position[0], offsetZ: value.z - item.position[2],
+      startX: event.clientX, startY: event.clientY, moved: false,
+    }
+  }
+
+  function itemKeyDown(event: ReactKeyboardEvent<SVGGElement>, item: PlanItem) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onSelect(item.id)
+    }
+    if (!editing || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+    event.preventDefault()
+    if (drag.current) cancelDrag()
+    const step = (snap ? 0.25 : 0.1) * (event.shiftKey ? 4 : 1)
+    const candidate = placeItem(
+      item,
+      item.position[0] + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0),
+      item.position[2] + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0),
+    )
+    onSelect(item.id)
+    onMove(item.id, candidate.position[0], candidate.position[2])
+  }
+
   return (
-    <svg className={`room-plan${editing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={`Plan 2D de ${plan.name}. ${plan.workstations.length} postes sélectionnables au clavier.`}
+    <svg className={`room-plan${editing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={`Plan 2D de ${plan.name}. ${plan.workstations.length} postes et ${plan.furniture.length} meubles sélectionnables au clavier.`}
       onPointerMove={(event) => {
         const current = drag.current
         if (!current || event.pointerId !== current.pointerId) return
@@ -66,7 +105,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
         if (!current.moved && Math.hypot(event.clientX - current.startX, event.clientY - current.startY) < 3) return
         event.preventDefault()
         current.moved = true
-        current.candidate = snapWorkstation(plan, { ...current.original, position: [value.x - current.offsetX, 0, value.z - current.offsetZ] }, snap)
+        current.candidate = placeItem(current.original, value.x - current.offsetX, value.z - current.offsetZ)
         setPreview(current.candidate)
       }}
       onPointerUp={(event) => {
@@ -81,12 +120,14 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
       <rect x={left} y={top} width={width} height={depth} fill="url(#room-grid)" />
       <rect x={left} y={top} width={width} height={depth} fill="none" stroke={plan.colors.wall} strokeWidth="5" />
       <text x="410" y={top - 20} textAnchor="middle">{plan.width} m</text><text x={left - 26} y="290" textAnchor="middle" transform={`rotate(-90 ${left - 26} 290)`}>{plan.depth} m</text>
-      {plan.furniture.map((item, index) => {
+      {plan.furniture.map((original, index) => {
+        const item = preview?.id === original.id && 'kind' in preview ? preview : original
         if (!plan.display.decor && (item.kind === 'plant' || item.kind === 'cabinet')) return null
         const selected = selectedWorkstationId === item.id
         const x = 410 + item.position[0] * scale, y = 290 + item.position[2] * scale
         const w = item.width * scale, d = item.depth * scale
-        return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner le meuble ${item.label} dans le plan 2D`} aria-pressed={selected} onClick={() => onSelect(item.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(item.id) } }}>
+        return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner le meuble ${item.label} dans le plan 2D`} aria-pressed={selected}
+          onPointerDown={(event) => beginDrag(event, item)} onClick={() => onSelect(item.id)} onKeyDown={(event) => itemKeyDown(event, item)}>
           <title>{item.label}</title>
           <g transform={`rotate(${-item.rotation * 180 / Math.PI})`}>
             <rect className="plan-hit" x={-w / 2 - 4} y={-d / 2 - 4} width={w + 8} height={d + 8} rx="5" style={selected ? { stroke: plan.colors.accent } : undefined} />
@@ -100,28 +141,12 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
         </g>
       })}
       {plan.workstations.map((original, index) => {
-        const station = preview?.id === original.id ? preview : original
+        const station = preview?.id === original.id && !('kind' in preview) ? preview : original
         const x = 410 + station.position[0] * scale
         const y = 290 + station.position[2] * scale
         const selected = selectedWorkstationId === station.id
         return <g key={station.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner ${station.label} dans le plan 2D`} aria-pressed={selected}
-          onPointerDown={(event) => {
-            if (!editing || event.button !== 0) return
-            const value = point(event)
-            if (!value) return
-            event.preventDefault()
-            onSelect(station.id)
-            event.currentTarget.setPointerCapture(event.pointerId)
-            drag.current = { pointerId: event.pointerId, element: event.currentTarget, original: station, candidate: station, offsetX: value.x - station.position[0], offsetZ: value.z - station.position[2], startX: event.clientX, startY: event.clientY, moved: false }
-          }}
-          onClick={() => onSelect(station.id)} onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(station.id) }
-            if (!editing || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
-            event.preventDefault()
-            const step = (snap ? 0.25 : 0.1) * (event.shiftKey ? 4 : 1)
-            onSelect(station.id)
-            onMove(station.id, station.position[0] + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0), station.position[2] + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0))
-          }}>
+          onPointerDown={(event) => beginDrag(event, station)} onClick={() => onSelect(station.id)} onKeyDown={(event) => itemKeyDown(event, station)}>
           <title>{station.label}</title>
           <g transform={`rotate(${-station.rotation * 180 / Math.PI}) scale(${station.width / 2 * scale / 50},${station.depth * scale / 50})`}>
             <rect className="plan-hit" x="-53" y="-37" width="106" height="103" rx="9" style={selected ? { stroke: plan.colors.accent } : undefined} />
