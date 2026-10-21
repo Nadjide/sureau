@@ -31,6 +31,8 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
   const depth = plan.depth * scale
   const left = 410 - width / 2
   const top = 290 - depth / 2
+  const floorRgb = [1, 3, 5].map((offset) => parseInt(plan.colors.floor.slice(offset, offset + 2), 16))
+  const ink = floorRgb[0]! * 0.299 + floorRgb[1]! * 0.587 + floorRgb[2]! * 0.114 > 145 ? '#243244' : '#f3f6fb'
 
   function cancelDrag() {
     const current = drag.current
@@ -109,7 +111,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
             <rect className="plan-keyboard" x="-13" y="3" width="26" height="9" rx="2" />
             <rect className="plan-chair" x="-15" y="33" width="30" height="27" rx="8" />
           </g>
-          <text className="plan-label" x="0" y={-station.depth * scale / 2 - 12} textAnchor="middle">{station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
+          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
       <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation locale · mobilier du plan</text>

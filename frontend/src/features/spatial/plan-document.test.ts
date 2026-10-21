@@ -36,6 +36,8 @@ describe('document de plateau', () => {
     expect(first.plan).toEqual(second.plan)
     expect(first.plan).not.toBe(second.plan)
     expect(first.plan.workstations[0]).not.toBe(second.plan.workstations[0])
+    expect(first.plan.display).toEqual({ walls: true, decor: true })
+    expect(first.plan.display).not.toBe(second.plan.display)
     expect(storage.setItem).not.toHaveBeenCalled()
   })
 
@@ -45,6 +47,7 @@ describe('document de plateau', () => {
     plan.name = 'Accueil'
     plan.width = 16
     plan.colors.floor = '#3a4B5c'
+    plan.display = { walls: false, decor: false }
     plan.workstations = [{
       id: 'desk-88df3bd9-6782-49c2-a939-0678967bb8a7', label: 'Support',
       position: [2, 0, -1], rotation: Math.PI / 2,
@@ -64,6 +67,33 @@ describe('document de plateau', () => {
     expect(plan.name).toBe('Plateau A')
     expect(parsed.workstations).toEqual([])
     expect(defaultPlan.workstations).toHaveLength(8)
+  })
+
+  it('charge les anciens plans sans préférences d’affichage et sans réécriture automatique', () => {
+    const { display: _display, ...legacyPlan } = freshPlan()
+    const raw = JSON.stringify(legacyPlan)
+    const { storage, raw: storedRaw } = memoryStorage(raw)
+    const loaded = loadPlan(storage)
+    expect(loaded).toMatchObject({ persisted: true, canPersist: true, warning: null })
+    expect(loaded.plan.display).toEqual({ walls: true, decor: true })
+    expect(loaded.plan.workstations).toEqual(legacyPlan.workstations)
+    expect(storedRaw()).toBe(raw)
+    expect(storage.setItem).not.toHaveBeenCalled()
+    loaded.plan.display.walls = false
+    expect(parsePlan(raw).display).toEqual({ walls: true, decor: true })
+    expect(defaultPlan.display).toEqual({ walls: true, decor: true })
+  })
+
+  it.each([
+    { walls: 'false', decor: true },
+    { walls: true, decor: 0 },
+    { walls: true },
+    { decor: false },
+    { walls: false, decor: true, extra: true },
+    null,
+    [],
+  ])('refuse des préférences d’affichage invalides : %j', (display) => {
+    expect(() => parsePlan(JSON.stringify({ ...freshPlan(), display }))).toThrow()
   })
 
   it.each([

@@ -29,6 +29,7 @@ export const defaultPlan: SpatialPlan = {
     desk: '#d4b38c',
     accent: '#447cde',
   },
+  display: { walls: true, decor: true },
   workstations: workstations.map((station) => ({ ...station, position: [...station.position] })),
 }
 
@@ -53,6 +54,7 @@ const planSchema = z.strictObject({
   width: finite.min(6).max(50),
   depth: finite.min(6).max(50),
   colors: z.strictObject({ floor: color, wall: color, desk: color, accent: color }),
+  display: z.strictObject({ walls: z.boolean(), decor: z.boolean() }).default({ walls: true, decor: true }),
   workstations: z.array(workstationSchema).max(64),
 }).superRefine((plan, context) => {
   const ids = new Set<string>()
@@ -82,6 +84,7 @@ function freshDefaultPlan(): SpatialPlan {
   return {
     ...defaultPlan,
     colors: { ...defaultPlan.colors },
+    display: { ...defaultPlan.display },
     workstations: defaultPlan.workstations.map((station) => ({ ...station, position: [...station.position] })),
   }
 }
