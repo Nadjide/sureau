@@ -98,11 +98,46 @@
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
 }
 
-.welcome { min-height: 100dvh; padding: clamp(32px, 9vw, 140px); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: .18em; font-weight: 650; }
 .brand-symbol { width: 30px; height: 34px; color: var(--primary); }
-.welcome .brand { margin-bottom: 96px; }
-.welcome h1 { font-size: clamp(42px, 7vw, 86px); letter-spacing: -.065em; font-weight: 500; margin: 20px 0; line-height: 1.05; }
-.welcome p { color: var(--muted-foreground); font-size: 18px; }
-.welcome-foot { margin-top: 64px; border-top: 1px solid var(--border); padding-top: 20px; font-size: 13px; color: var(--muted-foreground); width: min(100%, 440px); }
+.app-shell { height: 100dvh; min-height: 560px; display: flex; flex-direction: column; font-size: 13px; }
+.app-header { height: 72px; flex-shrink: 0; display: flex; align-items: center; gap: 28px; padding: 0 26px; border-bottom: 1px solid var(--border); background: var(--card); }
+.app-brand { width: 186px; flex-shrink: 0; }
+.app-nav { height: 100%; display: flex; gap: 28px; }
+.app-nav-item { position: relative; display: inline-flex; gap: 8px; align-items: center; background: transparent; border: 0; padding: 0 2px; color: var(--muted-foreground); font-weight: 500; font-size: 12px; cursor: pointer; }
+.app-nav-item.is-active { color: var(--foreground); }
+.app-nav-item.is-active::after { content: ''; position: absolute; bottom: -1px; height: 2px; background: var(--primary); left: 0; right: 0; }
+.header-spacer { flex: 1; }
+.app-header-meta { color: var(--muted-foreground); font-size: 10px; letter-spacing: .12em; }
+.user-avatar { height: 30px; width: 30px; background: var(--secondary); border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 500; }
+.mobile-menu { display: none; }
+.app-body { display: flex; flex: 1; min-height: 0; }
+.space-sidebar { width: 224px; flex-shrink: 0; padding: 28px 18px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.sidebar-section-label { color: var(--muted-foreground); font-size: 10px; font-weight: 550; letter-spacing: .13em; text-transform: uppercase; margin: 0 10px 18px; }
+.space-tree { display: flex; flex-direction: column; gap: 6px; }
+.space-tree-item { display: flex; align-items: center; gap: 9px; padding: 10px 12px; font-size: 12px; border-radius: 6px; color: var(--muted-foreground); }
+.space-tree-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.space-tree-item.is-current { color: var(--accent-foreground); background: var(--accent); font-weight: 500; }
+.space-tree button { width: 100%; text-align: left; cursor: pointer; }
+.mobile-navigation .app-nav-item { min-height: 44px; padding: 0 12px; border-radius: 6px; }
+.mobile-navigation .app-nav-item.is-active { background: var(--accent); color: var(--accent-foreground); }
+.mobile-navigation .app-nav-item::after { display: none; }
+.space-tree-indent { margin-left: 15px; }
+.sidebar-note { margin-top: auto; padding: 18px 10px 0; color: var(--muted-foreground); border-top: 1px solid var(--border); font-size: 11px; line-height: 1.7; }
+.workspace-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
+.app-footer { height: 32px; flex-shrink: 0; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--muted-foreground); background: var(--card); border-top: 1px solid var(--border); }
+.skip-link { position: fixed; z-index: 100; left: 16px; top: 12px; padding: 10px 16px; background: var(--primary); color: var(--primary-foreground); border-radius: 5px; transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+.workspace-heading { padding: 32px 32px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.eyebrow { color: var(--muted-foreground); font-size: 10px; letter-spacing: .13em; font-weight: 500; margin: 0 0 9px; }
+.workspace-heading h1 { font-size: 28px; font-weight: 550; letter-spacing: -.045em; margin: 0; line-height: 1.25; }
+.workspace-description { margin: 7px 0 0; color: var(--muted-foreground); font-size: 12px; }
+.foundation-stage { position: relative; flex: 1; min-height: 320px; background: var(--workspace); margin: 0 32px 26px; border: 1px solid var(--border); border-radius: 12px; display: grid; place-items: center; background-image: radial-gradient(var(--border) .7px, transparent .7px); background-size: 22px 22px; }
+.foundation-intro { max-width: 430px; text-align: center; padding: 40px 24px 64px; }
+.foundation-icon { display: inline-grid; place-items: center; width: 65px; height: 65px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; margin-bottom: 26px; color: var(--primary); }
+.foundation-intro h2 { font-size: clamp(26px, 3vw, 40px); font-weight: 500; letter-spacing: -.055em; margin: 14px 0; }
+.foundation-intro > p:last-child { color: var(--muted-foreground); font-size: 13px; line-height: 1.8; }
+.stage-caption { position: absolute; bottom: 22px; left: 26px; color: var(--muted-foreground); font-size: 9px; letter-spacing: .14em; }
+@media(max-width: 900px) { .app-header { gap: 20px; } .app-header-meta { display: none; } .app-brand { width: auto; margin-right: 15px; } .space-sidebar { width: 190px; padding-inline: 12px; } .workspace-heading { padding: 26px 24px 20px; } .foundation-stage { margin: 0 24px 24px; } }
+@media(max-width: 700px) { .app-shell { height: auto; min-height: 100dvh; } .app-header { height: 64px; padding: 0 16px; gap: 12px; } .app-header > .app-nav { display: none; } .app-brand { margin-right: 0; } .app-brand .brand { font-size: 12px; } .mobile-menu { display: inline-flex; } .app-body { min-height: calc(100dvh - 96px); } .space-sidebar { display: none; } .workspace-main { overflow: visible; } .workspace-heading { padding: 24px 18px 20px; } .workspace-heading h1 { font-size: 25px; } .workspace-heading > [data-slot=badge] { display: none; } .foundation-stage { margin: 0 18px 20px; min-height: 440px; } .app-footer { font-size: 9px; padding: 0 16px; } .app-footer > :last-child { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
