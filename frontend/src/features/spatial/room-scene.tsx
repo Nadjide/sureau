@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, OrthographicCamera, RoundedBox, useCursor } from '@react-three/drei'
 import { Vector3, type OrthographicCamera as ThreeOrthographicCamera } from 'three'
-import { room, workstations, type Workstation } from './room-model'
+import type { Workstation } from './room-model'
+import type { SpatialPlan } from './plan-document'
 
 type RoomSceneProps = {
+  plan: SpatialPlan
   selectedWorkstationId: string | null
   onSelect: (id: string) => void
   resetToken: number
@@ -81,14 +83,16 @@ function Desk({
   workstation,
   selected,
   onSelect,
+  colors,
 }: {
   workstation: Workstation
   selected: boolean
   onSelect: (id: string) => void
+  colors: SpatialPlan['colors']
 }) {
   const [hovered, setHovered] = useState(false)
   useCursor(hovered)
-  const accent = selected ? '#447cde' : '#9db6df'
+  const accent = colors.accent
 
   function choose(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation()
@@ -99,6 +103,7 @@ function Desk({
     <group
       position={workstation.position}
       rotation={[0, workstation.rotation, 0]}
+      scale={[workstation.width / 2, 1, workstation.depth]}
       onClick={choose}
       onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
       onPointerOut={() => setHovered(false)}
@@ -109,9 +114,9 @@ function Desk({
         </RoundedBox>
       )}
       <RoundedBox args={[2, 0.09, 1]} radius={0.045} smoothness={3} position={[0, 0.79, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#d4b38c" roughness={0.72} />
+        <meshStandardMaterial color={workstation.color || colors.desk} roughness={0.72} />
       </RoundedBox>
-      <Block size={[1.88, 0.065, 0.055]} position={[0, 0.74, -0.44]} color={selected ? '#447cde' : '#b79672'} />
+      <Block size={[1.88, 0.065, 0.055]} position={[0, 0.74, -0.44]} color={selected ? accent : '#b79672'} />
       {[-1, 1].map((side) => (
         <group key={side}>
           <Block size={[0.055, 0.72, 0.065]} position={[side * 0.86, 0.385, -0.36]} color="#647184" metalness={0.6} />
@@ -172,22 +177,22 @@ function Plant({ position, scale = 1 }: { position: Vector; scale?: number }) {
   )
 }
 
-function Architecture({ dark }: { dark: boolean }) {
-  const wall = dark ? '#8792a3' : '#e4e8ed'
+function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
+  const wall = plan.colors.wall
   const frame = dark ? '#758397' : '#b3bfcd'
-  const floor = dark ? '#9099a8' : '#e6e7e5'
+  const floor = plan.colors.floor
 
   return (
-    <group>
-      <RoundedBox args={[room.width + 0.5, 0.36, room.depth + 0.5]} radius={0.16} smoothness={4} position={[0, -0.22, 0]} castShadow receiveShadow>
+    <group scale={[plan.width / 13, 1, plan.depth / 9]}>
+      <RoundedBox args={[13.5, 0.36, 9.5]} radius={0.16} smoothness={4} position={[0, -0.22, 0]} castShadow receiveShadow>
         <meshStandardMaterial color={dark ? '#59697f' : '#c8d0dc'} roughness={0.8} />
       </RoundedBox>
-      <Block size={[room.width, 0.08, room.depth]} position={[0, -0.025, 0]} color={floor} />
+      <Block size={[13, 0.08, 9]} position={[0, -0.025, 0]} color={floor} />
       {[-5, -3, -1, 1, 3, 5].map((x) => (
         <Block key={x} size={[0.012, 0.002, 8.92]} position={[x, 0.017, 0]} color={dark ? '#858f9f' : '#d9dce1'} castShadow={false} />
       ))}
       <RoundedBox args={[11.3, 0.25, 4.95]} scale={[1, 0.048, 1]} radius={0.12} smoothness={3} position={[0, 0.025, 0]} receiveShadow>
-        <meshStandardMaterial color={dark ? '#738093' : '#d2d9e3'} roughness={1} />
+        <meshStandardMaterial color={floor} roughness={1} />
       </RoundedBox>
       <Block size={[13.15, 0.72, 0.17]} position={[0, 0.37, -4.5]} color={wall} />
       <Block size={[13.15, 0.15, 0.19]} position={[0, 2.12, -4.5]} color={wall} />
@@ -207,7 +212,7 @@ function Architecture({ dark }: { dark: boolean }) {
       <Block size={[0.21, 0.06, 9.16]} position={[-6.5, 1.17, 0]} color={frame} />
       <Block size={[0.025, 0.07, 8.98]} position={[-6.398, 0.06, 0]} color={frame} />
       <Block size={[2.18, 0.94, 0.63]} position={[3.85, 0.51, -3.99]} color={dark ? '#929da9' : '#c3ccd4'} />
-      <Block size={[2.23, 0.055, 0.68]} position={[3.85, 1.0, -3.99]} color="#cab18b" />
+      <Block size={[2.23, 0.055, 0.68]} position={[3.85, 1.0, -3.99]} color={plan.colors.desk} />
       {[-1, 1].map((side) => (
         <group key={side}>
           <Block size={[1.04, 0.82, 0.025]} position={[3.85 + side * 0.54, 0.53, -3.66]} color={dark ? '#8493a7' : '#b5c2d2'} />
@@ -223,7 +228,10 @@ function Architecture({ dark }: { dark: boolean }) {
 
 type LabelElements = Record<string, HTMLButtonElement | null>
 
-function LabelProjector({ labels }: { labels: RefObject<LabelElements> }) {
+function LabelProjector({ labels, workstations }: {
+  labels: RefObject<LabelElements>
+  workstations: readonly Workstation[]
+}) {
   const projected = useMemo(() => new Vector3(), [])
 
   useFrame(({ camera, size }) => {
@@ -233,9 +241,9 @@ function LabelProjector({ labels }: { labels: RefObject<LabelElements> }) {
       const label = labels.current[workstation.id]
       if (!label) continue
       projected.set(
-        workstation.position[0] - Math.sin(workstation.rotation) * 0.12,
+        workstation.position[0] - Math.sin(workstation.rotation) * workstation.depth * 0.12,
         workstation.position[1] + 1.69,
-        workstation.position[2] - Math.cos(workstation.rotation) * 0.12,
+        workstation.position[2] - Math.cos(workstation.rotation) * workstation.depth * 0.12,
       ).project(camera)
       const x = (projected.x * 0.5 + 0.5) * size.width
       const y = (-projected.y * 0.5 + 0.5) * size.height
@@ -257,10 +265,11 @@ type CameraTransition = {
   toZoom: number
 }
 
-function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
+function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
   resetToken: number
   focusToken: number
   selectedWorkstationId: string | null
+  plan: SpatialPlan
 }) {
   const { size, invalidate } = useThree()
   const cameraRef = useRef<ThreeOrthographicCamera>(null)
@@ -270,7 +279,16 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
   const [reducedMotion, setReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
-  const zoom = Math.max(14, Math.min(size.width / 18.4, size.height / 12.4))
+  const sceneScale = Math.max(1, plan.width / 13, plan.depth / 9)
+  const overviewPosition = useMemo(
+    () => new Vector3(13.5 * sceneScale, 14.6 * sceneScale + 0.4, 17 * sceneScale),
+    [sceneScale],
+  )
+  const zoom = Math.max(2, Math.min(
+    size.width / (plan.width * 0.79 + plan.depth * 0.63 + 2.5),
+    size.height / (plan.width * 0.36 + plan.depth * 0.45 + 3.7),
+  ))
+  const maxZoom = Math.max(zoom * 2.2, Math.min(size.width / 4, size.height / 3.5))
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -284,13 +302,13 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
     const controls = controlsRef.current
     if (!camera || !controls) return
     transition.current = null
-    camera.position.set(13.5, 15, 17)
+    camera.position.copy(overviewPosition)
     camera.zoom = zoom
     camera.updateProjectionMatrix()
     controls.target.set(0, 0.4, 0)
     controls.update()
     invalidate()
-  }, [zoom, invalidate])
+  }, [zoom, overviewPosition, invalidate])
 
   useEffect(() => {
     const reset = lastCommand.current.resetToken !== resetToken
@@ -301,15 +319,21 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
-    const station = workstations.find((item) => item.id === selectedWorkstationId)
+    const station = plan.workstations.find((item) => item.id === selectedWorkstationId)
     if (!reset && !station) return
 
     const target = !reset && station
       ? new Vector3(station.position[0], 0.4, station.position[2])
       : new Vector3(0, 0.4, 0)
     const position = reset
-      ? new Vector3(13.5, 15, 17)
+      ? overviewPosition.clone()
       : camera.position.clone().sub(controls.target).add(target)
+    const focusedZoom = station
+      ? Math.min(maxZoom, Math.max(zoom * 1.85, Math.min(
+          size.width / (station.width * 1.5 + 2),
+          size.height / (station.depth + 3.5),
+        )))
+      : zoom
 
     transition.current = {
       startedAt: performance.now(),
@@ -318,10 +342,10 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
       fromTarget: controls.target.clone(),
       toTarget: target,
       fromZoom: camera.zoom,
-      toZoom: zoom * (reset ? 1 : 1.85),
+      toZoom: reset ? zoom : focusedZoom,
     }
     invalidate()
-  }, [focusToken, resetToken, selectedWorkstationId, zoom, invalidate])
+  }, [focusToken, resetToken, selectedWorkstationId, zoom, maxZoom, overviewPosition, plan.workstations, size.width, size.height, invalidate])
 
   useFrame(() => {
     const animation = transition.current
@@ -344,9 +368,9 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
-    const offsetX = Math.max(-room.width / 2, Math.min(room.width / 2, controls.target.x)) - controls.target.x
+    const offsetX = Math.max(-plan.width / 2, Math.min(plan.width / 2, controls.target.x)) - controls.target.x
     const offsetY = 0.4 - controls.target.y
-    const offsetZ = Math.max(-room.depth / 2, Math.min(room.depth / 2, controls.target.z)) - controls.target.z
+    const offsetZ = Math.max(-plan.depth / 2, Math.min(plan.depth / 2, controls.target.z)) - controls.target.z
     controls.target.x += offsetX
     controls.target.y += offsetY
     controls.target.z += offsetZ
@@ -358,13 +382,13 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
 
   return (
     <>
-      <OrthographicCamera ref={cameraRef} makeDefault position={[13.5, 15, 17]} near={0.1} far={100} zoom={zoom} />
+      <OrthographicCamera ref={cameraRef} makeDefault position={overviewPosition} near={0.1} far={150 * sceneScale} zoom={zoom} />
       <OrbitControls
         ref={controlsRef}
         makeDefault
         target={[0, 0.4, 0]}
         minZoom={zoom * 0.7}
-        maxZoom={zoom * 2.2}
+        maxZoom={maxZoom}
         minPolarAngle={0.38}
         maxPolarAngle={1.16}
         minAzimuthAngle={-0.25}
@@ -381,13 +405,13 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
   )
 }
 
-export default function RoomScene({ selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts }: RoomSceneProps) {
+export default function RoomScene({ plan, selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
 
   return (
     <div
       role="group"
-      aria-label="Maquette 3D illustrative du Plateau A. Sélectionnez un poste pour l’explorer."
+      aria-label={`Maquette 3D de ${plan.name}. Sélectionnez un poste pour l’explorer.`}
       style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <Canvas
@@ -399,22 +423,22 @@ export default function RoomScene({ selectedWorkstationId, onSelect, resetToken,
         fallback={<div className="scene-fallback" role="status">La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.</div>}
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
-        <CameraRig resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} />
-        <LabelProjector labels={labels} />
+        <CameraRig plan={plan} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} />
+        <LabelProjector labels={labels} workstations={plan.workstations} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />
         <directionalLight
-          position={[-3, 11, 7]}
+          position={[-plan.width * 0.23, Math.max(plan.width, plan.depth) * 0.85, plan.depth * 0.78]}
           intensity={2.5}
           color="#fff6e6"
           castShadow
           shadow-mapSize={[2048, 2048]}
-          shadow-camera-left={-11}
-          shadow-camera-right={11}
-          shadow-camera-top={9}
-          shadow-camera-bottom={-9}
+          shadow-camera-left={-Math.max(plan.width, plan.depth) * 0.85}
+          shadow-camera-right={Math.max(plan.width, plan.depth) * 0.85}
+          shadow-camera-top={Math.max(plan.width, plan.depth) * 0.7}
+          shadow-camera-bottom={-Math.max(plan.width, plan.depth) * 0.7}
           shadow-camera-near={0.5}
-          shadow-camera-far={35}
+          shadow-camera-far={Math.max(plan.width, plan.depth) * 3}
           shadow-bias={-0.0003}
           shadow-normalBias={0.025}
         />
@@ -423,25 +447,25 @@ export default function RoomScene({ selectedWorkstationId, onSelect, resetToken,
           <planeGeometry args={[200, 200]} />
           <shadowMaterial transparent opacity={dark ? 0.2 : 0.13} />
         </mesh>
-        <Architecture dark={dark} />
-        {workstations.map((workstation) => (
-          <Desk key={workstation.id} workstation={workstation} selected={workstation.id === selectedWorkstationId} onSelect={onSelect} />
+        <Architecture dark={dark} plan={plan} />
+        {plan.workstations.map((workstation) => (
+          <Desk key={workstation.id} workstation={workstation} colors={plan.colors} selected={workstation.id === selectedWorkstationId} onSelect={onSelect} />
         ))}
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {workstations.map((workstation) => (
+        {plan.workstations.map((workstation) => (
           <button
             key={workstation.id}
             ref={(element) => { labels.current[workstation.id] = element }}
             type="button"
             className={`scene-label${selectedWorkstationId === workstation.id ? ' is-selected' : ''}`}
-            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto' }}
+            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedWorkstationId === workstation.id ? plan.colors.accent : undefined }}
             aria-label={`Sélectionner ${workstation.label} dans la vue 3D`}
             aria-pressed={selectedWorkstationId === workstation.id}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => { event.stopPropagation(); onSelect(workstation.id) }}
           >
-            {`P-${workstation.id.slice(-2)}`}
+            {workstation.label}
             {!!localizedCounts[workstation.id] && <span className="scene-link-count">{localizedCounts[workstation.id]}</span>}
           </button>
         ))}

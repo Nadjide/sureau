@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Box, Grid2X2, LoaderCircle, MousePointer2, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { room, workstations, type SpatialView } from './room-model'
+import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
 import { SceneBoundary } from './scene-boundary'
 
@@ -15,6 +15,7 @@ function subscribeTheme(callback: () => void) {
 const getTheme = () => document.documentElement.classList.contains('dark')
 
 interface Props {
+  plan: SpatialPlan
   view: SpatialView
   onViewChange: (view: SpatialView) => void
   selectedWorkstationId: string | null
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function SpatialViewer({
+  plan,
   view,
   onViewChange: setView,
   selectedWorkstationId: selected,
@@ -44,7 +46,7 @@ export function SpatialViewer({
 
   return (
     <div className="spatial-layout">
-      <section className="spatial-workspace" aria-label="Exploration du Plateau A">
+      <section className="spatial-workspace" aria-label={`Exploration de ${plan.name}`}>
         <div className="spatial-toolbar">
           <div className="view-switch" role="group" aria-label="Mode de représentation">
             <button
@@ -64,7 +66,7 @@ export function SpatialViewer({
               Plan 2D
             </button>
           </div>
-          <span className="spatial-local-label">Plan d’exemple local</span>
+          <span className="spatial-local-label">Votre plan · dans ce navigateur</span>
           <Button
             variant="outline"
             size="icon"
@@ -82,7 +84,7 @@ export function SpatialViewer({
         </div>
         <div className="spatial-stage">
           {view === '2d' ? (
-            <RoomPlan selectedWorkstationId={selected} onSelect={selectWorkstation} />
+            <RoomPlan plan={plan} selectedWorkstationId={selected} onSelect={selectWorkstation} />
           ) : (
             <SceneBoundary
               key={retryToken}
@@ -98,6 +100,7 @@ export function SpatialViewer({
                 }
               >
                 <RoomScene
+                  plan={plan}
                   selectedWorkstationId={selected}
                   onSelect={selectWorkstation}
                   resetToken={resetToken}
@@ -115,11 +118,11 @@ export function SpatialViewer({
               : 'Sélectionner un poste · Tab puis Entrée au clavier'}
           </div>
           <span className="scene-plan-mark" aria-hidden="true">
-            PLATEAU A
+            {plan.name.toLocaleUpperCase('fr')}
           </span>
         </div>
         <div className="workstation-strip" role="group" aria-label="Sélectionner un poste">
-          {workstations.map((item) => (
+          {plan.workstations.map((item) => (
             <button
               key={item.id}
               aria-pressed={selected === item.id}
@@ -136,10 +139,10 @@ export function SpatialViewer({
         <div className="spatial-caption">
           <span>
             <span className="local-indicator" />
-            Mobilier illustratif · {workstations.length} postes
+            Mobilier du plan · {plan.workstations.length} postes
           </span>
           <span>
-            {room.width} × {room.depth} m
+            {plan.width} × {plan.depth} m
           </span>
         </div>
       </section>

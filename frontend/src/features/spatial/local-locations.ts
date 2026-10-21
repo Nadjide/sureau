@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { room, workstations } from './room-model'
+import { room } from './room-model'
 
 export type LocalLocations = Readonly<Record<number, string>>
 
@@ -21,7 +21,7 @@ export interface LoadedLocations extends LocationPersistence {
 export const locationStorageKey = 'sentinel-locations-v1'
 
 const emptyLocations: LocalLocations = Object.freeze({})
-const workstationIds = new Set(workstations.map((station) => station.id))
+const validWorkstationId = /^desk-[a-z0-9-]{2,80}$/
 const invalidStorageWarning =
   'Les localisations enregistrées sont illisibles ou incompatibles. Elles ont été conservées. Vos modifications restent limitées à cette session.'
 const unavailableStorageWarning =
@@ -43,7 +43,7 @@ function isLocalLocations(value: unknown): value is LocalLocations {
   if (prototype !== Object.prototype && prototype !== null) return false
 
   return Object.entries(value).every(
-    ([key, stationId]) => isAssetKey(key) && typeof stationId === 'string' && workstationIds.has(stationId),
+    ([key, stationId]) => isAssetKey(key) && typeof stationId === 'string' && validWorkstationId.test(stationId),
   )
 }
 
@@ -142,8 +142,8 @@ export function updateLocation(
     throw new RangeError('L’identifiant du matériel ou les localisations sont invalides.')
   }
 
-  if (workstationId !== null && !workstationIds.has(workstationId)) {
-    throw new RangeError('Ce poste n’existe pas dans le plan local.')
+  if (workstationId !== null && !validWorkstationId.test(workstationId)) {
+    throw new RangeError('Cet identifiant de poste est invalide.')
   }
 
   if (workstationId === null && !Object.hasOwn(locations, assetId)) return locations

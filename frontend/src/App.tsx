@@ -4,11 +4,12 @@ import { AppShell, type WorkspaceTab } from '@/components/app-shell'
 import { InventoryPanel } from '@/features/inventory/inventory-panel'
 import { useInventory } from '@/features/inventory/use-inventory'
 import { SpatialViewer } from '@/features/spatial/spatial-viewer'
-import { findWorkstation, workstations, type SpatialView } from '@/features/spatial/room-model'
+import { findWorkstation, type SpatialView } from '@/features/spatial/room-model'
 import { useLocalLocations } from '@/features/spatial/use-local-locations'
 import { getWorkstationAssetIds } from '@/features/spatial/local-locations'
 import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
+import { usePlanDocument } from '@/features/spatial/use-plan-document'
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -20,16 +21,19 @@ function App() {
   const [selectedWorkstationId, setSelectedWorkstationId] = useState<string | null>('desk-04')
   const [spatialView, setSpatialView] = useState<SpatialView>('3d')
   const inventory = useInventory()
+  const planStore = usePlanDocument()
+  const { plan } = planStore
   const locationStore = useLocalLocations()
   const local = {
     ...locationStore,
     associate(id: number, workstationId: string | null) {
+      if (workstationId && !findWorkstation(workstationId, plan.workstations)) return
       locationStore.associate(id, workstationId)
       if (id === selectedAssetId && workstationId) setSelectedWorkstationId(workstationId)
     },
   }
   const localizedCounts = Object.fromEntries(
-    workstations.map((station) => [
+    plan.workstations.map((station) => [
       station.id,
       getWorkstationAssetIds(local.locations, station.id).length,
     ]),
@@ -63,42 +67,44 @@ function App() {
   }
 
   function showInPlan(id: number) {
-    if (!local.locations[id]) return
+    if (!local.locations[id] || !findWorkstation(local.locations[id], plan.workstations)) return
     setSelectedWorkstationId(local.locations[id])
     setSelectedAssetId(id)
     navigate('spaces')
   }
 
   return (
-    <AppShell tab={tab} onTabChange={navigate}>
+    <AppShell tab={tab} onTabChange={navigate} planName={plan.name}>
       <div className="workspace-heading">
         <div>
           <p className="eyebrow">
             {tab === 'spaces' ? 'ESPACE LOCAL / ÉTAGE 1' : 'PARC INFORMATIQUE'}
           </p>
-          <h1>{tab === 'spaces' ? 'Plateau A' : 'Matériel'}</h1>
+          <h1>{tab === 'spaces' ? plan.name : 'Matériel'}</h1>
           <p className="workspace-description">
             {tab === 'spaces'
               ? 'Votre matériel, dans son environnement.'
               : 'Une vue commune sur tous vos équipements.'}
           </p>
         </div>
-        <Badge variant="outline">{tab === 'spaces' ? 'Plan local' : 'Inventaire'}</Badge>
+        <Badge variant="outline">{tab === 'spaces' ? (planStore.persisted ? 'Plan local' : 'Plan de session') : 'Inventaire'}</Badge>
       </div>
+      {tab === 'spaces' && planStore.warning && <p className="storage-warning px-8 pb-4" role="alert">{planStore.warning}</p>}
       {tab === 'inventory' ? (
         <InventoryPanel
           inventory={inventory}
           selectedAssetId={selectedAssetId}
           onSelect={selectAsset}
           locationLabel={(id) =>
-            findWorkstation(local.locations[id] || null)?.label || 'Non localisé'
+            findWorkstation(local.locations[id] || null, plan.workstations)?.label || (local.locations[id] ? 'Poste absent du plan' : 'Non localisé')
           }
           renderAssetActions={(asset) => (
-            <AssetLocationActions asset={asset} local={local} onShowInPlan={showInPlan} />
+            <AssetLocationActions asset={asset} local={local} onShowInPlan={showInPlan} plan={plan} />
           )}
         />
       ) : (
         <SpatialViewer
+          plan={plan}
           view={spatialView}
           onViewChange={setSpatialView}
           selectedWorkstationId={selectedWorkstationId}
@@ -106,6 +112,7 @@ function App() {
           localizedCounts={localizedCounts}
           inspector={
             <SpatialInspector
+              plan={plan}
               selectedWorkstationId={selectedWorkstationId}
               selectedAssetId={selectedAssetId}
               onSelectAsset={selectAsset}

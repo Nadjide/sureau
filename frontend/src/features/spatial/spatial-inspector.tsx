@@ -5,10 +5,12 @@ import { AssetDetails, AssetIcon, AssetStatus } from '@/features/inventory/asset
 import type { useInventory } from '@/features/inventory/use-inventory'
 import { AssetLocationActions } from './asset-location-actions'
 import { getWorkstationAssetIds } from './local-locations'
-import { findWorkstation, room } from './room-model'
+import { findWorkstation, type SpatialPlan } from './room-model'
+import { defaultPlan } from './plan-document'
 import type { useLocalLocations } from './use-local-locations'
 
 interface Props {
+  plan?: SpatialPlan
   selectedWorkstationId: string | null
   selectedAssetId: number | null
   onSelectAsset: (id: number | null) => void
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function SpatialInspector({
+  plan = defaultPlan,
   selectedWorkstationId,
   selectedAssetId,
   onSelectAsset,
@@ -27,7 +30,7 @@ export function SpatialInspector({
   inventory,
   local,
 }: Props) {
-  const station = findWorkstation(selectedWorkstationId)
+  const station = findWorkstation(selectedWorkstationId, plan.workstations)
   const ids = station ? getWorkstationAssetIds(local.locations, station.id) : []
   const selectedAsset = inventory.assets?.find((asset) => asset.id === selectedAssetId)
   const verified = inventory.status === 'ready'
@@ -45,7 +48,7 @@ export function SpatialInspector({
           </div>
         )}
       >
-        <AssetLocationActions asset={selectedAsset} local={local} onShowInPlan={onShowInPlan} />
+        <AssetLocationActions asset={selectedAsset} local={local} onShowInPlan={onShowInPlan} plan={plan} />
         <Button variant="ghost" className="w-full mt-3" onClick={() => onSelectAsset(null)}>
           Retour au {station?.label.toLocaleLowerCase('fr') || 'poste'}
         </Button>
@@ -64,11 +67,11 @@ export function SpatialInspector({
       <dl className="asset-specs mt-6">
         <div>
           <dt>Salle</dt>
-          <dd>{room.name}</dd>
+          <dd>{plan.name}</dd>
         </div>
         <div>
           <dt>Bureau</dt>
-          <dd>200 × 100 cm</dd>
+          <dd>{station ? `${Math.round(station.width * 100)} × ${Math.round(station.depth * 100)} cm` : '—'}</dd>
         </div>
       </dl>
       <section className="linked-assets" aria-label="Matériel localisé sur ce poste">

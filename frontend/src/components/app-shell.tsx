@@ -32,6 +32,7 @@ import { useTheme } from '@/hooks/use-theme'
 export type WorkspaceTab = 'spaces' | 'inventory'
 
 type AppShellProps = {
+  planName: string
   tab: WorkspaceTab
   onTabChange: (tab: WorkspaceTab) => void
   children: ReactNode
@@ -43,9 +44,11 @@ const tabs = [
 ] as const
 
 function SpaceNavigation({
+  planName,
   active,
   onSelect,
 }: {
+  planName: string
   active: boolean
   onSelect: () => void
 }) {
@@ -66,19 +69,19 @@ function SpaceNavigation({
             onClick={onSelect}
           >
             <PanelTop size={16} aria-hidden="true" />
-            <span>Plateau A</span>
+            <span>{planName}</span>
           </button>
         </div>
       </nav>
       <div className="sidebar-note">
-        <span>EXEMPLE LOCAL</span>
-        <p>Un plan d’exemple pour explorer votre futur espace.</p>
+        <span>ATELIER LOCAL</span>
+        <p>Votre plateau et vos localisations restent dans ce navigateur.</p>
       </div>
     </>
   )
 }
 
-export function AppShell({ tab, onTabChange, children }: AppShellProps) {
+export function AppShell({ tab, onTabChange, children, planName }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
@@ -135,7 +138,7 @@ export function AppShell({ tab, onTabChange, children }: AppShellProps) {
                 ))}
               </nav>
               <div className="mt-4 px-4">
-                <SpaceNavigation active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
+                <SpaceNavigation planName={planName} active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
               </div>
             </SheetContent>
           </Sheet>
@@ -170,7 +173,7 @@ export function AppShell({ tab, onTabChange, children }: AppShellProps) {
 
         <div className="app-body">
           <aside className="space-sidebar" aria-label="Vos espaces">
-            <SpaceNavigation active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
+            <SpaceNavigation planName={planName} active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
           </aside>
           <main id="workspace-main" className="workspace-main" tabIndex={-1}>
             {children}

@@ -25,6 +25,13 @@ function memoryStorage(initial: string | null = null) {
 }
 
 describe('local locations', () => {
+  it('conserve les postes personnalisés et les liens vers un poste absent du plan', () => {
+    const id = 'desk-1c135801-8050-49a5-a207-1310b4e408c4'
+    const loaded = decodeLocations(snapshot({ 42: id, 84: 'desk-99' }))
+    expect(loaded.canPersist).toBe(true)
+    expect(loaded.locations).toEqual({ 42: id, 84: 'desk-99' })
+    expect(updateLocation(loaded.locations, 42, 'desk-02')).toEqual({ 42: 'desk-02', 84: 'desk-99' })
+  })
   it('lit un état initial vide sans écrire pendant l’initialisation, même répétée', () => {
     const { storage } = memoryStorage()
 
@@ -52,7 +59,7 @@ describe('local locations', () => {
     { label: 'JSON corrompu', raw: '{broken' },
     { label: 'version inconnue', raw: snapshot({}, 2) },
     { label: 'autre plan', raw: snapshot({}, 1, 'plateau-b') },
-    { label: 'poste inconnu', raw: snapshot({ 42: 'desk-99' }) },
+    { label: 'identifiant de poste invalide', raw: snapshot({ 42: 'invalid' }) },
     { label: 'identifiant nul', raw: snapshot({ 0: 'desk-01' }) },
     { label: 'identifiant négatif', raw: snapshot({ '-1': 'desk-01' }) },
     { label: 'identifiant non sûr', raw: snapshot({ '9007199254740992': 'desk-01' }) },
@@ -116,7 +123,7 @@ describe('local locations', () => {
 
     expect(() => updateLocation(original, Number.MAX_SAFE_INTEGER + 1, 'desk-02')).toThrow(RangeError)
     expect(() => updateLocation(original, -1, null)).toThrow(RangeError)
-    expect(() => updateLocation(original, 42, 'desk-99')).toThrow(RangeError)
+    expect(() => updateLocation(original, 42, 'invalid')).toThrow(RangeError)
     expect(original).toEqual({ 42: 'desk-01' })
   })
 
