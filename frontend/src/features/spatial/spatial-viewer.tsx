@@ -47,6 +47,7 @@ export function SpatialViewer({
   const [sceneFailed, setSceneFailed] = useState(false)
   const [snap, setSnap] = useState(true)
   const dark = useSyncExternalStore(subscribeTheme, getTheme)
+  const dense = plan.workstations.length + plan.furniture.length > 16
 
   function selectWorkstation(id: string) {
     setSelected(id)
@@ -145,17 +146,17 @@ export function SpatialViewer({
             {plan.name.toLocaleUpperCase('fr')}
           </span>
         </div>
-        {plan.workstations.length > 16 && <p className="dense-plan-note">Les repères numérotés correspondent à la liste des postes.</p>}
-        <div className={`workstation-strip${plan.workstations.length > 16 ? ' is-dense' : ''}`} role="group" aria-label="Sélectionner un poste">
+        {dense && <p className="dense-plan-note">Les repères numérotés correspondent aux listes des objets.</p>}
+        <div className={`workstation-strip${dense ? ' is-dense' : ''}`} role="group" aria-label="Sélectionner un poste">
           {plan.workstations.map((item, index) => (
             <button
               key={item.id}
               aria-pressed={selected === item.id}
               className={selected === item.id ? 'is-selected' : ''}
-              title={plan.workstations.length > 16 ? `${index + 1}. ${item.label}` : item.label}
+              title={dense ? `${index + 1}. ${item.label}` : item.label}
               onClick={() => selectWorkstation(item.id)}
             >
-              {plan.workstations.length > 16 && <span className="workstation-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}.</span>}
+              {dense && <span className="workstation-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}.</span>}
               <span className="workstation-label">{item.label}</span>
               {!!localizedCounts[item.id] && (
                 <span className="desk-asset-count">{localizedCounts[item.id]}</span>
@@ -166,12 +167,15 @@ export function SpatialViewer({
         <div className="spatial-caption">
           <span>
             <span className="local-indicator" />
-            Mobilier du plan · {plan.workstations.length} postes
+            {plan.workstations.length} postes · {plan.furniture.length} meubles
           </span>
           <span>
             {plan.width} × {plan.depth} m
           </span>
         </div>
+        {plan.furniture.length > 0 && <div className="furniture-strip" role="group" aria-label="Sélectionner un meuble">
+          {plan.furniture.map((item, index) => <button key={item.id} aria-pressed={selected === item.id} title={item.label} onClick={() => selectWorkstation(item.id)}>{dense && <span aria-hidden="true">{String(plan.workstations.length + index + 1).padStart(2, '0')}. </span>}{item.label}</button>)}
+        </div>}
       </section>
       {inspector}
     </div>

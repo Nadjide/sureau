@@ -256,6 +256,22 @@
 .editor-field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .editor-form .location-help { margin: 0; }
 .editor-tabs { display: flex; gap: 4px; padding: 4px; background: var(--background); border: 1px solid var(--border); border-radius: 7px; margin: 20px 0 14px; }
+.editor-tabs { flex-wrap: wrap; }
+.editor-tabs button { flex-basis: 40%; }
+.catalog-title { font-size: 20px; font-weight: 500; letter-spacing: -.04em; margin: 12px 0; }
+.furniture-catalog { display: grid; gap: 12px; margin: 22px 0; }
+.catalog-card { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--background); display: flex; }
+.catalog-thumbnail { width: 85px; flex-shrink: 0; min-height: 130px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; color: var(--primary); background: var(--secondary); }
+.catalog-thumbnail > span { font-size: 9px; color: var(--muted-foreground); }
+.catalog-plant { color: var(--success); }
+.catalog-sofa { color: var(--warning); }
+.catalog-card-body { flex: 1; padding: 14px; }
+.catalog-card h4 { font-size: 12px; font-weight: 550; }
+.catalog-card p { font-size: 10px; line-height: 1.7; color: var(--muted-foreground); margin: 6px 0 12px; }
+.furniture-color-sample { width: 12px; height: 12px; display: inline-block; margin-right: 5px; border-radius: 3px; border: 1px solid var(--border); vertical-align: -2px; }
+.furniture-strip { padding: 0 22px 14px; display: flex; flex-wrap: wrap; gap: 5px; max-height: 100px; overflow: auto; }
+.furniture-strip button { border: 1px solid var(--border); border-radius: 5px; background: var(--card); font-size: 10px; color: var(--muted-foreground); padding: 6px 9px; cursor: pointer; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.furniture-strip button[aria-pressed=true] { border-color: var(--primary); background: var(--accent); color: var(--accent-foreground); }
 .editor-history { display: flex; gap: 4px; flex-shrink: 0; }
 .transfer-actions { display: grid; gap: 9px; margin: 18px 0; }
 .transfer-actions button { justify-content: flex-start; font-size: 11px; }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialPlan } from './room-model'
-import { clampWorkstation, overlaps } from './plan-geometry'
+import { clampFurniture, clampWorkstation, overlaps } from './plan-geometry'
 import { parsePlan } from './plan-document'
 
 const palettes = [
@@ -47,10 +47,14 @@ export function PlanAppearance({ plan, onChange }: Props) {
         display: { walls: data.has('walls'), decor: data.has('decor') },
       }
       candidate.workstations = plan.workstations.map((station) => clampWorkstation(candidate, station))
+      candidate.furniture = plan.furniture.map((item) => clampFurniture(candidate, item))
       const next = parsePlan(JSON.stringify(candidate))
       const moved = next.workstations.filter((station, index) => {
         const previous = plan.workstations[index]!
         return Math.abs(station.position[0] - previous.position[0]) > 1e-6 || Math.abs(station.position[2] - previous.position[2]) > 1e-6
+      }).length + next.furniture.filter((item, index) => {
+        const previous = plan.furniture[index]!
+        return Math.abs(item.position[0] - previous.position[0]) > 1e-6 || Math.abs(item.position[2] - previous.position[2]) > 1e-6
       }).length
       setError(null)
       if (moved) setPending({ plan: next, source: plan, moved })
@@ -93,7 +97,7 @@ export function PlanAppearance({ plan, onChange }: Props) {
       </fieldset>
     </form>
     {pending && <div className="editor-delete-confirm" role="alert">
-      <p>Les nouvelles dimensions replaceront {pending.moved} poste(s) dans les limites de la pièce. Des chevauchements sont possibles.</p>
+      <p>Les nouvelles dimensions replaceront {pending.moved} élément(s) dans les limites de la pièce. Des chevauchements sont possibles.</p>
       <Button onClick={() => {
         if (pending.source !== plan) setError('Le plan a changé pendant ce réglage. Réappliquez les dimensions pour conserver vos derniers déplacements.')
         else onChange(pending.plan)

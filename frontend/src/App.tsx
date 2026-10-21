@@ -12,6 +12,7 @@ import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { usePlanDocument } from '@/features/spatial/use-plan-document'
 import { WorkstationEditor } from '@/features/spatial/workstation-editor'
 import { clampWorkstation } from '@/features/spatial/plan-geometry'
+import { FurnitureSummary } from '@/features/spatial/furniture-catalog-panel'
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -26,6 +27,7 @@ function App() {
   const inventory = useInventory()
   const planStore = usePlanDocument()
   const { plan, undo, redo } = planStore
+  const selectedFurniture = plan.furniture.find((item) => item.id === selectedWorkstationId)
 
   useEffect(() => {
     if (tab !== 'spaces' || !editing) return
@@ -140,7 +142,7 @@ function App() {
           localizedCounts={localizedCounts}
           inspector={
             editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} onChange={planStore.replace} onSelect={selectWorkstation} /> :
-            <SpatialInspector
+            selectedFurniture ? <aside className="asset-inspector" aria-label="Fiche du mobilier"><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}
               selectedAssetId={selectedAssetId}

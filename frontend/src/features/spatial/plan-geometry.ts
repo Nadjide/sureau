@@ -1,12 +1,15 @@
-import type { SpatialPlan, Workstation } from './room-model'
+import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
 
 type Point = readonly [number, number]
+type PlanItem = Workstation | FurnitureItem
+type PlanBounds = Pick<SpatialPlan, 'width' | 'depth'>
 
 interface Envelope {
   center: Point
   axes: readonly [Point, Point]
   halfWidth: number
   halfDepth: number
+  localOffset: number
 }
 
 const epsilon = 1e-7
@@ -19,20 +22,23 @@ export function normalizeRotation(radians: number): number {
   return positive === 0 || positive >= fullTurn ? 0 : positive
 }
 
-function envelope(station: Workstation): Envelope {
+function envelope(station: PlanItem): Envelope {
   if (![...station.position, station.width, station.depth].every(Number.isFinite)
     || station.width <= 0 || station.depth <= 0) {
-    throw new RangeError('Les dimensions et coordonnées du poste sont invalides.')
+    throw new RangeError('Les dimensions et coordonnées du mobilier sont invalides.')
   }
   const rotation = normalizeRotation(station.rotation)
   const cosine = Math.cos(rotation)
   const sine = Math.sin(rotation)
-  // The chair extends the local footprint from -0.5 to +1.3 times desk depth.
+  // Workstations include the chair; catalogue furniture uses a centred rectangle.
+  const furniture = 'kind' in station
+  const localOffset = furniture ? 0 : 0.4 * station.depth
   return {
-    center: [station.position[0] + sine * 0.4 * station.depth, station.position[2] + cosine * 0.4 * station.depth],
+    center: [station.position[0] + sine * localOffset, station.position[2] + cosine * localOffset],
     axes: [[cosine, -sine], [sine, cosine]],
     halfWidth: station.width / 2,
-    halfDepth: station.depth * 0.9,
+    halfDepth: station.depth * (furniture ? 0.5 : 0.9),
+    localOffset,
   }
 }
 
@@ -45,7 +51,7 @@ function projectedRadius(box: Envelope, axis: Point): number {
     + Math.abs(dot(box.axes[1], axis)) * box.halfDepth
 }
 
-export function clampWorkstation(plan: SpatialPlan, station: Workstation): Workstation {
+function clampItem<T extends PlanItem>(plan: PlanBounds, station: T): T {
   if (![plan.width, plan.depth].every(Number.isFinite) || plan.width <= 0 || plan.depth <= 0) {
     throw new RangeError('Les dimensions du plateau sont invalides.')
   }
@@ -53,26 +59,47 @@ export function clampWorkstation(plan: SpatialPlan, station: Workstation): Works
   const xRadius = projectedRadius(box, [1, 0])
   const zRadius = projectedRadius(box, [0, 1])
   if (xRadius * 2 > plan.width + epsilon || zRadius * 2 > plan.depth + epsilon) {
-    throw new RangeError('Le poste et son fauteuil ne tiennent pas dans le plateau.')
+    throw new RangeError('Ce mobilier ne tient pas dans le plateau.')
   }
   const boundedX = Math.max(-plan.width / 2 + xRadius, Math.min(plan.width / 2 - xRadius, box.center[0]))
   const boundedZ = Math.max(-plan.depth / 2 + zRadius, Math.min(plan.depth / 2 - zRadius, box.center[1]))
   // Preserve unchanged coordinates exactly, and avoid cancellation for far-away inputs.
-  const x = boundedX === box.center[0] ? station.position[0] : boundedX - box.axes[1][0] * 0.4 * station.depth
-  const z = boundedZ === box.center[1] ? station.position[2] : boundedZ - box.axes[1][1] * 0.4 * station.depth
+  const x = boundedX === box.center[0] ? station.position[0] : boundedX - box.axes[1][0] * box.localOffset
+  const z = boundedZ === box.center[1] ? station.position[2] : boundedZ - box.axes[1][1] * box.localOffset
   const rotation = normalizeRotation(station.rotation)
   if (x === station.position[0] && z === station.position[2] && station.position[1] === 0 && rotation === station.rotation) return station
   return { ...station, position: [x, 0, z], rotation }
 }
 
-export function snapWorkstation(plan: SpatialPlan, station: Workstation, enabled = true): Workstation {
-  const candidate: Workstation = enabled
-    ? { ...station, position: [Math.round(station.position[0] * 4) / 4, 0, Math.round(station.position[2] * 4) / 4] }
-    : station
-  return clampWorkstation(plan, candidate)
+export function clampWorkstation(plan: PlanBounds, station: Workstation): Workstation {
+  return clampItem(plan, station)
 }
 
-export function overlaps(first: Workstation, second: Workstation): boolean {
+export function clampFurniture(plan: PlanBounds, item: FurnitureItem): FurnitureItem {
+  return clampItem(plan, item)
+}
+
+function roundToGrid(coordinate: number, stepsPerMetre: number): number {
+  const scaled = coordinate * stepsPerMetre
+  return Number.isFinite(scaled) ? Math.round(scaled) / stepsPerMetre : coordinate
+}
+
+function snapItem<T extends PlanItem>(plan: PlanBounds, station: T, enabled: boolean): T {
+  const candidate: T = enabled
+    ? { ...station, position: [roundToGrid(station.position[0], 4), 0, roundToGrid(station.position[2], 4)] }
+    : station
+  return clampItem(plan, candidate)
+}
+
+export function snapWorkstation(plan: PlanBounds, station: Workstation, enabled = true): Workstation {
+  return snapItem(plan, station, enabled)
+}
+
+export function snapFurniture(plan: PlanBounds, item: FurnitureItem, enabled = true): FurnitureItem {
+  return snapItem(plan, item, enabled)
+}
+
+export function mixedOverlaps(first: PlanItem, second: PlanItem): boolean {
   const a = envelope(first)
   const b = envelope(second)
   const difference: Point = [b.center[0] - a.center[0], b.center[1] - a.center[1]]
@@ -82,19 +109,32 @@ export function overlaps(first: Workstation, second: Workstation): boolean {
   return true
 }
 
-export function findFreePlacement(plan: SpatialPlan, template: Workstation): Workstation | null {
-  const candidates = new Map<string, Workstation>()
+export function overlaps(first: Workstation, second: Workstation): boolean {
+  return mixedOverlaps(first, second)
+}
+
+function freePlacement<T extends PlanItem>(plan: SpatialPlan, template: T): T | null {
+  const candidates = new Map<string, T>()
   function add(x: number, z: number) {
-    const candidate = clampWorkstation(plan, { ...template, position: [x, 0, z] })
+    const candidate = clampItem(plan, { ...template, position: [x, 0, z] })
     candidates.set(`${candidate.position[0]},${candidate.position[2]}`, candidate)
   }
   // Include the desired point, then explore the room on a half-metre grid.
-  add(Math.round(template.position[0] * 2) / 2, Math.round(template.position[2] * 2) / 2)
+  add(roundToGrid(template.position[0], 2), roundToGrid(template.position[2], 2))
   for (let x = Math.ceil(-plan.width) / 2; x <= plan.width / 2 + epsilon; x += 0.5) {
     for (let z = Math.ceil(-plan.depth) / 2; z <= plan.depth / 2 + epsilon; z += 0.5) add(x, z)
   }
-  const distance = (station: Workstation) => (station.position[0] - template.position[0]) ** 2
+  const distance = (station: T) => (station.position[0] - template.position[0]) ** 2
     + (station.position[2] - template.position[2]) ** 2
   const ordered = [...candidates.values()].sort((a, b) => distance(a) - distance(b))
-  return ordered.find((candidate) => !plan.workstations.some((station) => overlaps(candidate, station))) ?? null
+  const occupants: PlanItem[] = [...plan.workstations, ...plan.furniture]
+  return ordered.find((candidate) => !occupants.some((item) => mixedOverlaps(candidate, item))) ?? null
+}
+
+export function findFreePlacement(plan: SpatialPlan, template: Workstation): Workstation | null {
+  return freePlacement(plan, template)
+}
+
+export function findFreeFurniturePlacement(plan: SpatialPlan, template: FurnitureItem): FurnitureItem | null {
+  return freePlacement(plan, template)
 }

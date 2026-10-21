@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { room, workstations, type SpatialPlan } from './room-model'
-import { clampWorkstation } from './plan-geometry'
+import { clampFurniture, clampWorkstation } from './plan-geometry'
+import { initialFurniture } from './furniture-catalog'
 
 export type { SpatialPlan } from './room-model'
 
@@ -33,6 +34,7 @@ export const defaultPlan: SpatialPlan = {
   },
   display: { walls: true, decor: true },
   workstations: workstations.map((station) => ({ ...station, position: [...station.position] })),
+  furniture: initialFurniture(room.width, room.depth),
 }
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -49,6 +51,18 @@ const workstationSchema = z.strictObject({
   color: color.nullable(),
 })
 
+const furnitureSchema = z.strictObject({
+  id: z.string().regex(/^furniture-[a-z0-9-]{2,80}$/),
+  kind: z.enum(['table', 'cabinet', 'plant', 'partition', 'sofa']),
+  label: name,
+  position: z.tuple([finite, z.literal(0), finite]),
+  rotation: finite.min(0).max(Math.PI * 2),
+  width: finite.min(0.2).max(6),
+  depth: finite.min(0.08).max(4),
+  height: finite.min(0.15).max(3.5),
+  color,
+})
+
 const planSchema = z.strictObject({
   version: z.literal(1),
   id: z.literal(room.id),
@@ -58,6 +72,7 @@ const planSchema = z.strictObject({
   colors: z.strictObject({ floor: color, wall: color, desk: color, accent: color }),
   display: z.strictObject({ walls: z.boolean(), decor: z.boolean() }).default({ walls: true, decor: true }),
   workstations: z.array(workstationSchema).max(64),
+  furniture: z.array(furnitureSchema).max(64).default([]),
 }).superRefine((plan, context) => {
   const ids = new Set<string>()
   for (const [index, station] of plan.workstations.entries()) {
@@ -76,6 +91,21 @@ const planSchema = z.strictObject({
       context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Les dimensions ou la position du poste sont invalides.' })
     }
   }
+  for (const [index, item] of plan.furniture.entries()) {
+    if (ids.has(item.id)) {
+      context.addIssue({ code: 'custom', path: ['furniture', index, 'id'], message: 'Identifiant de mobilier dupliqué.' })
+    }
+    ids.add(item.id)
+    try {
+      const bounded = clampFurniture(plan, item)
+      if (Math.abs(bounded.position[0] - item.position[0]) > 1e-6
+        || Math.abs(bounded.position[2] - item.position[2]) > 1e-6) {
+        context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: 'Le mobilier dépasse les limites du plateau.' })
+      }
+    } catch {
+      context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: 'Les dimensions ou la position du mobilier sont invalides.' })
+    }
+  }
 })
 
 const invalidStorageWarning =
@@ -89,13 +119,21 @@ function freshDefaultPlan(): SpatialPlan {
     colors: { ...defaultPlan.colors },
     display: { ...defaultPlan.display },
     workstations: defaultPlan.workstations.map((station) => ({ ...station, position: [...station.position] })),
+    furniture: defaultPlan.furniture.map((item) => ({ ...item, position: [...item.position] })),
   }
 }
 
 export function parsePlan(raw: string): SpatialPlan {
   if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit) throw new Error('Ce fichier de plan est trop volumineux.')
   try {
-    const payload: unknown = JSON.parse(raw)
+    let payload: unknown = JSON.parse(raw)
+    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload) && !Object.hasOwn(payload, 'furniture')) {
+      const legacy = payload as Record<string, unknown>
+      if (typeof legacy.width === 'number' && typeof legacy.depth === 'number'
+        && legacy.width >= 6 && legacy.width <= 50 && legacy.depth >= 6 && legacy.depth <= 50) {
+        payload = { ...legacy, furniture: initialFurniture(legacy.width, legacy.depth) }
+      }
+    }
     return planSchema.parse(payload)
   } catch {
     throw new Error('Ce plan est invalide ou utilise un format incompatible. Aucun changement n’a été appliqué.')

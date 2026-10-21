@@ -11,7 +11,7 @@ export function serializePlan(plan: SpatialPlan): string {
 
 export function createEmptyPlan(source: SpatialPlan): SpatialPlan {
   const validated = parsePlan(JSON.stringify(source))
-  return { ...validated, workstations: [] }
+  return { ...validated, workstations: [], furniture: [] }
 }
 
 export function createExamplePlan(): SpatialPlan {

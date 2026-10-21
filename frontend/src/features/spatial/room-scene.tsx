@@ -5,6 +5,7 @@ import { Plane, Raycaster, Vector2, Vector3, type Group, type OrthographicCamera
 import type { Workstation } from './room-model'
 import type { SpatialPlan } from './plan-document'
 import { snapWorkstation } from './plan-geometry'
+import { FurnitureModel } from './furniture-model'
 
 type RoomSceneProps = {
   plan: SpatialPlan
@@ -23,6 +24,13 @@ type Vector = [number, number, number]
 type ControlsRef = RefObject<ComponentRef<typeof OrbitControls> | null>
 type RenderedDesks = Record<string, Group | null>
 type ActiveDrag = { id: string; pointerId: number; cancel: () => void }
+type SceneObject = Pick<Workstation, 'id' | 'label' | 'position' | 'rotation' | 'width' | 'depth'> & {
+  height: number
+  labelHeight: number
+  labelDepthOffset: number
+  visible: boolean
+  workstation: boolean
+}
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(
@@ -369,29 +377,6 @@ function Desk({
   )
 }
 
-function Plant({ position, scale = 1 }: { position: Vector; scale?: number }) {
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.22, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.26, 0.19, 0.39, 20]} />
-        <meshStandardMaterial color="#bbae94" roughness={0.95} />
-      </mesh>
-      <mesh position={[0, 0.421, 0]}>
-        <cylinderGeometry args={[0.235, 0.235, 0.015, 20]} />
-        <meshStandardMaterial color="#514b3a" roughness={1} />
-      </mesh>
-      {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-        <group key={index} rotation={[0, (index * Math.PI * 2) / 7, 0]}>
-          <mesh position={[0.12, 0.86 + (index % 2) * 0.13, 0]} scale={[0.095, 0.46, 0.19]} rotation={[0, 0, -0.37 - (index % 3) * 0.13]} castShadow>
-            <sphereGeometry args={[1, 10, 8]} />
-            <meshStandardMaterial color={index % 2 ? '#526f47' : '#688458'} roughness={0.9} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  )
-}
-
 function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
   const wall = plan.colors.wall
   const frame = dark ? '#758397' : '#b3bfcd'
@@ -430,30 +415,15 @@ function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
         </group>
       )}
       <Block size={[0.025, 0.07, 8.98]} position={[-6.398, 0.06, 0]} color={frame} />
-      {plan.display.decor && (
-        <group>
-          <Block size={[2.18, 0.94, 0.63]} position={[3.85, 0.51, -3.99]} color={dark ? '#929da9' : '#c3ccd4'} />
-          <Block size={[2.23, 0.055, 0.68]} position={[3.85, 1.0, -3.99]} color={plan.colors.desk} />
-          {[-1, 1].map((side) => (
-            <group key={side}>
-              <Block size={[1.04, 0.82, 0.025]} position={[3.85 + side * 0.54, 0.53, -3.66]} color={dark ? '#8493a7' : '#b5c2d2'} />
-              <Block size={[0.04, 0.13, 0.035]} position={[3.85 + side * 0.12, 0.58, -3.637]} color="#65758a" metalness={0.4} />
-            </group>
-          ))}
-          <Plant position={[-5.72, 0.025, -3.6]} />
-          <Plant position={[5.76, 0.025, 3.55]} scale={0.88} />
-          <Plant position={[-5.7, 0.025, 3.48]} scale={0.75} />
-        </group>
-      )}
     </group>
   )
 }
 
 type LabelElements = Record<string, HTMLButtonElement | null>
 
-function LabelProjector({ labels, workstations, renderedDesksRef, selectedWorkstationId }: {
+function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstationId }: {
   labels: RefObject<LabelElements>
-  workstations: readonly Workstation[]
+  objects: readonly SceneObject[]
   renderedDesksRef: RefObject<RenderedDesks>
   selectedWorkstationId: string | null
 }) {
@@ -462,7 +432,7 @@ function LabelProjector({ labels, workstations, renderedDesksRef, selectedWorkst
 
   useEffect(() => {
     invalidate()
-  }, [selectedWorkstationId, workstations, invalidate])
+  }, [selectedWorkstationId, objects, invalidate])
 
   useFrame(({ camera, size }) => {
     camera.updateMatrixWorld()
@@ -479,26 +449,26 @@ function LabelProjector({ labels, workstations, renderedDesksRef, selectedWorkst
     }> = []
 
     // Read all label sizes before changing any styles.
-    for (const workstation of workstations) {
-      const label = labels.current[workstation.id]
+    for (const object of objects) {
+      const label = labels.current[object.id]
       if (!label) continue
-      const group = renderedDesksRef.current[workstation.id]
+      const group = renderedDesksRef.current[object.id]
       const position = group?.position
-      const rotation = group?.rotation.y ?? workstation.rotation
-      const depth = group?.scale.z ?? workstation.depth
+      const rotation = group?.rotation.y ?? object.rotation
+      const depth = group?.scale.z ?? object.depth
       projected.set(
-        (position?.x ?? workstation.position[0]) - Math.sin(rotation) * depth * 0.12,
-        (position?.y ?? workstation.position[1]) + 1.69,
-        (position?.z ?? workstation.position[2]) - Math.cos(rotation) * depth * 0.12,
+        (position?.x ?? object.position[0]) - Math.sin(rotation) * depth * object.labelDepthOffset,
+        (position?.y ?? object.position[1]) + object.labelHeight,
+        (position?.z ?? object.position[2]) - Math.cos(rotation) * depth * object.labelDepthOffset,
       ).project(camera)
       const x = (projected.x * 0.5 + 0.5) * size.width
       const y = (-projected.y * 0.5 + 0.5) * size.height
-      const visible = projected.z >= -1 && projected.z <= 1 && x >= 0 && x <= size.width && y >= 0 && y <= size.height
+      const visible = object.visible && projected.z >= -1 && projected.z <= 1 && x >= 0 && x <= size.width && y >= 0 && y <= size.height
       const width = label.offsetWidth
       const height = label.offsetHeight
       positions.push({
         label, x, y, visible,
-        selected: workstation.id === selectedWorkstationId,
+        selected: object.id === selectedWorkstationId,
         left: x - width / 2 - 2,
         right: x + width / 2 + 2,
         top: y - height / 2 - 2,
@@ -530,11 +500,12 @@ type CameraTransition = {
   toZoom: number
 }
 
-function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, controlsRef, dragRef, reducedMotion }: {
+function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, objects, controlsRef, dragRef, reducedMotion }: {
   resetToken: number
   focusToken: number
   selectedWorkstationId: string | null
   plan: SpatialPlan
+  objects: readonly SceneObject[]
   controlsRef: ControlsRef
   dragRef: RefObject<ActiveDrag | null>
   reducedMotion: boolean
@@ -542,15 +513,17 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
   const { size, invalidate } = useThree()
   const cameraRef = useRef<ThreeOrthographicCamera>(null)
   const transition = useRef<CameraTransition | null>(null)
+  const panHeight = useRef(0.4)
   const lastCommand = useRef({ resetToken, focusToken: 0 })
   const sceneScale = Math.max(1, plan.width / 13, plan.depth / 9)
   const overviewPosition = useMemo(
     () => new Vector3(13.5 * sceneScale, 14.6 * sceneScale + 0.4, 17 * sceneScale),
     [sceneScale],
   )
+  const tallest = Math.max(2.2, ...objects.filter((object) => object.visible).map((object) => object.height))
   const zoom = Math.max(2, Math.min(
     size.width / (plan.width * 0.79 + plan.depth * 0.63 + 2.5),
-    size.height / (plan.width * 0.36 + plan.depth * 0.45 + 3.7),
+    size.height / (plan.width * 0.36 + plan.depth * 0.45 + 3.7 + Math.max(0, tallest - 2.2) * 1.7),
   ))
   const maxZoom = Math.max(zoom * 2.2, Math.min(size.width / 4, size.height / 3.5))
 
@@ -563,6 +536,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
     camera.position.copy(overviewPosition)
     camera.zoom = zoom
     camera.updateProjectionMatrix()
+    panHeight.current = 0.4
     controls.target.set(0, 0.4, 0)
     controls.update()
     invalidate()
@@ -577,19 +551,19 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
-    const station = plan.workstations.find((item) => item.id === selectedWorkstationId)
-    if (!reset && !station) return
+    const station = objects.find((item) => item.id === selectedWorkstationId)
+    if (!reset && (!station || !station.visible)) return
 
     const target = !reset && station
-      ? new Vector3(station.position[0], 0.4, station.position[2])
+      ? new Vector3(station.position[0], station.workstation ? 0.4 : Math.max(0.4, station.height * 0.45), station.position[2])
       : new Vector3(0, 0.4, 0)
     const position = reset
       ? overviewPosition.clone()
       : camera.position.clone().sub(controls.target).add(target)
     const focusedZoom = station
-      ? Math.min(maxZoom, Math.max(zoom * 1.85, Math.min(
+      ? Math.min(maxZoom, Math.max(zoom, Math.min(
           size.width / (station.width * 1.5 + 2),
-          size.height / (station.depth + 3.5),
+          size.height / (station.depth + station.height + 2),
         )))
       : zoom
 
@@ -603,7 +577,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
       toZoom: reset ? zoom : focusedZoom,
     }
     invalidate()
-  }, [focusToken, resetToken, selectedWorkstationId, zoom, maxZoom, overviewPosition, plan.workstations, size.width, size.height, controlsRef, invalidate])
+  }, [focusToken, resetToken, selectedWorkstationId, zoom, maxZoom, overviewPosition, objects, size.width, size.height, controlsRef, invalidate])
 
   useFrame(() => {
     if (dragRef.current) {
@@ -619,6 +593,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
     const eased = progress * progress * (3 - 2 * progress)
     camera.position.lerpVectors(animation.fromPosition, animation.toPosition, eased)
     controls.target.lerpVectors(animation.fromTarget, animation.toTarget, eased)
+    panHeight.current = controls.target.y
     camera.zoom = animation.fromZoom + (animation.toZoom - animation.fromZoom) * eased
     camera.updateProjectionMatrix()
     controls.update()
@@ -631,7 +606,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, contro
     const controls = controlsRef.current
     if (!camera || !controls) return
     const offsetX = Math.max(-plan.width / 2, Math.min(plan.width / 2, controls.target.x)) - controls.target.x
-    const offsetY = 0.4 - controls.target.y
+    const offsetY = panHeight.current - controls.target.y
     const offsetZ = Math.max(-plan.depth / 2, Math.min(plan.depth / 2, controls.target.z)) - controls.target.z
     controls.target.x += offsetX
     controls.target.y += offsetY
@@ -673,13 +648,28 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   const dragRef = useRef<ActiveDrag | null>(null)
   const reducedMotion = useReducedMotion()
+  const objects = useMemo<SceneObject[]>(() => [
+    ...plan.workstations.map((station) => ({
+      ...station, height: 1.44, labelHeight: 1.69, labelDepthOffset: 0.12, visible: true, workstation: true,
+    })),
+    ...plan.furniture.map((item) => ({
+      ...item, labelHeight: item.height + 0.25, labelDepthOffset: 0,
+      visible: plan.display.decor || (item.kind !== 'plant' && item.kind !== 'cabinet'),
+      workstation: false,
+    })),
+  ], [plan.workstations, plan.furniture, plan.display.decor])
+
+  const registerFurniture = useCallback((id: string, group: Group | null) => {
+    if (group) renderedDesksRef.current[id] = group
+    else delete renderedDesksRef.current[id]
+  }, [])
 
   useEffect(() => () => dragRef.current?.cancel(), [])
 
   return (
     <div
       role="group"
-      aria-label={`Maquette 3D de ${plan.name}. Sélectionnez un poste pour l’explorer.`}
+      aria-label={`Maquette 3D de ${plan.name}. Sélectionnez un poste ou un meuble pour l’explorer.`}
       style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <Canvas
@@ -691,8 +681,8 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
         fallback={<div className="scene-fallback" role="status">La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.</div>}
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
-        <CameraRig plan={plan} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
-        <LabelProjector labels={labels} workstations={plan.workstations} renderedDesksRef={renderedDesksRef} selectedWorkstationId={selectedWorkstationId} />
+        <CameraRig plan={plan} objects={objects} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
+        <LabelProjector labels={labels} objects={objects} renderedDesksRef={renderedDesksRef} selectedWorkstationId={selectedWorkstationId} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />
         <directionalLight
@@ -732,23 +722,33 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             reducedMotion={reducedMotion}
           />
         ))}
+        {plan.furniture.filter((item) => plan.display.decor || (item.kind !== 'plant' && item.kind !== 'cabinet')).map((item) => (
+          <FurnitureModel
+            key={item.id}
+            item={item}
+            selected={item.id === selectedWorkstationId}
+            accent={plan.colors.accent}
+            onSelect={onSelect}
+            onObjectRef={registerFurniture}
+          />
+        ))}
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {plan.workstations.map((workstation, index) => (
+        {objects.map((object, index) => object.visible && (
           <button
-            key={workstation.id}
-            ref={(element) => { labels.current[workstation.id] = element }}
+            key={object.id}
+            ref={(element) => { labels.current[object.id] = element }}
             type="button"
-            className={`scene-label${selectedWorkstationId === workstation.id ? ' is-selected' : ''}`}
-            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedWorkstationId === workstation.id ? plan.colors.accent : undefined }}
-            aria-label={`Sélectionner ${workstation.label} dans la vue 3D`}
-            title={workstation.label}
-            aria-pressed={selectedWorkstationId === workstation.id}
+            className={`scene-label${selectedWorkstationId === object.id ? ' is-selected' : ''}`}
+            style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedWorkstationId === object.id ? plan.colors.accent : undefined }}
+            aria-label={`Sélectionner ${object.label} dans la vue 3D`}
+            title={object.label}
+            aria-pressed={selectedWorkstationId === object.id}
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => { event.stopPropagation(); onSelect(workstation.id) }}
+            onClick={(event) => { event.stopPropagation(); onSelect(object.id) }}
           >
-            {plan.workstations.length > 16 && selectedWorkstationId !== workstation.id ? index + 1 : workstation.label}
-            {!!localizedCounts[workstation.id] && <span className="scene-link-count">{localizedCounts[workstation.id]}</span>}
+            {objects.length > 16 && selectedWorkstationId !== object.id ? index + 1 : object.label}
+            {!!localizedCounts[object.id] && <span className="scene-link-count">{localizedCounts[object.id]}</span>}
           </button>
         ))}
       </div>

@@ -11,6 +11,7 @@ import {
 } from './plan-document'
 import { findWorkstation } from './room-model'
 import { clampWorkstation } from './plan-geometry'
+import { initialFurniture } from './furniture-catalog'
 
 function freshPlan(): SpatialPlan {
   return structuredClone(defaultPlan)
@@ -40,6 +41,9 @@ describe('document de plateau', () => {
     expect(first.plan.workstations[0]).not.toBe(second.plan.workstations[0])
     expect(first.plan.display).toEqual({ walls: true, decor: true })
     expect(first.plan.display).not.toBe(second.plan.display)
+    expect(first.plan.furniture).toHaveLength(4)
+    expect(first.plan.furniture).not.toBe(second.plan.furniture)
+    expect(first.plan.furniture[0]!.position).not.toBe(second.plan.furniture[0]!.position)
     expect(storage.setItem).not.toHaveBeenCalled()
   })
 
@@ -84,6 +88,64 @@ describe('document de plateau', () => {
     loaded.plan.display.walls = false
     expect(parsePlan(raw).display).toEqual({ walls: true, decor: true })
     expect(defaultPlan.display).toEqual({ walls: true, decor: true })
+  })
+
+  it('convertit le décor historique en mobilier sans modifier les identifiants ni écrire au chargement', () => {
+    const { furniture: _furniture, ...legacy } = freshPlan()
+    const raw = JSON.stringify(legacy)
+    const { storage, raw: currentRaw } = memoryStorage(raw)
+    const loaded = loadPlan(storage)
+    expect(loaded).toMatchObject({ persisted: true, canPersist: true, warning: null })
+    expect(loaded.plan.furniture).toEqual(initialFurniture(13, 9))
+    expect(loaded.plan.workstations).toEqual(legacy.workstations)
+    expect(currentRaw()).toBe(raw)
+    expect(storage.setItem).not.toHaveBeenCalled()
+  })
+
+  it('repositionne le seul décor historique proportionnellement à une ancienne pièce réduite', () => {
+    const { furniture: _furniture, ...legacy } = freshPlan()
+    legacy.width = 6
+    legacy.depth = 6
+    legacy.workstations = []
+    legacy.display.decor = false
+    const loaded = parsePlan(JSON.stringify(legacy))
+    expect(loaded.furniture).toEqual(initialFurniture(6, 6))
+    expect(loaded.display.decor).toBe(false)
+    expect(loaded.furniture).toHaveLength(4)
+  })
+
+  it('respecte un mobilier explicitement vide et ne recrée pas le décor après sauvegarde', () => {
+    const { storage } = memoryStorage()
+    const empty = { ...freshPlan(), furniture: [] }
+    expect(parsePlan(JSON.stringify(empty)).furniture).toEqual([])
+    expect(savePlan(storage, empty).persisted).toBe(true)
+    expect(loadPlan(storage).plan.furniture).toEqual([])
+  })
+
+  it.each([
+    ['type inconnu', (plan: SpatialPlan) => { Object.assign(plan.furniture[0]!, { kind: 'unknown' }) }],
+    ['identifiant dupliqué', (plan: SpatialPlan) => { plan.furniture[1]!.id = plan.furniture[0]!.id }],
+    ['préfixe de poste', (plan: SpatialPlan) => { plan.furniture[0]!.id = 'desk-01' }],
+    ['label vide', (plan: SpatialPlan) => { plan.furniture[0]!.label = '' }],
+    ['largeur trop petite', (plan: SpatialPlan) => { plan.furniture[0]!.width = 0.19 }],
+    ['largeur trop grande', (plan: SpatialPlan) => { plan.furniture[0]!.width = 6.01 }],
+    ['profondeur trop petite', (plan: SpatialPlan) => { plan.furniture[0]!.depth = 0.07 }],
+    ['profondeur trop grande', (plan: SpatialPlan) => { plan.furniture[0]!.depth = 4.01 }],
+    ['hauteur trop petite', (plan: SpatialPlan) => { plan.furniture[0]!.height = 0.14 }],
+    ['hauteur trop grande', (plan: SpatialPlan) => { plan.furniture[0]!.height = 3.51 }],
+    ['altitude non nulle', (plan: SpatialPlan) => { plan.furniture[0]!.position[1] = 1 }],
+    ['position infinie', (plan: SpatialPlan) => { plan.furniture[0]!.position[0] = Infinity }],
+    ['rotation hors intervalle', (plan: SpatialPlan) => { plan.furniture[0]!.rotation = Math.PI * 3 }],
+    ['couleur nulle', (plan: SpatialPlan) => { Object.assign(plan.furniture[0]!, { color: null }) }],
+    ['objet hors plateau', (plan: SpatialPlan) => { plan.furniture[0]!.position[0] = 100 }],
+    ['propriété d’inventaire', (plan: SpatialPlan) => { Object.assign(plan.furniture[0]!, { assetId: 42 }) }],
+    ['trop de meubles', (plan: SpatialPlan) => {
+      plan.furniture = Array.from({ length: 65 }, (_, index) => ({ ...plan.furniture[0]!, id: `furniture-extra-${index}`, position: [0, 0, 0] }))
+    }],
+  ])('refuse un meuble invalide : %s', (_label, mutate) => {
+    const candidate = freshPlan()
+    mutate(candidate)
+    expect(() => parsePlan(JSON.stringify(candidate))).toThrow()
   })
 
   it.each([
