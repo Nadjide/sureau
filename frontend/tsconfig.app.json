@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "strict": true,
+    "paths": { "@/*": ["./src/*"] },
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
