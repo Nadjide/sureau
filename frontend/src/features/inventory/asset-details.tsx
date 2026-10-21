@@ -52,10 +52,12 @@ export function AssetDetails({
   asset,
   onClose,
   children,
+  notice,
 }: {
   asset: Asset | undefined
   onClose?: () => void
   children?: ReactNode
+  notice?: ReactNode
 }) {
   if (!asset)
     return (
@@ -76,6 +78,7 @@ export function AssetDetails({
           </Button>
         )}
       </div>
+      {notice}
       <div className="inspector-hero">
         <AssetIcon category={asset.category} size={34} />
       </div>
