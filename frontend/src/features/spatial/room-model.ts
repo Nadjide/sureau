@@ -8,6 +8,20 @@ export interface Workstation {
   color: string | null
 }
 
+export type FurnitureKind = 'table' | 'cabinet' | 'plant' | 'partition' | 'sofa'
+
+export interface FurnitureItem {
+  id: string
+  kind: FurnitureKind
+  label: string
+  position: [number, number, number]
+  rotation: number
+  width: number
+  depth: number
+  height: number
+  color: string
+}
+
 export interface SpatialPlan {
   version: 1
   id: 'plateau-a'
@@ -25,6 +39,7 @@ export interface SpatialPlan {
     decor: boolean
   }
   workstations: Workstation[]
+  furniture: FurnitureItem[]
 }
 
 export type SpatialView = '3d' | '2d'

@@ -5,6 +5,7 @@ import { findWorkstation, type SpatialPlan, type Workstation } from './room-mode
 import { clampWorkstation, findFreePlacement, normalizeRotation, overlaps } from './plan-geometry'
 import { PlanAppearance } from './plan-appearance'
 import { PlanTransferPanel } from './plan-transfer-panel'
+import { FurnitureCatalogPanel, FurnitureSummary } from './furniture-catalog-panel'
 
 interface Props {
   plan: SpatialPlan
@@ -16,9 +17,10 @@ interface Props {
 
 export function WorkstationEditor({ plan, persisted, selectedId, onChange, onSelect }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
+  const furniture = plan.furniture.find((item) => item.id === selectedId)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [section, setSection] = useState<'station' | 'appearance' | 'files'>('station')
+  const [section, setSection] = useState<'station' | 'catalog' | 'appearance' | 'files'>('station')
   const conflicts = station ? plan.workstations.filter((item) => item.id !== station.id && overlaps(item, station)) : []
 
   function update(candidate: Workstation) {
@@ -76,15 +78,16 @@ export function WorkstationEditor({ plan, persisted, selectedId, onChange, onSel
     <aside className="asset-inspector plan-editor" aria-label="Éditeur du plateau">
       <div className="editor-heading"><Wrench size={18} /><div><p className="eyebrow">ATELIER SPATIAL</p><h2>Composer l’espace</h2></div></div>
       <div className="editor-tabs" role="group" aria-label="Réglages de l’atelier">
-        <button type="button" aria-pressed={section === 'station'} onClick={() => setSection('station')}>Poste</button>
+        <button type="button" aria-pressed={section === 'station'} onClick={() => setSection('station')}>Objets</button>
+        <button type="button" aria-pressed={section === 'catalog'} onClick={() => setSection('catalog')}>Catalogue</button>
         <button type="button" aria-pressed={section === 'appearance'} onClick={() => setSection('appearance')}>Plateau & couleurs</button>
         <button type="button" aria-pressed={section === 'files'} onClick={() => setSection('files')}>Fichiers</button>
       </div>
-      {section === 'files' ? <PlanTransferPanel plan={plan} persisted={persisted} onChange={onChange} /> : section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
+      {section === 'catalog' ? <FurnitureCatalogPanel plan={plan} onChange={onChange} onSelect={(id) => { onSelect(id); setSection('station') }} /> : section === 'files' ? <PlanTransferPanel plan={plan} persisted={persisted} onChange={onChange} /> : section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
       <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'Chaque changement est conservé dans ce navigateur.' : 'Vos changements restent dans cette session. Exportez pour garder une copie.'}</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
-      {station ? <>
+      {furniture ? <FurnitureSummary item={furniture} /> : station ? <>
         <div className="editor-section-title"><h3>{station.label}</h3><span>{plan.workstations.indexOf(station) + 1} / {plan.workstations.length}</span></div>
         <form key={JSON.stringify(station)} className="editor-form" onSubmit={apply}>
           <label>Nom du poste<input name="label" defaultValue={station.label} maxLength={60} required /></label>

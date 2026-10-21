@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPlan } from './plan-document'
-import type { SpatialPlan, Workstation } from './room-model'
-import { clampWorkstation, findFreePlacement, normalizeRotation, overlaps, snapWorkstation } from './plan-geometry'
+import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
+import { clampFurniture, clampWorkstation, findFreeFurniturePlacement, findFreePlacement, mixedOverlaps, normalizeRotation, overlaps, snapFurniture, snapWorkstation } from './plan-geometry'
 
 function plan(): SpatialPlan {
-  return { ...structuredClone(defaultPlan), workstations: [] }
+  return { ...structuredClone(defaultPlan), workstations: [], furniture: [] }
 }
 
 function station(overrides: Partial<Workstation> = {}): Workstation {
   return {
     id: 'desk-test', label: 'Poste test', position: [0, 0, 0],
     rotation: 0, width: 2, depth: 1, color: null, ...overrides,
+  }
+}
+
+function furniture(overrides: Partial<FurnitureItem> = {}): FurnitureItem {
+  return {
+    id: 'furniture-test', kind: 'table', label: 'Table', position: [0, 0, 0], rotation: 0,
+    width: 2, depth: 1, height: 0.75, color: '#123456', ...overrides,
   }
 }
 
@@ -157,5 +164,56 @@ describe('géométrie du plateau', () => {
       id: `desk-${column}-${row}`, position: [x, 0, center - 0.4 * depth], depth,
     })))
     expect(findFreePlacement(room, station({ depth }))).toBeNull()
+  })
+
+  it('borne les meubles rectangulaires sans ajouter l’empreinte d’un fauteuil', () => {
+    const room = { ...plan(), width: 6, depth: 6 }
+    const item = clampFurniture(room, furniture({ position: [99, 0, 99] }))
+    expect(item.position).toEqual([2, 0, 2.5])
+    const turned = clampFurniture(room, furniture({ position: [99, 0, 99], rotation: Math.PI / 2 }))
+    expect(turned.position[0]).toBeCloseTo(2.5)
+    expect(turned.position[2]).toBeCloseTo(2)
+    expect(item.kind).toBe('table')
+  })
+
+  it('aimante un meuble au quart de mètre et accepte les grandes coordonnées finies', () => {
+    const room = plan()
+    const item = furniture({ position: [0.36, 0, -0.64] })
+    expect(snapFurniture(room, item).position).toEqual([0.25, 0, -0.75])
+    expect(snapFurniture(room, item, false).position).toEqual(item.position)
+    expect(snapFurniture(room, furniture({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position).toEqual([5.5, 0, 4])
+    expect(snapWorkstation(room, station({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position[2]).toBeCloseTo(3.2)
+  })
+
+  it('détecte les collisions mixtes avec le fauteuil, en conservant les contacts autorisés', () => {
+    const desk = station()
+    const item = furniture({ width: 0.5, depth: 0.5, position: [0, 0, 1.4] })
+    expect(mixedOverlaps(desk, item)).toBe(true)
+    expect(mixedOverlaps(item, desk)).toBe(true)
+    expect(mixedOverlaps(desk, { ...item, position: [0, 0, 1.55] })).toBe(false)
+    expect(mixedOverlaps(furniture(), furniture({ position: [2, 0, 0] }))).toBe(false)
+  })
+
+  it('cherche une place en évitant indifféremment les postes et les meubles', () => {
+    const room = plan()
+    room.workstations = [station()]
+    room.furniture = [furniture({ position: [2, 0, 0] })]
+    const newDesk = findFreePlacement(room, station({ id: 'desk-new' }))
+    const newItem = findFreeFurniturePlacement(room, furniture({ id: 'furniture-new' }))
+    expect(newDesk).not.toBeNull()
+    expect(newItem).not.toBeNull()
+    for (const existing of [...room.workstations, ...room.furniture]) {
+      expect(mixedOverlaps(newDesk!, existing)).toBe(false)
+      expect(mixedOverlaps(newItem!, existing)).toBe(false)
+    }
+  })
+
+  it('refuse d’ajouter un poste ou un meuble dans une pièce remplie uniquement de meubles', () => {
+    const room = { ...plan(), width: 6, depth: 6 }
+    room.furniture = [-1.5, 1.5].flatMap((x, column) => [-1.5, 1.5].map((z, row) => furniture({
+      id: `furniture-${column}-${row}`, position: [x, 0, z], width: 3, depth: 3,
+    })))
+    expect(findFreePlacement(room, station())).toBeNull()
+    expect(findFreeFurniturePlacement(room, furniture())).toBeNull()
   })
 })

@@ -81,6 +81,24 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
       <rect x={left} y={top} width={width} height={depth} fill="url(#room-grid)" />
       <rect x={left} y={top} width={width} height={depth} fill="none" stroke={plan.colors.wall} strokeWidth="5" />
       <text x="410" y={top - 20} textAnchor="middle">{plan.width} m</text><text x={left - 26} y="290" textAnchor="middle" transform={`rotate(-90 ${left - 26} 290)`}>{plan.depth} m</text>
+      {plan.furniture.map((item, index) => {
+        if (!plan.display.decor && (item.kind === 'plant' || item.kind === 'cabinet')) return null
+        const selected = selectedWorkstationId === item.id
+        const x = 410 + item.position[0] * scale, y = 290 + item.position[2] * scale
+        const w = item.width * scale, d = item.depth * scale
+        return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner le meuble ${item.label} dans le plan 2D`} aria-pressed={selected} onClick={() => onSelect(item.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(item.id) } }}>
+          <title>{item.label}</title>
+          <g transform={`rotate(${-item.rotation * 180 / Math.PI})`}>
+            <rect className="plan-hit" x={-w / 2 - 4} y={-d / 2 - 4} width={w + 8} height={d + 8} rx="5" style={selected ? { stroke: plan.colors.accent } : undefined} />
+            {item.kind === 'plant' ? <><ellipse rx={w / 2} ry={d / 2} fill={item.color} /><circle r={Math.min(w, d) * 0.22} fill="#56794c" /></> : <>
+              <rect x={-w / 2} y={-d / 2} width={w} height={d} rx={item.kind === 'sofa' ? 6 : 2} fill={item.color} stroke={ink} strokeWidth=".6" />
+              {item.kind === 'cabinet' && <path d={`M0 ${-d / 2}V${d / 2}`} stroke={ink} strokeWidth="1" />}
+              {item.kind === 'sofa' && <path d={`M${-w / 2 + 5} ${-d / 2 + 5}H${w / 2 - 5}M0 ${-d / 2 + 5}V${d / 2 - 4}`} stroke={ink} strokeWidth="1" fill="none" />}
+            </>}
+          </g>
+          <text className="plan-label" y={-d / 2 - 10} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke', fontSize: 15 }}>{plan.workstations.length + plan.furniture.length > 16 && !selected ? String(plan.workstations.length + index + 1).padStart(2, '0') : item.label.slice(0, 22)}</text>
+        </g>
+      })}
       {plan.workstations.map((original, index) => {
         const station = preview?.id === original.id ? preview : original
         const x = 410 + station.position[0] * scale
@@ -112,7 +130,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
             <rect className="plan-keyboard" x="-13" y="3" width="26" height="9" rx="2" />
             <rect className="plan-chair" x="-15" y="33" width="30" height="27" rx="8" />
           </g>
-          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length > 16 && !selected ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
+          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length + plan.furniture.length > 16 && !selected ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
       <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation locale · mobilier du plan</text>

@@ -26,14 +26,15 @@ describe('transfert de plans', () => {
     expect(() => serializePlan({ ...plan, workstations: [invalidStation] })).toThrow()
   })
 
-  it('vide seulement les postes dans une copie indépendante du plateau personnalisé', () => {
+  it('vide les postes et le mobilier dans une copie indépendante du plateau personnalisé', () => {
     const source = createExamplePlan()
     source.name = 'Espace support'
     source.width = 20
     source.colors.floor = '#112233'
     source.display.decor = false
     const empty = createEmptyPlan(source)
-    expect(empty).toEqual({ ...source, workstations: [] })
+    expect(empty).toEqual({ ...source, workstations: [], furniture: [] })
+    expect(source.furniture.length).toBeGreaterThan(0)
     expect(source.workstations).toHaveLength(8)
     empty.colors.floor = '#445566'
     empty.display.decor = true
