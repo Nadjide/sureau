@@ -9,6 +9,7 @@ type RoomSceneProps = {
   onSelect: (id: string) => void
   resetToken: number
   dark: boolean
+  localizedCounts: Readonly<Record<string, number>>
 }
 
 type Vector = [number, number, number]
@@ -303,7 +304,7 @@ function CameraRig({ resetToken }: { resetToken: number }) {
   )
 }
 
-export default function RoomScene({ selectedWorkstationId, onSelect, resetToken, dark }: RoomSceneProps) {
+export default function RoomScene({ selectedWorkstationId, onSelect, resetToken, dark, localizedCounts }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
 
   return (
@@ -364,6 +365,7 @@ export default function RoomScene({ selectedWorkstationId, onSelect, resetToken,
             onClick={(event) => { event.stopPropagation(); onSelect(workstation.id) }}
           >
             {`P-${workstation.id.slice(-2)}`}
+            {!!localizedCounts[workstation.id] && <span className="scene-link-count">{localizedCounts[workstation.id]}</span>}
           </button>
         ))}
       </div>

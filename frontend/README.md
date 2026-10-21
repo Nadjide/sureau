@@ -35,4 +35,8 @@ Le proxy concerne uniquement le développement. Une installation en production d
 
 L’onglet Espaces affiche un plateau de 13 × 9 m avec huit postes illustratifs. La vue 3D se charge uniquement à l’ouverture de cette vue ; la caméra se manipule à la souris et le bouton de recentrage restaure le cadrage initial. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
 
-Cette implantation est un exemple local. Les meubles et écrans représentés n’indiquent aucune localisation réelle ni affectation de matériel.
+Cette implantation est un exemple local. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.
+
+Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
+
+Les localisations sont enregistrées uniquement dans le stockage de ce navigateur, séparément de l’inventaire serveur. Elles ne changent pas le statut métier du matériel. Les liens vers un équipement devenu introuvable restent conservés et signalés. Un refus ou une corruption du stockage produit un avertissement ; l’interface reste utilisable pour la session, sans prétendre enregistrer les changements.
