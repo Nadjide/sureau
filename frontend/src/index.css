@@ -1,0 +1,9 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #e8edf5; background: #111720; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+main { min-height: 100dvh; padding: clamp(32px, 9vw, 140px); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.wordmark { font-size: 14px; letter-spacing: .24em; font-weight: 650; margin-bottom: 96px; }
+.status { font-size: 11px; letter-spacing: .16em; color: #8aafea; }
+h1 { font-size: clamp(42px, 7vw, 86px); letter-spacing: -.065em; font-weight: 500; margin: 20px 0; line-height: 1.05; }
+p { color: #a1afc2; font-size: 18px; }
+.foundation { margin-top: 64px; border-top: 1px solid #2d394b; padding-top: 20px; font-size: 13px; color: #8999b0; width: min(100%, 440px); }
