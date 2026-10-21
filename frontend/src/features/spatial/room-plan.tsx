@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
-import { snapFurniture, snapWorkstation } from './plan-geometry'
+import { translateSelection } from './plan-selection'
 
 type PlanItem = Workstation | FurnitureItem
 
@@ -10,7 +10,9 @@ interface Props {
   snap: boolean
   onMove: (id: string, x: number, z: number) => void
   selectedWorkstationId: string | null
-  onSelect: (id: string) => void
+  selectedIds: readonly string[]
+  multipleMode: boolean
+  onSelect: (id: string, additive?: boolean, preserve?: boolean) => void
 }
 
 interface Drag {
@@ -18,6 +20,7 @@ interface Drag {
   element: SVGGElement
   original: PlanItem
   candidate: PlanItem
+  ids: readonly string[]
   offsetX: number
   offsetZ: number
   startX: number
@@ -25,9 +28,11 @@ interface Drag {
   moved: boolean
 }
 
-export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, onSelect }: Props) {
+export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, selectedIds, multipleMode, onSelect }: Props) {
   const drag = useRef<Drag | null>(null)
-  const [preview, setPreview] = useState<PlanItem | null>(null)
+  const clickIntent = useRef<{ id: string; additive: boolean; handled: boolean } | null>(null)
+  const [preview, setPreview] = useState<SpatialPlan | null>(null)
+  const displayed = preview || plan
   const scale = Math.min(650 / plan.width, 450 / plan.depth)
   const width = plan.width * scale
   const depth = plan.depth * scale
@@ -58,40 +63,57 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
     return { x: (value.x - 410) / scale, z: (value.y - 290) / scale }
   }
 
-  function placeItem(item: PlanItem, x: number, z: number): PlanItem {
-    const candidate = { ...item, position: [x, 0, z] as [number, number, number] }
-    return 'kind' in candidate ? snapFurniture(plan, candidate, snap) : snapWorkstation(plan, candidate, snap)
+  function selectionFor(id: string): readonly string[] {
+    return selectedIds.includes(id) ? selectedIds : [id]
   }
 
   function beginDrag(event: ReactPointerEvent<SVGGElement>, item: PlanItem) {
-    if (!editing || event.button !== 0 || drag.current) return
+    if (event.button !== 0 || drag.current) return
+    const additive = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+    clickIntent.current = { id: item.id, additive, handled: false }
+    if (!editing || additive) return
     const value = point(event)
     if (!value) return
     event.preventDefault()
-    onSelect(item.id)
+    onSelect(item.id, false, true)
+    clickIntent.current.handled = true
     event.currentTarget.setPointerCapture(event.pointerId)
     drag.current = {
-      pointerId: event.pointerId, element: event.currentTarget, original: item, candidate: item,
+      pointerId: event.pointerId, element: event.currentTarget, original: item, candidate: item, ids: [...selectionFor(item.id)],
       offsetX: value.x - item.position[0], offsetZ: value.z - item.position[2],
       startX: event.clientX, startY: event.clientY, moved: false,
     }
   }
 
+  function itemClick(event: ReactMouseEvent<SVGGElement>, item: PlanItem) {
+    const intent = clickIntent.current?.id === item.id && event.detail > 0 ? clickIntent.current : null
+    clickIntent.current = null
+    if (intent?.handled) return
+    const additive = intent?.additive ?? (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
+    onSelect(item.id, additive, !additive)
+  }
+
   function itemKeyDown(event: ReactKeyboardEvent<SVGGElement>, item: PlanItem) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      onSelect(item.id)
+      if (!event.repeat) {
+        const additive = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+        onSelect(item.id, additive, !additive)
+      }
     }
     if (!editing || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
     event.preventDefault()
     if (drag.current) cancelDrag()
     const step = (snap ? 0.25 : 0.1) * (event.shiftKey ? 4 : 1)
-    const candidate = placeItem(
-      item,
+    const projected = translateSelection(
+      plan, selectionFor(item.id), item.id,
       item.position[0] + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0),
-      item.position[2] + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0),
+      item.position[2] + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0), snap,
     )
-    onSelect(item.id)
+    const candidate = projected.workstations.find((station) => station.id === item.id)
+      || projected.furniture.find((furniture) => furniture.id === item.id)
+    if (!candidate) return
+    onSelect(item.id, false, true)
     onMove(item.id, candidate.position[0], candidate.position[2])
   }
 
@@ -105,8 +127,10 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
         if (!current.moved && Math.hypot(event.clientX - current.startX, event.clientY - current.startY) < 3) return
         event.preventDefault()
         current.moved = true
-        current.candidate = placeItem(current.original, value.x - current.offsetX, value.z - current.offsetZ)
-        setPreview(current.candidate)
+        const projected = translateSelection(plan, current.ids, current.original.id, value.x - current.offsetX, value.z - current.offsetZ, snap)
+        current.candidate = projected.workstations.find((item) => item.id === current.original.id)
+          || projected.furniture.find((item) => item.id === current.original.id) || current.original
+        setPreview(projected === plan ? null : projected)
       }}
       onPointerUp={(event) => {
         const current = drag.current
@@ -120,14 +144,13 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
       <rect x={left} y={top} width={width} height={depth} fill="url(#room-grid)" />
       <rect x={left} y={top} width={width} height={depth} fill="none" stroke={plan.colors.wall} strokeWidth="5" />
       <text x="410" y={top - 20} textAnchor="middle">{plan.width} m</text><text x={left - 26} y="290" textAnchor="middle" transform={`rotate(-90 ${left - 26} 290)`}>{plan.depth} m</text>
-      {plan.furniture.map((original, index) => {
-        const item = preview?.id === original.id && 'kind' in preview ? preview : original
+      {displayed.furniture.map((item, index) => {
         if (!plan.display.decor && (item.kind === 'plant' || item.kind === 'cabinet')) return null
-        const selected = selectedWorkstationId === item.id
+        const selected = selectedIds.includes(item.id)
         const x = 410 + item.position[0] * scale, y = 290 + item.position[2] * scale
         const w = item.width * scale, d = item.depth * scale
         return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner le meuble ${item.label} dans le plan 2D`} aria-pressed={selected}
-          onPointerDown={(event) => beginDrag(event, item)} onClick={() => onSelect(item.id)} onKeyDown={(event) => itemKeyDown(event, item)}>
+          onPointerDown={(event) => beginDrag(event, item)} onClick={(event) => itemClick(event, item)} onKeyDown={(event) => itemKeyDown(event, item)}>
           <title>{item.label}</title>
           <g transform={`rotate(${-item.rotation * 180 / Math.PI})`}>
             <rect className="plan-hit" x={-w / 2 - 4} y={-d / 2 - 4} width={w + 8} height={d + 8} rx="5" style={selected ? { stroke: plan.colors.accent } : undefined} />
@@ -137,16 +160,15 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
               {item.kind === 'sofa' && <path d={`M${-w / 2 + 5} ${-d / 2 + 5}H${w / 2 - 5}M0 ${-d / 2 + 5}V${d / 2 - 4}`} stroke={ink} strokeWidth="1" fill="none" />}
             </>}
           </g>
-          <text className="plan-label" y={-d / 2 - 10} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke', fontSize: 15 }}>{plan.workstations.length + plan.furniture.length > 16 && !selected ? String(plan.workstations.length + index + 1).padStart(2, '0') : item.label.slice(0, 22)}</text>
+          <text className="plan-label" y={-d / 2 - 10} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke', fontSize: 15 }}>{plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== item.id ? String(plan.workstations.length + index + 1).padStart(2, '0') : item.label.slice(0, 22)}</text>
         </g>
       })}
-      {plan.workstations.map((original, index) => {
-        const station = preview?.id === original.id && !('kind' in preview) ? preview : original
+      {displayed.workstations.map((station, index) => {
         const x = 410 + station.position[0] * scale
         const y = 290 + station.position[2] * scale
-        const selected = selectedWorkstationId === station.id
+        const selected = selectedIds.includes(station.id)
         return <g key={station.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner ${station.label} dans le plan 2D`} aria-pressed={selected}
-          onPointerDown={(event) => beginDrag(event, station)} onClick={() => onSelect(station.id)} onKeyDown={(event) => itemKeyDown(event, station)}>
+          onPointerDown={(event) => beginDrag(event, station)} onClick={(event) => itemClick(event, station)} onKeyDown={(event) => itemKeyDown(event, station)}>
           <title>{station.label}</title>
           <g transform={`rotate(${-station.rotation * 180 / Math.PI}) scale(${station.width / 2 * scale / 50},${station.depth * scale / 50})`}>
             <rect className="plan-hit" x="-53" y="-37" width="106" height="103" rx="9" style={selected ? { stroke: plan.colors.accent } : undefined} />
@@ -155,7 +177,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
             <rect className="plan-keyboard" x="-13" y="3" width="26" height="9" rx="2" />
             <rect className="plan-chair" x="-15" y="33" width="30" height="27" rx="8" />
           </g>
-          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length + plan.furniture.length > 16 && !selected ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
+          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== station.id ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
       <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation locale · mobilier du plan</text>

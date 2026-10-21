@@ -11,7 +11,7 @@ import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { usePlanDocument } from '@/features/spatial/use-plan-document'
 import { WorkstationEditor } from '@/features/spatial/workstation-editor'
-import { clampFurniture, clampWorkstation } from '@/features/spatial/plan-geometry'
+import { selectIds, translateSelection } from '@/features/spatial/plan-selection'
 import { FurnitureSummary } from '@/features/spatial/furniture-catalog-panel'
 
 function currentTab(): WorkspaceTab {
@@ -21,12 +21,15 @@ function currentTab(): WorkspaceTab {
 function App() {
   const [tab, setTab] = useState<WorkspaceTab>(currentTab)
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
-  const [selectedWorkstationId, setSelectedWorkstationId] = useState<string | null>('desk-04')
+  const [selection, setSelection] = useState<string[]>(['desk-04'])
   const [spatialView, setSpatialView] = useState<SpatialView>('3d')
   const [editing, setEditing] = useState(false)
   const inventory = useInventory()
   const planStore = usePlanDocument()
   const { plan, undo, redo } = planStore
+  const selectedIds = selection.filter((id) => [...plan.workstations, ...plan.furniture].some((item) => item.id === id))
+  const selectedWorkstationId = selectedIds.at(-1) || null
+  function setSelectedWorkstationId(id: string | null) { setSelection(id ? [id] : []) }
   const selectedFurniture = plan.furniture.find((item) => item.id === selectedWorkstationId)
 
   useEffect(() => {
@@ -82,8 +85,8 @@ function App() {
     }
   }
 
-  function selectWorkstation(id: string | null) {
-    setSelectedWorkstationId(id)
+  function selectWorkstation(id: string | null, additive = false, preserve = false) {
+    setSelection((current) => id ? selectIds(current, id, additive, preserve) : [])
     setSelectedAssetId(null)
   }
 
@@ -130,24 +133,17 @@ function App() {
           editing={editing}
           onEditingChange={(value) => { setEditing(value); setSelectedAssetId(null) }}
           onMove={(id, x, z) => {
-            const station = findWorkstation(id, plan.workstations)
-            const furniture = plan.furniture.find((item) => item.id === id)
-            if (furniture) {
-              const moved = clampFurniture(plan, { ...furniture, position: [x, 0, z] })
-              planStore.replace({ ...plan, furniture: plan.furniture.map((item) => item.id === id ? moved : item) })
-              return
-            }
-            if (!station) return
-            const moved = clampWorkstation(plan, { ...station, position: [x, 0, z] })
-            planStore.replace({ ...plan, workstations: plan.workstations.map((item) => item.id === id ? moved : item) })
+            planStore.replace(translateSelection(plan, selectedIds.includes(id) ? selectedIds : [id], id, x, z, false))
           }}
           view={spatialView}
           onViewChange={setSpatialView}
           selectedWorkstationId={selectedWorkstationId}
+          selectedIds={selectedIds}
+          onSelectionChange={(ids) => { setSelection(ids); setSelectedAssetId(null) }}
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
-            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} onChange={planStore.replace} onSelect={selectWorkstation} /> :
+            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} /> :
             selectedFurniture ? <aside className="asset-inspector" aria-label="Fiche du mobilier"><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}

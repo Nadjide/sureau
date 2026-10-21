@@ -51,6 +51,16 @@ function projectedRadius(box: Envelope, axis: Point): number {
     + Math.abs(dot(box.axes[1], axis)) * box.halfDepth
 }
 
+export function footprintBounds(item: PlanItem): { minX: number; maxX: number; minZ: number; maxZ: number } {
+  const box = envelope(item)
+  const xRadius = projectedRadius(box, [1, 0])
+  const zRadius = projectedRadius(box, [0, 1])
+  return {
+    minX: box.center[0] - xRadius, maxX: box.center[0] + xRadius,
+    minZ: box.center[1] - zRadius, maxZ: box.center[1] + zRadius,
+  }
+}
+
 function clampItem<T extends PlanItem>(plan: PlanBounds, station: T): T {
   if (![plan.width, plan.depth].every(Number.isFinite) || plan.width <= 0 || plan.depth <= 0) {
     throw new RangeError('Les dimensions du plateau sont invalides.')

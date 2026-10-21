@@ -35,6 +35,8 @@ Le proxy concerne uniquement le développement. Une installation en production d
 
 Le catalogue propose tables de réunion, rangements, plantes, cloisons et canapés. Chaque ajout utilise des dimensions réelles et cherche une place libre parmi les postes et les meubles existants. Le décor initial est désormais représenté par des objets du plan ; les anciens documents sont convertis en mémoire en conservant leur implantation et leurs identifiants de postes. Un plan vide retire à la fois les postes et le mobilier.
 
+En mode Modifier, Maj/Ctrl/⌘ + clic ajoute ou retire un objet de la sélection. Le bouton Sélection multiple propose la même action sans clavier. Le glissement d’un membre sélectionné déplace l’ensemble ; les limites et l’aimantation s’appliquent à un delta commun pour conserver les écarts, fauteuils compris. Les flèches 2D et celles du panneau déplacent aussi l’ensemble, en une étape d’historique.
+
 L’onglet Espaces démarre avec un plateau de 13 × 9 m et huit postes. La vue 3D se charge uniquement à l’ouverture de cette vue ; cliquer sur un poste rapproche la caméra, et le bouton de recentrage revient à la vue générale. Une manipulation interrompt l’animation et le réglage système de réduction des mouvements est respecté. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
 
 « Modifier » ouvre l’atelier : ajouter, dupliquer, renommer, pivoter ou supprimer les postes et régler leurs positions et dimensions. Le fauteuil est inclus dans les limites de placement ; les chevauchements sont signalés et restent modifiables. Le plateau est limité à 64 postes pour conserver une manipulation fluide. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.

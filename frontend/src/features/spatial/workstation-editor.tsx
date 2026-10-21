@@ -7,16 +7,18 @@ import { PlanAppearance } from './plan-appearance'
 import { PlanTransferPanel } from './plan-transfer-panel'
 import { FurnitureCatalogPanel } from './furniture-catalog-panel'
 import { FurnitureEditor } from './furniture-editor'
+import { SelectionPanel } from './selection-panel'
 
 interface Props {
   plan: SpatialPlan
   persisted: boolean
   selectedId: string | null
+  selectedIds: readonly string[]
   onChange: (plan: SpatialPlan) => void
   onSelect: (id: string | null) => void
 }
 
-export function WorkstationEditor({ plan, persisted, selectedId, onChange, onSelect }: Props) {
+export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
   const furniture = plan.furniture.find((item) => item.id === selectedId)
   const [error, setError] = useState<string | null>(null)
@@ -88,7 +90,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, onChange, onSel
       <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'Chaque changement est conservé dans ce navigateur.' : 'Vos changements restent dans cette session. Exportez pour garder une copie.'}</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
-      {furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={onChange} onSelect={onSelect} /> : station ? <>
+      {selectedIds.length > 1 ? <SelectionPanel plan={plan} ids={selectedIds} onChange={onChange} /> : furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={onChange} onSelect={onSelect} /> : station ? <>
         <div className="editor-section-title"><h3>{station.label}</h3><span>{plan.workstations.indexOf(station) + 1} / {plan.workstations.length}</span></div>
         <form key={JSON.stringify(station)} className="editor-form" onSubmit={apply}>
           <label>Nom du poste<input name="label" defaultValue={station.label} maxLength={60} required /></label>
