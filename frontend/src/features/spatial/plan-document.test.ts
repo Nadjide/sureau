@@ -3,12 +3,14 @@ import {
   defaultPlan,
   loadPlan,
   parsePlan,
+  planFileSizeLimit,
   planStorageKey,
   savePlan,
   type PlanStorage,
   type SpatialPlan,
 } from './plan-document'
 import { findWorkstation } from './room-model'
+import { clampWorkstation } from './plan-geometry'
 
 function freshPlan(): SpatialPlan {
   return structuredClone(defaultPlan)
@@ -126,13 +128,56 @@ describe('document de plateau', () => {
     expect(() => parsePlan(JSON.stringify(plan))).toThrow()
   })
 
-  it('valide les limites de la table en tenant compte de sa rotation', () => {
+  it('valide les limites du poste et du fauteuil en tenant compte de leur rotation', () => {
     const plan = freshPlan()
-    const station = { ...plan.workstations[0]!, position: [5.9, 0, 0] as [number, number, number], rotation: Math.PI / 2 }
+    const station = { ...plan.workstations[0]!, position: [5.4, 0, 0] as [number, number, number], rotation: 0 }
     plan.workstations = [station]
     expect(() => parsePlan(JSON.stringify(plan))).not.toThrow()
-    station.rotation = 0
+    station.rotation = Math.PI / 2
     expect(() => parsePlan(JSON.stringify(plan))).toThrow()
+  })
+
+  it.each([
+    { rotation: 0, position: [0, 0, 3.2] as [number, number, number], axis: 2, direction: 1 },
+    { rotation: Math.PI / 2, position: [5.2, 0, 0] as [number, number, number], axis: 0, direction: 1 },
+    { rotation: Math.PI, position: [0, 0, -3.2] as [number, number, number], axis: 2, direction: -1 },
+    { rotation: Math.PI * 1.5, position: [-5.2, 0, 0] as [number, number, number], axis: 0, direction: -1 },
+  ] as const)('accepte le fauteuil au bord et refuse son dépassement : rotation $rotation', ({ rotation, position, axis, direction }) => {
+    const plan = freshPlan()
+    const station = { ...plan.workstations[0]!, rotation, position: [...position] as [number, number, number] }
+    plan.workstations = [station]
+    expect(parsePlan(JSON.stringify(plan)).workstations[0]!.position).toEqual(position)
+    station.position[axis] += direction * 1e-5
+    const raw = JSON.stringify(plan)
+    expect(() => parsePlan(raw)).toThrow()
+    const { storage, raw: storedRaw } = memoryStorage(raw)
+    expect(loadPlan(storage)).toMatchObject({ persisted: false, canPersist: false })
+    expect(storedRaw()).toBe(raw)
+    expect(storage.setItem).not.toHaveBeenCalled()
+  })
+
+  it('accepte les postes bornés par les outils, y compris aux angles obliques, sans les déplacer', () => {
+    const plan = freshPlan()
+    for (const rotation of [0, Math.PI / 4, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      for (const x of [-100, 100]) {
+        for (const z of [-100, 100]) {
+          const station = clampWorkstation(plan, { ...plan.workstations[0]!, position: [x, 0, z], width: 3, depth: 1.5, rotation })
+          expect(parsePlan(JSON.stringify({ ...plan, workstations: [station] })).workstations).toEqual([station])
+        }
+      }
+    }
+  })
+
+  it('applique la limite exacte en octets UTF-8, accents compris', () => {
+    const plan = freshPlan()
+    plan.name = 'Équipe — Montréal 🪴'
+    const raw = JSON.stringify(plan)
+    const byteLength = new TextEncoder().encode(raw).byteLength
+    expect(byteLength).toBeGreaterThan(raw.length)
+    const atLimit = ' '.repeat(planFileSizeLimit - byteLength) + raw
+    expect(new TextEncoder().encode(atLimit).byteLength).toBe(planFileSizeLimit)
+    expect(parsePlan(atLimit)).toEqual(plan)
+    expect(() => parsePlan(' ' + atLimit)).toThrow('trop volumineux')
   })
 
   it('refuse une charge trop volumineuse et les données inattendues', () => {

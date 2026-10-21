@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { room, workstations, type SpatialPlan } from './room-model'
+import { clampWorkstation } from './plan-geometry'
 
 export type { SpatialPlan } from './room-model'
 
@@ -19,6 +20,7 @@ export interface LoadedPlan extends PlanPersistence {
 }
 
 export const planStorageKey = 'sentinel-plan-v1'
+export const planFileSizeLimit = 256_000
 
 export const defaultPlan: SpatialPlan = {
   version: 1,
@@ -64,13 +66,14 @@ const planSchema = z.strictObject({
     }
     ids.add(station.id)
 
-    const halfWidth = Math.abs(Math.cos(station.rotation)) * station.width / 2
-      + Math.abs(Math.sin(station.rotation)) * station.depth / 2
-    const halfDepth = Math.abs(Math.sin(station.rotation)) * station.width / 2
-      + Math.abs(Math.cos(station.rotation)) * station.depth / 2
-    if (Math.abs(station.position[0]) + halfWidth > plan.width / 2 + 1e-6
-      || Math.abs(station.position[2]) + halfDepth > plan.depth / 2 + 1e-6) {
-      context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Le bureau dépasse les limites du plateau.' })
+    try {
+      const bounded = clampWorkstation(plan, station)
+      if (Math.abs(bounded.position[0] - station.position[0]) > 1e-6
+        || Math.abs(bounded.position[2] - station.position[2]) > 1e-6) {
+        context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Le poste ou son fauteuil dépasse les limites du plateau.' })
+      }
+    } catch {
+      context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Les dimensions ou la position du poste sont invalides.' })
     }
   }
 })
@@ -90,7 +93,7 @@ function freshDefaultPlan(): SpatialPlan {
 }
 
 export function parsePlan(raw: string): SpatialPlan {
-  if (raw.length > 256_000) throw new Error('Ce fichier de plan est trop volumineux.')
+  if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit) throw new Error('Ce fichier de plan est trop volumineux.')
   try {
     const payload: unknown = JSON.parse(raw)
     return planSchema.parse(payload)

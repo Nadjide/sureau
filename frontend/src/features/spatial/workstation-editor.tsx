@@ -4,19 +4,21 @@ import { Button } from '@/components/ui/button'
 import { findWorkstation, type SpatialPlan, type Workstation } from './room-model'
 import { clampWorkstation, findFreePlacement, normalizeRotation, overlaps } from './plan-geometry'
 import { PlanAppearance } from './plan-appearance'
+import { PlanTransferPanel } from './plan-transfer-panel'
 
 interface Props {
   plan: SpatialPlan
+  persisted: boolean
   selectedId: string | null
   onChange: (plan: SpatialPlan) => void
   onSelect: (id: string | null) => void
 }
 
-export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Props) {
+export function WorkstationEditor({ plan, persisted, selectedId, onChange, onSelect }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [section, setSection] = useState<'station' | 'appearance'>('station')
+  const [section, setSection] = useState<'station' | 'appearance' | 'files'>('station')
   const conflicts = station ? plan.workstations.filter((item) => item.id !== station.id && overlaps(item, station)) : []
 
   function update(candidate: Workstation) {
@@ -76,9 +78,10 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
       <div className="editor-tabs" role="group" aria-label="Réglages de l’atelier">
         <button type="button" aria-pressed={section === 'station'} onClick={() => setSection('station')}>Poste</button>
         <button type="button" aria-pressed={section === 'appearance'} onClick={() => setSection('appearance')}>Plateau & couleurs</button>
+        <button type="button" aria-pressed={section === 'files'} onClick={() => setSection('files')}>Fichiers</button>
       </div>
-      {section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
-      <p className="location-help">Créez votre implantation, poste par poste. Chaque changement est conservé dans ce navigateur.</p>
+      {section === 'files' ? <PlanTransferPanel plan={plan} persisted={persisted} onChange={onChange} /> : section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
+      <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'Chaque changement est conservé dans ce navigateur.' : 'Vos changements restent dans cette session. Exportez pour garder une copie.'}</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
       {station ? <>
