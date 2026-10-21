@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Grid2X2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { AppShell, type WorkspaceTab } from '@/components/app-shell'
 import { InventoryPanel } from '@/features/inventory/inventory-panel'
 import { useInventory } from '@/features/inventory/use-inventory'
+import { SpatialViewer } from '@/features/spatial/spatial-viewer'
+import type { SpatialView } from '@/features/spatial/room-model'
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -12,6 +13,8 @@ function currentTab(): WorkspaceTab {
 function App() {
   const [tab, setTab] = useState<WorkspaceTab>(currentTab)
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
+  const [selectedWorkstationId, setSelectedWorkstationId] = useState<string | null>('desk-04')
+  const [spatialView, setSpatialView] = useState<SpatialView>('3d')
   const inventory = useInventory()
 
   useEffect(() => {
@@ -37,15 +40,7 @@ function App() {
         </div>
         <Badge variant="outline">{tab === 'spaces' ? 'Atelier spatial' : 'Lecture seule'}</Badge>
       </div>
-      {tab === 'inventory' ? <InventoryPanel inventory={inventory} selectedAssetId={selectedAssetId} onSelect={setSelectedAssetId} /> : <section className="foundation-stage" aria-label="Espace d’exploration">
-        <div className="foundation-intro">
-          <span className="foundation-icon"><Grid2X2 size={30} strokeWidth={1.2} /></span>
-          <p className="eyebrow">VOTRE ESPACE DE TRAVAIL</p>
-          <h2>Le parc prend forme.</h2>
-          <p>Un point de vue partagé sur vos espaces, vos postes et votre matériel.</p>
-        </div>
-        <span className="stage-caption">SENTINEL / ATELIER SPATIAL</span>
-      </section>}
+      {tab === 'inventory' ? <InventoryPanel inventory={inventory} selectedAssetId={selectedAssetId} onSelect={setSelectedAssetId} /> : <SpatialViewer view={spatialView} onViewChange={setSpatialView} selectedWorkstationId={selectedWorkstationId} onSelectWorkstation={setSelectedWorkstationId} />}
     </AppShell>
   )
 }
