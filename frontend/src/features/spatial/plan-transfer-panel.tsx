@@ -64,6 +64,11 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
       setPending(null)
       return
     }
+    if (serializePlan(pending.plan) === serializePlan(plan)) {
+      setPending(null)
+      setMessage({ error: false, text: 'Ce plan est déjà identique au plateau courant. Aucun changement n’a été appliqué.' })
+      return
+    }
     onChange(pending.plan)
     setPending(null)
     setMessage({ error: false, text: 'Le plateau est prêt. Annuler permet de retrouver l’implantation précédente pendant cette session.' })
