@@ -451,16 +451,34 @@ function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
 
 type LabelElements = Record<string, HTMLButtonElement | null>
 
-function LabelProjector({ labels, workstations, renderedDesksRef }: {
+function LabelProjector({ labels, workstations, renderedDesksRef, selectedWorkstationId }: {
   labels: RefObject<LabelElements>
   workstations: readonly Workstation[]
   renderedDesksRef: RefObject<RenderedDesks>
+  selectedWorkstationId: string | null
 }) {
   const projected = useMemo(() => new Vector3(), [])
+  const invalidate = useThree((state) => state.invalidate)
+
+  useEffect(() => {
+    invalidate()
+  }, [selectedWorkstationId, workstations, invalidate])
 
   useFrame(({ camera, size }) => {
     camera.updateMatrixWorld()
+    const positions: Array<{
+      label: HTMLButtonElement
+      x: number
+      y: number
+      visible: boolean
+      selected: boolean
+      left: number
+      right: number
+      top: number
+      bottom: number
+    }> = []
 
+    // Read all label sizes before changing any styles.
     for (const workstation of workstations) {
       const label = labels.current[workstation.id]
       if (!label) continue
@@ -476,8 +494,27 @@ function LabelProjector({ labels, workstations, renderedDesksRef }: {
       const x = (projected.x * 0.5 + 0.5) * size.width
       const y = (-projected.y * 0.5 + 0.5) * size.height
       const visible = projected.z >= -1 && projected.z <= 1 && x >= 0 && x <= size.width && y >= 0 && y <= size.height
-      label.style.setProperty('visibility', visible ? 'visible' : 'hidden')
-      label.style.setProperty('transform', `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`)
+      const width = label.offsetWidth
+      const height = label.offsetHeight
+      positions.push({
+        label, x, y, visible,
+        selected: workstation.id === selectedWorkstationId,
+        left: x - width / 2 - 2,
+        right: x + width / 2 + 2,
+        top: y - height / 2 - 2,
+        bottom: y + height / 2 + 2,
+      })
+    }
+
+    positions.sort((first, second) => Number(second.selected) - Number(first.selected))
+    const accepted: typeof positions = []
+    for (const position of positions) {
+      const collides = accepted.some((other) => position.left < other.right
+        && position.right > other.left && position.top < other.bottom && position.bottom > other.top)
+      const visible = position.visible && !collides
+      if (visible) accepted.push(position)
+      position.label.style.setProperty('visibility', visible ? 'visible' : 'hidden')
+      position.label.style.setProperty('transform', `translate3d(${position.x}px, ${position.y}px, 0) translate(-50%, -50%)`)
     }
   })
 
@@ -655,7 +692,7 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
         <CameraRig plan={plan} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
-        <LabelProjector labels={labels} workstations={plan.workstations} renderedDesksRef={renderedDesksRef} />
+        <LabelProjector labels={labels} workstations={plan.workstations} renderedDesksRef={renderedDesksRef} selectedWorkstationId={selectedWorkstationId} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />
         <directionalLight
@@ -697,7 +734,7 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
         ))}
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {plan.workstations.map((workstation) => (
+        {plan.workstations.map((workstation, index) => (
           <button
             key={workstation.id}
             ref={(element) => { labels.current[workstation.id] = element }}
@@ -705,11 +742,12 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             className={`scene-label${selectedWorkstationId === workstation.id ? ' is-selected' : ''}`}
             style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedWorkstationId === workstation.id ? plan.colors.accent : undefined }}
             aria-label={`Sélectionner ${workstation.label} dans la vue 3D`}
+            title={workstation.label}
             aria-pressed={selectedWorkstationId === workstation.id}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => { event.stopPropagation(); onSelect(workstation.id) }}
           >
-            {workstation.label}
+            {plan.workstations.length > 16 && selectedWorkstationId !== workstation.id ? index + 1 : workstation.label}
             {!!localizedCounts[workstation.id] && <span className="scene-link-count">{localizedCounts[workstation.id]}</span>}
           </button>
         ))}

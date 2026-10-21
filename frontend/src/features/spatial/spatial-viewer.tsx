@@ -145,15 +145,18 @@ export function SpatialViewer({
             {plan.name.toLocaleUpperCase('fr')}
           </span>
         </div>
-        <div className="workstation-strip" role="group" aria-label="Sélectionner un poste">
-          {plan.workstations.map((item) => (
+        {plan.workstations.length > 16 && <p className="dense-plan-note">Les repères numérotés correspondent à la liste des postes.</p>}
+        <div className={`workstation-strip${plan.workstations.length > 16 ? ' is-dense' : ''}`} role="group" aria-label="Sélectionner un poste">
+          {plan.workstations.map((item, index) => (
             <button
               key={item.id}
               aria-pressed={selected === item.id}
               className={selected === item.id ? 'is-selected' : ''}
+              title={plan.workstations.length > 16 ? `${index + 1}. ${item.label}` : item.label}
               onClick={() => selectWorkstation(item.id)}
             >
-              {item.label}
+              {plan.workstations.length > 16 && <span className="workstation-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}.</span>}
+              <span className="workstation-label">{item.label}</span>
               {!!localizedCounts[item.id] && (
                 <span className="desk-asset-count">{localizedCounts[item.id]}</span>
               )}

@@ -81,7 +81,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
       <rect x={left} y={top} width={width} height={depth} fill="url(#room-grid)" />
       <rect x={left} y={top} width={width} height={depth} fill="none" stroke={plan.colors.wall} strokeWidth="5" />
       <text x="410" y={top - 20} textAnchor="middle">{plan.width} m</text><text x={left - 26} y="290" textAnchor="middle" transform={`rotate(-90 ${left - 26} 290)`}>{plan.depth} m</text>
-      {plan.workstations.map(original => {
+      {plan.workstations.map((original, index) => {
         const station = preview?.id === original.id ? preview : original
         const x = 410 + station.position[0] * scale
         const y = 290 + station.position[2] * scale
@@ -104,6 +104,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
             onSelect(station.id)
             onMove(station.id, station.position[0] + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0), station.position[2] + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0))
           }}>
+          <title>{station.label}</title>
           <g transform={`rotate(${-station.rotation * 180 / Math.PI}) scale(${station.width / 2 * scale / 50},${station.depth * scale / 50})`}>
             <rect className="plan-hit" x="-53" y="-37" width="106" height="103" rx="9" style={selected ? { stroke: plan.colors.accent } : undefined} />
             <rect className="plan-table" x="-50" y="-25" width="100" height="50" rx="4" style={{ fill: station.color || plan.colors.desk }} />
@@ -111,7 +112,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, o
             <rect className="plan-keyboard" x="-13" y="3" width="26" height="9" rx="2" />
             <rect className="plan-chair" x="-15" y="33" width="30" height="27" rx="8" />
           </g>
-          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
+          <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length > 16 && !selected ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
       <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation locale · mobilier du plan</text>

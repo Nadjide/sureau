@@ -47,6 +47,8 @@ Les boutons Annuler / Rétablir et les raccourcis Ctrl/⌘ Z, Ctrl/⌘ Maj Z ou 
 
 « Fichiers » exporte et importe des plans JSON versionnés (256 ko maximum). Le document est validé intégralement avant remplacement, sans importer d’inventaire ni de localisations de matériel. Importer, partir d’un plateau vide ou reprendre l’exemple demande validation dans l’interface et reste annulable. Les liens de matériel existants suivent uniquement les identifiants conservés ; les autres restent récupérables depuis l’inventaire.
 
+Au-delà de 16 postes, les repères sont numérotés et renvoient à la liste ; le poste sélectionné garde son nom. La 3D masque les étiquettes qui se recouvrent en donnant priorité à la sélection. Les noms complets et la sélection restent disponibles dans la liste accessible.
+
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
 
 Les localisations sont enregistrées uniquement dans le stockage de ce navigateur, séparément de l’inventaire serveur. Elles ne changent pas le statut métier du matériel. Les liens vers un équipement devenu introuvable restent conservés et signalés. Un refus ou une corruption du stockage produit un avertissement ; l’interface reste utilisable pour la session, sans prétendre enregistrer les changements.
