@@ -206,6 +206,12 @@
 .workstation-strip { display: flex; flex-wrap: wrap; gap: 5px; padding: 14px 22px 12px; }
 .workstation-strip button { flex: 1; min-width: 64px; padding: 7px 5px; font-size: 10px; border-radius: 5px; background: var(--card); border: 1px solid var(--border); color: var(--muted-foreground); cursor: pointer; white-space: nowrap; }
 .workstation-strip button.is-selected { background: var(--accent); color: var(--accent-foreground); border-color: var(--primary); }
+.workstation-strip.is-dense { max-height: 144px; overflow-y: auto; flex-shrink: 0; }
+.workstation-strip button { display: flex; align-items: center; justify-content: center; }
+.workstation-strip.is-dense button { min-width: 100px; }
+.workstation-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.workstation-number { margin-right: 5px; font-variant-numeric: tabular-nums; opacity: .7; }
+.dense-plan-note { font-size: 10px; color: var(--muted-foreground); padding: 8px 22px 0; margin: 0; }
 .spatial-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 22px 15px; font-size: 10px; color: var(--muted-foreground); }
 .spatial-caption > span:first-child { display: flex; align-items: center; gap: 6px; }
 .local-indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--muted-foreground); }
