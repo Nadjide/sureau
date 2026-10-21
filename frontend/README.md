@@ -37,6 +37,8 @@ L’onglet Espaces démarre avec un plateau de 13 × 9 m et huit postes. La vue 
 
 « Modifier » ouvre l’atelier : ajouter, dupliquer, renommer, pivoter ou supprimer les postes et régler leurs positions et dimensions. Le fauteuil est inclus dans les limites de placement ; les chevauchements sont signalés et restent modifiables. Le plateau est limité à 64 postes pour conserver une manipulation fluide. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.
 
+En mode Modifier, glisser directement un poste dans les vues 2D et 3D pour le déplacer. L’aimantation facultative utilise une grille de 25 cm. Échap ou une annulation du pointeur restaure le placement initial ; une manipulation terminée enregistre une seule modification. Le plan 2D permet aussi le déplacement avec les flèches du clavier (Maj accélère).
+
 Le plan est sauvegardé localement sous un format versionné. Les postes conservent leur identifiant pendant les modifications. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
 
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.

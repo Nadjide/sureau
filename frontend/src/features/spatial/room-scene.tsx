@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, OrthographicCamera, RoundedBox, useCursor } from '@react-three/drei'
-import { Vector3, type OrthographicCamera as ThreeOrthographicCamera } from 'three'
+import { Plane, Raycaster, Vector2, Vector3, type Group, type OrthographicCamera as ThreeOrthographicCamera } from 'three'
 import type { Workstation } from './room-model'
 import type { SpatialPlan } from './plan-document'
+import { snapWorkstation } from './plan-geometry'
 
 type RoomSceneProps = {
   plan: SpatialPlan
@@ -13,9 +14,28 @@ type RoomSceneProps = {
   focusToken: number
   dark: boolean
   localizedCounts: Readonly<Record<string, number>>
+  editing: boolean
+  snap: boolean
+  onMove: (id: string, x: number, z: number) => void
 }
 
 type Vector = [number, number, number]
+type ControlsRef = RefObject<ComponentRef<typeof OrbitControls> | null>
+type RenderedDesks = Record<string, Group | null>
+type ActiveDrag = { id: string; pointerId: number; cancel: () => void }
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReduced(preference.matches)
+    preference.addEventListener('change', update)
+    return () => preference.removeEventListener('change', update)
+  }, [])
+  return reduced
+}
 
 type BlockProps = {
   size: Vector
@@ -83,28 +103,223 @@ function Desk({
   workstation,
   selected,
   onSelect,
-  colors,
+  plan,
+  editing,
+  snap,
+  onMove,
+  dragRef,
+  controlsRef,
+  renderedDesksRef,
+  reducedMotion,
 }: {
   workstation: Workstation
   selected: boolean
   onSelect: (id: string) => void
-  colors: SpatialPlan['colors']
+  plan: SpatialPlan
+  editing: boolean
+  snap: boolean
+  onMove: RoomSceneProps['onMove']
+  dragRef: RefObject<ActiveDrag | null>
+  controlsRef: ControlsRef
+  renderedDesksRef: RefObject<RenderedDesks>
+  reducedMotion: boolean
 }) {
+  const { gl, camera, invalidate } = useThree()
   const [hovered, setHovered] = useState(false)
-  useCursor(hovered)
+  useCursor(hovered, editing ? 'grab' : 'pointer')
+  const groupRef = useRef<Group | null>(null)
+  const [initial] = useState(() => ({
+    position: [...workstation.position] as Vector,
+    rotation: [0, workstation.rotation, 0] as Vector,
+    scale: [workstation.width / 2, 1, workstation.depth] as Vector,
+  }))
+  const motion = useRef<{
+    startedAt: number
+    fromPosition: Vector3
+    toPosition: Vector3
+    fromScale: Vector3
+    toScale: Vector3
+    fromRotation: number
+    rotationDelta: number
+  } | null>(null)
+  const suppressClick = useRef(false)
+  const colors = plan.colors
   const accent = colors.accent
+
+  const animateTo = useCallback((station: Workstation) => {
+    const group = groupRef.current
+    if (!group) return
+    const target = new Vector3(...station.position)
+    const scale = new Vector3(station.width / 2, 1, station.depth)
+    const delta = Math.atan2(Math.sin(station.rotation - group.rotation.y), Math.cos(station.rotation - group.rotation.y))
+    if (group.position.distanceToSquared(target) < 1e-10
+      && group.scale.distanceToSquared(scale) < 1e-10 && Math.abs(delta) < 1e-6) {
+      motion.current = null
+      return
+    }
+    motion.current = {
+      startedAt: performance.now(),
+      fromPosition: group.position.clone(),
+      toPosition: target,
+      fromScale: group.scale.clone(),
+      toScale: scale,
+      fromRotation: group.rotation.y,
+      rotationDelta: delta,
+    }
+    invalidate()
+  }, [invalidate])
+
+  useEffect(() => {
+    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
+    animateTo(workstation)
+  }, [workstation, dragRef, animateTo])
+
+  useEffect(() => () => {
+    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
+    delete renderedDesksRef.current[workstation.id]
+  }, [dragRef, renderedDesksRef, workstation.id])
+
+  useEffect(() => {
+    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
+  }, [editing, snap, plan.width, plan.depth, dragRef, workstation.id])
+
+  useFrame(() => {
+    const animation = motion.current
+    const group = groupRef.current
+    if (!animation || !group) return
+    const progress = reducedMotion ? 1 : Math.min(1, (performance.now() - animation.startedAt) / 200)
+    const eased = progress * progress * (3 - 2 * progress)
+    group.position.lerpVectors(animation.fromPosition, animation.toPosition, eased)
+    group.scale.lerpVectors(animation.fromScale, animation.toScale, eased)
+    group.rotation.y = animation.fromRotation + animation.rotationDelta * eased
+    if (progress === 1) motion.current = null
+    else invalidate()
+  }, -0.5)
 
   function choose(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation()
+    if (suppressClick.current || event.delta > 3) return
     onSelect(workstation.id)
+  }
+
+  function beginDrag(event: ThreeEvent<PointerEvent>) {
+    if (event.button === 0 && !dragRef.current) suppressClick.current = false
+    if (!editing || event.button !== 0 || dragRef.current) return
+    const group = groupRef.current
+    if (!group) return
+    const floor = new Plane(new Vector3(0, 1, 0), 0)
+    const point = new Vector3()
+    if (!event.ray.intersectPlane(floor, point)) return
+    event.stopPropagation()
+    event.nativeEvent.stopImmediatePropagation()
+    event.nativeEvent.preventDefault()
+
+    const pointerId = event.pointerId
+    const startX = event.clientX
+    const startY = event.clientY
+    const offsetX = group.position.x - point.x
+    const offsetZ = group.position.z - point.z
+    const pointer = new Vector2()
+    const ray = new Raycaster()
+    const canvas = gl.domElement
+    const controls = controlsRef.current
+    const controlsWereEnabled = controls?.enabled ?? true
+    const previousCursor = canvas.style.cursor
+    let moved = false
+    let draft = workstation
+    motion.current = null
+    suppressClick.current = false
+    if (controls) controls.enabled = false
+    canvas.style.setProperty('cursor', 'grabbing')
+
+    function preview(native: PointerEvent) {
+      if (native.pointerId !== pointerId) return
+      native.preventDefault()
+      native.stopPropagation()
+      if (!moved && Math.hypot(native.clientX - startX, native.clientY - startY) <= 3) return
+      const bounds = canvas.getBoundingClientRect()
+      if (!bounds.width || !bounds.height) return
+      pointer.set(
+        ((native.clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((native.clientY - bounds.top) / bounds.height) * 2 + 1,
+      )
+      ray.setFromCamera(pointer, camera)
+      if (!ray.ray.intersectPlane(floor, point)) return
+      moved = true
+      draft = snapWorkstation(plan, {
+        ...workstation,
+        position: [point.x + offsetX, 0, point.z + offsetZ],
+      }, snap)
+      group!.position.set(...draft.position)
+      invalidate()
+    }
+
+    function cleanup() {
+      window.removeEventListener('pointermove', preview, true)
+      window.removeEventListener('pointerup', finish, true)
+      window.removeEventListener('pointercancel', pointerCancelled, true)
+      window.removeEventListener('lostpointercapture', pointerCancelled, true)
+      window.removeEventListener('keydown', keyDown, true)
+      window.removeEventListener('blur', cancel)
+      dragRef.current = null
+      if (controls) controls.enabled = controlsWereEnabled
+      canvas.style.setProperty('cursor', previousCursor)
+      if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId)
+    }
+
+    function cancel() {
+      cleanup()
+      suppressClick.current = true
+      animateTo(workstation)
+      invalidate()
+    }
+
+    function pointerCancelled(native: PointerEvent) {
+      if (native.pointerId === pointerId) cancel()
+    }
+
+    function keyDown(native: KeyboardEvent) {
+      if (native.key !== 'Escape') return
+      native.preventDefault()
+      native.stopPropagation()
+      cancel()
+    }
+
+    function finish(native: PointerEvent) {
+      if (native.pointerId !== pointerId) return
+      cleanup()
+      suppressClick.current = moved
+      // Return to the current model if the parent rejects this move.
+      animateTo(workstation)
+      if (moved) onMove(workstation.id, draft.position[0], draft.position[2])
+      invalidate()
+    }
+
+    dragRef.current = { id: workstation.id, pointerId, cancel }
+    window.addEventListener('pointermove', preview, { capture: true, passive: false })
+    window.addEventListener('pointerup', finish, true)
+    window.addEventListener('pointercancel', pointerCancelled, true)
+    window.addEventListener('lostpointercapture', pointerCancelled, true)
+    window.addEventListener('keydown', keyDown, true)
+    window.addEventListener('blur', cancel)
+    try {
+      canvas.setPointerCapture(pointerId)
+    } catch {
+      cancel()
+      return
+    }
+    onSelect(workstation.id)
+    invalidate()
   }
 
   return (
     <group
-      position={workstation.position}
-      rotation={[0, workstation.rotation, 0]}
-      scale={[workstation.width / 2, 1, workstation.depth]}
+      ref={(group) => { groupRef.current = group; renderedDesksRef.current[workstation.id] = group }}
+      position={initial.position}
+      rotation={initial.rotation}
+      scale={initial.scale}
       onClick={choose}
+      onPointerDown={beginDrag}
       onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
       onPointerOut={() => setHovered(false)}
     >
@@ -228,9 +443,10 @@ function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
 
 type LabelElements = Record<string, HTMLButtonElement | null>
 
-function LabelProjector({ labels, workstations }: {
+function LabelProjector({ labels, workstations, renderedDesksRef }: {
   labels: RefObject<LabelElements>
   workstations: readonly Workstation[]
+  renderedDesksRef: RefObject<RenderedDesks>
 }) {
   const projected = useMemo(() => new Vector3(), [])
 
@@ -240,10 +456,14 @@ function LabelProjector({ labels, workstations }: {
     for (const workstation of workstations) {
       const label = labels.current[workstation.id]
       if (!label) continue
+      const group = renderedDesksRef.current[workstation.id]
+      const position = group?.position
+      const rotation = group?.rotation.y ?? workstation.rotation
+      const depth = group?.scale.z ?? workstation.depth
       projected.set(
-        workstation.position[0] - Math.sin(workstation.rotation) * workstation.depth * 0.12,
-        workstation.position[1] + 1.69,
-        workstation.position[2] - Math.cos(workstation.rotation) * workstation.depth * 0.12,
+        (position?.x ?? workstation.position[0]) - Math.sin(rotation) * depth * 0.12,
+        (position?.y ?? workstation.position[1]) + 1.69,
+        (position?.z ?? workstation.position[2]) - Math.cos(rotation) * depth * 0.12,
       ).project(camera)
       const x = (projected.x * 0.5 + 0.5) * size.width
       const y = (-projected.y * 0.5 + 0.5) * size.height
@@ -265,20 +485,19 @@ type CameraTransition = {
   toZoom: number
 }
 
-function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
+function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, controlsRef, dragRef, reducedMotion }: {
   resetToken: number
   focusToken: number
   selectedWorkstationId: string | null
   plan: SpatialPlan
+  controlsRef: ControlsRef
+  dragRef: RefObject<ActiveDrag | null>
+  reducedMotion: boolean
 }) {
   const { size, invalidate } = useThree()
   const cameraRef = useRef<ThreeOrthographicCamera>(null)
-  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   const transition = useRef<CameraTransition | null>(null)
   const lastCommand = useRef({ resetToken, focusToken: 0 })
-  const [reducedMotion, setReducedMotion] = useState(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  )
   const sceneScale = Math.max(1, plan.width / 13, plan.depth / 9)
   const overviewPosition = useMemo(
     () => new Vector3(13.5 * sceneScale, 14.6 * sceneScale + 0.4, 17 * sceneScale),
@@ -291,13 +510,6 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
   const maxZoom = Math.max(zoom * 2.2, Math.min(size.width / 4, size.height / 3.5))
 
   useEffect(() => {
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const update = () => setReducedMotion(preference.matches)
-    preference.addEventListener('change', update)
-    return () => preference.removeEventListener('change', update)
-  }, [])
-
-  useEffect(() => {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
@@ -308,7 +520,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
     controls.target.set(0, 0.4, 0)
     controls.update()
     invalidate()
-  }, [zoom, overviewPosition, invalidate])
+  }, [zoom, overviewPosition, controlsRef, invalidate])
 
   useEffect(() => {
     const reset = lastCommand.current.resetToken !== resetToken
@@ -345,9 +557,13 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
       toZoom: reset ? zoom : focusedZoom,
     }
     invalidate()
-  }, [focusToken, resetToken, selectedWorkstationId, zoom, maxZoom, overviewPosition, plan.workstations, size.width, size.height, invalidate])
+  }, [focusToken, resetToken, selectedWorkstationId, zoom, maxZoom, overviewPosition, plan.workstations, size.width, size.height, controlsRef, invalidate])
 
   useFrame(() => {
+    if (dragRef.current) {
+      transition.current = null
+      return
+    }
     const animation = transition.current
     const camera = cameraRef.current
     const controls = controlsRef.current
@@ -405,8 +621,14 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan }: {
   )
 }
 
-export default function RoomScene({ plan, selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts }: RoomSceneProps) {
+export default function RoomScene({ plan, selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts, editing, snap, onMove }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
+  const renderedDesksRef = useRef<RenderedDesks>({})
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
+  const dragRef = useRef<ActiveDrag | null>(null)
+  const reducedMotion = useReducedMotion()
+
+  useEffect(() => () => dragRef.current?.cancel(), [])
 
   return (
     <div
@@ -423,8 +645,8 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
         fallback={<div className="scene-fallback" role="status">La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.</div>}
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
-        <CameraRig plan={plan} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} />
-        <LabelProjector labels={labels} workstations={plan.workstations} />
+        <CameraRig plan={plan} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
+        <LabelProjector labels={labels} workstations={plan.workstations} renderedDesksRef={renderedDesksRef} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />
         <directionalLight
@@ -449,7 +671,20 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
         </mesh>
         <Architecture dark={dark} plan={plan} />
         {plan.workstations.map((workstation) => (
-          <Desk key={workstation.id} workstation={workstation} colors={plan.colors} selected={workstation.id === selectedWorkstationId} onSelect={onSelect} />
+          <Desk
+            key={workstation.id}
+            workstation={workstation}
+            plan={plan}
+            selected={workstation.id === selectedWorkstationId}
+            onSelect={onSelect}
+            editing={editing}
+            snap={snap}
+            onMove={onMove}
+            dragRef={dragRef}
+            controlsRef={controlsRef}
+            renderedDesksRef={renderedDesksRef}
+            reducedMotion={reducedMotion}
+          />
         ))}
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>

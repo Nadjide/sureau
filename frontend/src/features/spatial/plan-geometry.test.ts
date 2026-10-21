@@ -57,6 +57,26 @@ describe('géométrie du plateau', () => {
     expect(clampWorkstation(room, station({ position: [-9, 0, 0], rotation: Math.PI * 1.5 })).position[0]).toBeCloseTo(-1.7)
   })
 
+  it.each([1e15, 1e308, Number.MAX_VALUE, -1e15, -1e308, -Number.MAX_VALUE])(
+    'borne une coordonnée finie très éloignée sans perdre la limite : %s', (coordinate) => {
+      const room = plan()
+      const side = Math.sign(coordinate)
+      const bounded = clampWorkstation(room, station({ position: [coordinate, 0, coordinate] }))
+      expect(bounded.position[0]).toBeCloseTo(side * (room.width / 2 - 1))
+      expect(bounded.position[2]).toBeCloseTo(side > 0 ? room.depth / 2 - 1.3 : -room.depth / 2 + 0.5)
+      expect(bounded.position.every(Number.isFinite)).toBe(true)
+      expect(corners(bounded).every(([x, z]) => Math.abs(x) <= room.width / 2 + 1e-7 && Math.abs(z) <= room.depth / 2 + 1e-7)).toBe(true)
+    },
+  )
+
+  it('borne des coordonnées extrêmes avec une rotation sans déplacer les axes déjà valides', () => {
+    const room = plan()
+    const bounded = clampWorkstation(room, station({ position: [Number.MAX_VALUE, 0, 0.12345], rotation: Math.PI / 2 }))
+    expect(bounded.position[0]).toBeCloseTo(room.width / 2 - 1.3)
+    expect(bounded.position[2]).toBe(0.12345)
+    expect(clampWorkstation(room, bounded)).toBe(bounded)
+  })
+
   it('conserve toutes les propriétés et ne modifie pas le poste source', () => {
     const original = station({ position: [99, 0, 99], color: '#123456' })
     const moved = clampWorkstation(plan(), original)

@@ -11,6 +11,7 @@ import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { usePlanDocument } from '@/features/spatial/use-plan-document'
 import { WorkstationEditor } from '@/features/spatial/workstation-editor'
+import { clampWorkstation } from '@/features/spatial/plan-geometry'
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -109,6 +110,12 @@ function App() {
           plan={plan}
           editing={editing}
           onEditingChange={(value) => { setEditing(value); setSelectedAssetId(null) }}
+          onMove={(id, x, z) => {
+            const station = findWorkstation(id, plan.workstations)
+            if (!station) return
+            const moved = clampWorkstation(plan, { ...station, position: [x, 0, z] })
+            planStore.replace({ ...plan, workstations: plan.workstations.map((item) => item.id === id ? moved : item) })
+          }}
           view={spatialView}
           onViewChange={setSpatialView}
           selectedWorkstationId={selectedWorkstationId}

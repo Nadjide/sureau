@@ -216,6 +216,9 @@
 .room-plan { display: block; width: 100%; height: 100%; min-height: 300px; max-height: 100%; }
 .room-plan text { font: 18px 'Inter Variable', sans-serif; fill: var(--muted-foreground); }
 .plan-workstation { cursor: pointer; }
+.room-plan.is-editing { touch-action: none; }
+.room-plan.is-editing .plan-workstation { cursor: grab; }
+.room-plan.is-editing .plan-workstation:active { cursor: grabbing; }
 .plan-hit { fill: transparent; stroke: transparent; }
 .plan-workstation.is-selected .plan-hit { fill: color-mix(in srgb, var(--primary) 8%, transparent); stroke: var(--primary); stroke-width: 1.3; }
 .plan-workstation:focus-visible { outline: none; }
