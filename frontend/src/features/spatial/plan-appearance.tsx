@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialPlan } from './room-model'
@@ -14,10 +14,22 @@ const palettes = [
 
 interface Props { plan: SpatialPlan; onChange: (plan: SpatialPlan) => void }
 
+function writeColorFields(form: HTMLFormElement | null, colors: SpatialPlan['colors']) {
+  for (const [name, color] of Object.entries(colors)) {
+    const field = form?.elements.namedItem(name)
+    if (field instanceof HTMLInputElement) field.value = color
+  }
+}
+
 export function PlanAppearance({ plan, onChange }: Props) {
+  const form = useRef<HTMLFormElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<{ plan: SpatialPlan; source: SpatialPlan; moved: number } | null>(null)
   const [formRevision, setFormRevision] = useState(0)
+  const { floor, wall, desk, accent } = plan.colors
+  useEffect(() => {
+    writeColorFields(form.current, { floor, wall, desk, accent })
+  }, [floor, wall, desk, accent])
   const collisions = plan.workstations.filter((station) => plan.workstations.some((other) => other.id !== station.id && overlaps(station, other))).length
 
   function apply(event: FormEvent<HTMLFormElement>) {
@@ -52,13 +64,16 @@ export function PlanAppearance({ plan, onChange }: Props) {
     <div className="palette-list">
       {palettes.map((palette) => {
         const active = Object.entries(palette.colors).every(([key, value]) => plan.colors[key as keyof SpatialPlan['colors']] === value)
-        return <button key={palette.name} className={`palette-choice${active ? ' is-selected' : ''}`} type="button" aria-pressed={active} disabled={!!pending} onClick={() => onChange({ ...plan, colors: { ...palette.colors } })}>
+        return <button key={palette.name} className={`palette-choice${active ? ' is-selected' : ''}`} type="button" aria-pressed={active} disabled={!!pending} onClick={() => {
+          writeColorFields(form.current, palette.colors)
+          onChange({ ...plan, colors: { ...palette.colors } })
+        }}>
           <span className="palette-swatches" aria-hidden="true">{Object.values(palette.colors).map((color) => <i key={color} style={{ background: color }} />)}</span>
           <span><strong>{palette.name}</strong><small>{palette.note}</small></span>{active && <Check size={14} />}
         </button>
       })}
     </div>
-    <form className="editor-form" key={JSON.stringify([formRevision, plan.name, plan.width, plan.depth, plan.colors, plan.display])} onSubmit={apply}>
+    <form ref={form} className="editor-form" key={JSON.stringify([formRevision, plan.name, plan.width, plan.depth, plan.display])} onSubmit={apply}>
       <fieldset disabled={!!pending} className="editor-form appearance-fields">
         <label>Nom du plateau<input name="name" defaultValue={plan.name} maxLength={60} required /></label>
         <div className="editor-field-pair">
