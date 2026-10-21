@@ -1,18 +1,20 @@
 import { HardDrive, MapPin, MoveUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Asset } from '@/features/inventory/asset-schema'
-import { findWorkstation, workstations } from './room-model'
+import { findWorkstation, type SpatialPlan } from './room-model'
+import { defaultPlan } from './plan-document'
 import type { useLocalLocations } from './use-local-locations'
 
 interface Props {
+  plan?: SpatialPlan
   asset: Asset
   local: ReturnType<typeof useLocalLocations>
   onShowInPlan: (id: number) => void
 }
 
-export function AssetLocationActions({ asset, local, onShowInPlan }: Props) {
+export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaultPlan }: Props) {
   const stationId = local.locations[asset.id] || ''
-  const station = findWorkstation(stationId)
+  const station = findWorkstation(stationId, plan.workstations)
 
   return (
     <section className="location-actions" aria-label={`Localisation de ${asset.assetTag}`}>
@@ -27,9 +29,10 @@ export function AssetLocationActions({ asset, local, onShowInPlan }: Props) {
         onChange={(event) => local.associate(asset.id, event.target.value || null)}
       >
         <option value="">Non localisé</option>
-        {workstations.map((item) => (
+        {stationId && !station && <option value={stationId}>Poste absent du plan · lien conservé</option>}
+        {plan.workstations.map((item) => (
           <option key={item.id} value={item.id}>
-            {item.label} · Plateau A
+            {item.label} · {plan.name}
           </option>
         ))}
       </select>
