@@ -139,7 +139,7 @@ function App() {
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
-            editing ? <WorkstationEditor plan={plan} selectedId={selectedWorkstationId} onChange={planStore.replace} onSelect={selectWorkstation} /> :
+            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} onChange={planStore.replace} onSelect={selectWorkstation} /> :
             <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}
