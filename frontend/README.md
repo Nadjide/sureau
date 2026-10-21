@@ -33,9 +33,11 @@ Le proxy concerne uniquement le développement. Une installation en production d
 
 ## Exploration spatiale
 
-L’onglet Espaces affiche un plateau de 13 × 9 m avec huit postes illustratifs. La vue 3D se charge uniquement à l’ouverture de cette vue ; la caméra se manipule à la souris et le bouton de recentrage restaure le cadrage initial. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
+L’onglet Espaces démarre avec un plateau de 13 × 9 m et huit postes. La vue 3D se charge uniquement à l’ouverture de cette vue ; cliquer sur un poste rapproche la caméra, et le bouton de recentrage revient à la vue générale. Une manipulation interrompt l’animation et le réglage système de réduction des mouvements est respecté. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
 
-Cette implantation est un exemple local. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.
+« Modifier » ouvre l’atelier : ajouter, dupliquer, renommer, pivoter ou supprimer les postes et régler leurs positions et dimensions. Le fauteuil est inclus dans les limites de placement ; les chevauchements sont signalés et restent modifiables. Le plateau est limité à 64 postes pour conserver une manipulation fluide. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.
+
+Le plan est sauvegardé localement sous un format versionné. Les postes conservent leur identifiant pendant les modifications. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
 
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
 
