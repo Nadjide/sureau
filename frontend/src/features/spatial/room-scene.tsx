@@ -8,6 +8,7 @@ type RoomSceneProps = {
   selectedWorkstationId: string | null
   onSelect: (id: string) => void
   resetToken: number
+  focusToken: number
   dark: boolean
   localizedCounts: Readonly<Record<string, number>>
 }
@@ -246,31 +247,106 @@ function LabelProjector({ labels }: { labels: RefObject<LabelElements> }) {
 
   return null
 }
-function CameraRig({ resetToken }: { resetToken: number }) {
+type CameraTransition = {
+  startedAt: number
+  fromPosition: Vector3
+  toPosition: Vector3
+  fromTarget: Vector3
+  toTarget: Vector3
+  fromZoom: number
+  toZoom: number
+}
+
+function CameraRig({ resetToken, focusToken, selectedWorkstationId }: {
+  resetToken: number
+  focusToken: number
+  selectedWorkstationId: string | null
+}) {
   const { size, invalidate } = useThree()
   const cameraRef = useRef<ThreeOrthographicCamera>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
+  const transition = useRef<CameraTransition | null>(null)
+  const lastCommand = useRef({ resetToken, focusToken: 0 })
+  const [reducedMotion, setReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
   const zoom = Math.max(14, Math.min(size.width / 18.4, size.height / 12.4))
+
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(preference.matches)
+    preference.addEventListener('change', update)
+    return () => preference.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
+    transition.current = null
     camera.position.set(13.5, 15, 17)
     camera.zoom = zoom
     camera.updateProjectionMatrix()
     controls.target.set(0, 0.4, 0)
     controls.update()
     invalidate()
-  }, [resetToken, zoom, invalidate])
+  }, [zoom, invalidate])
+
+  useEffect(() => {
+    const reset = lastCommand.current.resetToken !== resetToken
+    const focus = lastCommand.current.focusToken !== focusToken
+    lastCommand.current = { resetToken, focusToken }
+    if (!reset && !focus) return
+
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    if (!camera || !controls) return
+    const station = workstations.find((item) => item.id === selectedWorkstationId)
+    if (!reset && !station) return
+
+    const target = !reset && station
+      ? new Vector3(station.position[0], 0.4, station.position[2])
+      : new Vector3(0, 0.4, 0)
+    const position = reset
+      ? new Vector3(13.5, 15, 17)
+      : camera.position.clone().sub(controls.target).add(target)
+
+    transition.current = {
+      startedAt: performance.now(),
+      fromPosition: camera.position.clone(),
+      toPosition: position,
+      fromTarget: controls.target.clone(),
+      toTarget: target,
+      fromZoom: camera.zoom,
+      toZoom: zoom * (reset ? 1 : 1.85),
+    }
+    invalidate()
+  }, [focusToken, resetToken, selectedWorkstationId, zoom, invalidate])
+
+  useFrame(() => {
+    const animation = transition.current
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    if (!animation || !camera || !controls) return
+
+    const progress = reducedMotion ? 1 : Math.min(1, (performance.now() - animation.startedAt) / 650)
+    const eased = progress * progress * (3 - 2 * progress)
+    camera.position.lerpVectors(animation.fromPosition, animation.toPosition, eased)
+    controls.target.lerpVectors(animation.fromTarget, animation.toTarget, eased)
+    camera.zoom = animation.fromZoom + (animation.toZoom - animation.fromZoom) * eased
+    camera.updateProjectionMatrix()
+    controls.update()
+    if (progress === 1) transition.current = null
+    else invalidate()
+  })
 
   function constrainPan() {
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!camera || !controls) return
-    const offsetX = Math.max(-3, Math.min(3, controls.target.x)) - controls.target.x
+    const offsetX = Math.max(-room.width / 2, Math.min(room.width / 2, controls.target.x)) - controls.target.x
     const offsetY = 0.4 - controls.target.y
-    const offsetZ = Math.max(-2, Math.min(2, controls.target.z)) - controls.target.z
+    const offsetZ = Math.max(-room.depth / 2, Math.min(room.depth / 2, controls.target.z)) - controls.target.z
     controls.target.x += offsetX
     controls.target.y += offsetY
     controls.target.z += offsetZ
@@ -299,12 +375,13 @@ function CameraRig({ resetToken }: { resetToken: number }) {
         rotateSpeed={0.65}
         panSpeed={0.65}
         onChange={constrainPan}
+        onStart={() => { transition.current = null }}
       />
     </>
   )
 }
 
-export default function RoomScene({ selectedWorkstationId, onSelect, resetToken, dark, localizedCounts }: RoomSceneProps) {
+export default function RoomScene({ selectedWorkstationId, onSelect, resetToken, focusToken, dark, localizedCounts }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
 
   return (
@@ -322,7 +399,7 @@ export default function RoomScene({ selectedWorkstationId, onSelect, resetToken,
         fallback={<div className="scene-fallback" role="status">La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.</div>}
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
-        <CameraRig resetToken={resetToken} />
+        <CameraRig resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} />
         <LabelProjector labels={labels} />
         <ambientLight intensity={dark ? 0.7 : 0.9} />
         <hemisphereLight args={['#e4ebf5', '#8b93a1', 1.1]} />

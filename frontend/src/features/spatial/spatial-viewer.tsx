@@ -32,9 +32,15 @@ export function SpatialViewer({
   localizedCounts,
 }: Props) {
   const [resetToken, setResetToken] = useState(0)
+  const [focusToken, setFocusToken] = useState(0)
   const [retryToken, setRetryToken] = useState(0)
   const [sceneFailed, setSceneFailed] = useState(false)
   const dark = useSyncExternalStore(subscribeTheme, getTheme)
+
+  function selectWorkstation(id: string) {
+    setSelected(id)
+    if (view === '3d') setFocusToken((value) => value + 1)
+  }
 
   return (
     <div className="spatial-layout">
@@ -76,7 +82,7 @@ export function SpatialViewer({
         </div>
         <div className="spatial-stage">
           {view === '2d' ? (
-            <RoomPlan selectedWorkstationId={selected} onSelect={setSelected} />
+            <RoomPlan selectedWorkstationId={selected} onSelect={selectWorkstation} />
           ) : (
             <SceneBoundary
               key={retryToken}
@@ -93,8 +99,9 @@ export function SpatialViewer({
               >
                 <RoomScene
                   selectedWorkstationId={selected}
-                  onSelect={setSelected}
+                  onSelect={selectWorkstation}
                   resetToken={resetToken}
+                  focusToken={focusToken}
                   dark={dark}
                   localizedCounts={localizedCounts}
                 />
@@ -104,7 +111,7 @@ export function SpatialViewer({
           <div className="scene-instructions">
             <MousePointer2 size={12} aria-hidden="true" />
             {view === '3d'
-              ? 'Glisser pour tourner · molette pour zoomer'
+              ? 'Cliquer pour approcher · glisser pour tourner · molette pour zoomer'
               : 'Sélectionner un poste · Tab puis Entrée au clavier'}
           </div>
           <span className="scene-plan-mark" aria-hidden="true">
@@ -117,7 +124,7 @@ export function SpatialViewer({
               key={item.id}
               aria-pressed={selected === item.id}
               className={selected === item.id ? 'is-selected' : ''}
-              onClick={() => setSelected(item.id)}
+              onClick={() => selectWorkstation(item.id)}
             >
               {item.label}
               {!!localizedCounts[item.id] && (
