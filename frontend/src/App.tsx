@@ -1,11 +1,14 @@
+import { Badge } from '@/components/ui/badge'
+import { Brand } from '@/components/brand'
+
 function App() {
   return (
-    <main>
-      <span className="wordmark">SENTINEL</span>
-      <div className="status">ATELIER SPATIAL</div>
+    <main className="welcome">
+      <Brand />
+      <Badge variant="secondary">ATELIER SPATIAL</Badge>
       <h1>Le parc prend forme.</h1>
       <p>Votre matériel. Vos espaces. Une même vue.</p>
-      <div className="foundation">L’espace d’exploration se prépare.</div>
+      <div className="welcome-foot">L’espace d’exploration se prépare.</div>
     </main>
   )
 }
