@@ -3,6 +3,7 @@ import { Copy, Plus, RotateCw, Trash2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { findWorkstation, type SpatialPlan, type Workstation } from './room-model'
 import { clampWorkstation, findFreePlacement, normalizeRotation, overlaps } from './plan-geometry'
+import { PlanAppearance } from './plan-appearance'
 
 interface Props {
   plan: SpatialPlan
@@ -15,6 +16,7 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
   const station = findWorkstation(selectedId, plan.workstations)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [section, setSection] = useState<'station' | 'appearance'>('station')
   const conflicts = station ? plan.workstations.filter((item) => item.id !== station.id && overlaps(item, station)) : []
 
   function update(candidate: Workstation) {
@@ -63,12 +65,19 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
     }
     const angle = rotation === Math.round(station.rotation * 180 / Math.PI)
       ? station.rotation : normalizeRotation((rotation % 360) * Math.PI / 180)
-    update({ ...station, label, position: [x, 0, z], rotation: angle, width, depth })
+    const color = data.has('inheritColor') ? null : String(data.get('color'))
+    if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) { setError('Choisissez une couleur valide.'); return }
+    update({ ...station, label, position: [x, 0, z], rotation: angle, width, depth, color })
   }
 
   return (
     <aside className="asset-inspector plan-editor" aria-label="Éditeur du plateau">
       <div className="editor-heading"><Wrench size={18} /><div><p className="eyebrow">ATELIER SPATIAL</p><h2>Composer l’espace</h2></div></div>
+      <div className="editor-tabs" role="group" aria-label="Réglages de l’atelier">
+        <button type="button" aria-pressed={section === 'station'} onClick={() => setSection('station')}>Poste</button>
+        <button type="button" aria-pressed={section === 'appearance'} onClick={() => setSection('appearance')}>Plateau & couleurs</button>
+      </div>
+      {section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
       <p className="location-help">Créez votre implantation, poste par poste. Chaque changement est conservé dans ce navigateur.</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
@@ -85,6 +94,11 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
             <label>Largeur (m)<input name="width" type="number" min="0.8" max="3" step="any" defaultValue={station.width} required /></label>
             <label>Profondeur (m)<input name="depth" type="number" min="0.5" max="1.5" step="any" defaultValue={station.depth} required /></label>
           </div>
+          <label>Couleur du poste<input name="color" type="color" defaultValue={station.color || plan.colors.desk} onChange={(event) => {
+            const inherit = event.currentTarget.form?.elements.namedItem('inheritColor')
+            if (inherit instanceof HTMLInputElement) inherit.checked = false
+          }} /></label>
+          <label className="editor-checkbox"><input name="inheritColor" type="checkbox" defaultChecked={station.color === null} />Utiliser la couleur de l’ambiance</label>
           <p className="location-help">Le centre du plateau est le point 0, 0. Le poste reste dans les limites de la pièce, fauteuil compris.</p>
           <Button variant="outline" type="submit" className="w-full">Appliquer au poste</Button>
         </form>
@@ -102,6 +116,7 @@ export function WorkstationEditor({ plan, selectedId, onChange, onSelect }: Prop
           <Button variant="ghost" onClick={() => setDeleting(null)}>Conserver le poste</Button>
         </div> : <Button variant="ghost" className="editor-delete" onClick={() => setDeleting(station.id)}><Trash2 />Supprimer ce poste</Button>}
       </> : <div className="editor-empty"><p>Sélectionnez un poste dans le plan pour modifier ses propriétés, ou ajoutez le premier poste de votre espace.</p></div>}
+      </>}
     </aside>
   )
 }

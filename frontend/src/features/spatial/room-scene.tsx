@@ -409,34 +409,42 @@ function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
       <RoundedBox args={[11.3, 0.25, 4.95]} scale={[1, 0.048, 1]} radius={0.12} smoothness={3} position={[0, 0.025, 0]} receiveShadow>
         <meshStandardMaterial color={floor} roughness={1} />
       </RoundedBox>
-      <Block size={[13.15, 0.72, 0.17]} position={[0, 0.37, -4.5]} color={wall} />
-      <Block size={[13.15, 0.15, 0.19]} position={[0, 2.12, -4.5]} color={wall} />
-      <Block size={[13.12, 0.055, 0.28]} position={[0, 0.76, -4.46]} color={frame} />
-      {[-6.5, -3.25, 0, 3.25, 6.5].map((x) => (
-        <Block key={x} size={[0.15, 1.4, 0.19]} position={[x, 1.42, -4.5]} color={wall} />
-      ))}
-      {[-4.875, -1.625, 1.625, 4.875].map((x) => (
-        <group key={x}>
-          <Block size={[3.05, 1.25, 0.035]} position={[x, 1.42, -4.56]} color={dark ? '#8298b4' : '#c0d1e4'} roughness={0.3} castShadow={false} />
-          <Block size={[3.09, 0.035, 0.07]} position={[x, 0.81, -4.49]} color={frame} />
-          <Block size={[3.09, 0.035, 0.07]} position={[x, 2.015, -4.49]} color={frame} />
-          <Block size={[0.035, 1.23, 0.07]} position={[x, 1.42, -4.49]} color={frame} />
+      {plan.display.walls && (
+        <group>
+          <Block size={[13.15, 0.72, 0.17]} position={[0, 0.37, -4.5]} color={wall} />
+          <Block size={[13.15, 0.15, 0.19]} position={[0, 2.12, -4.5]} color={wall} />
+          <Block size={[13.12, 0.055, 0.28]} position={[0, 0.76, -4.46]} color={frame} />
+          {[-6.5, -3.25, 0, 3.25, 6.5].map((x) => (
+            <Block key={x} size={[0.15, 1.4, 0.19]} position={[x, 1.42, -4.5]} color={wall} />
+          ))}
+          {[-4.875, -1.625, 1.625, 4.875].map((x) => (
+            <group key={x}>
+              <Block size={[3.05, 1.25, 0.035]} position={[x, 1.42, -4.56]} color={dark ? '#8298b4' : '#c0d1e4'} roughness={0.3} castShadow={false} />
+              <Block size={[3.09, 0.035, 0.07]} position={[x, 0.81, -4.49]} color={frame} />
+              <Block size={[3.09, 0.035, 0.07]} position={[x, 2.015, -4.49]} color={frame} />
+              <Block size={[0.035, 1.23, 0.07]} position={[x, 1.42, -4.49]} color={frame} />
+            </group>
+          ))}
+          <Block size={[0.17, 1.13, 9.12]} position={[-6.5, 0.58, 0]} color={wall} />
+          <Block size={[0.21, 0.06, 9.16]} position={[-6.5, 1.17, 0]} color={frame} />
         </group>
-      ))}
-      <Block size={[0.17, 1.13, 9.12]} position={[-6.5, 0.58, 0]} color={wall} />
-      <Block size={[0.21, 0.06, 9.16]} position={[-6.5, 1.17, 0]} color={frame} />
+      )}
       <Block size={[0.025, 0.07, 8.98]} position={[-6.398, 0.06, 0]} color={frame} />
-      <Block size={[2.18, 0.94, 0.63]} position={[3.85, 0.51, -3.99]} color={dark ? '#929da9' : '#c3ccd4'} />
-      <Block size={[2.23, 0.055, 0.68]} position={[3.85, 1.0, -3.99]} color={plan.colors.desk} />
-      {[-1, 1].map((side) => (
-        <group key={side}>
-          <Block size={[1.04, 0.82, 0.025]} position={[3.85 + side * 0.54, 0.53, -3.66]} color={dark ? '#8493a7' : '#b5c2d2'} />
-          <Block size={[0.04, 0.13, 0.035]} position={[3.85 + side * 0.12, 0.58, -3.637]} color="#65758a" metalness={0.4} />
+      {plan.display.decor && (
+        <group>
+          <Block size={[2.18, 0.94, 0.63]} position={[3.85, 0.51, -3.99]} color={dark ? '#929da9' : '#c3ccd4'} />
+          <Block size={[2.23, 0.055, 0.68]} position={[3.85, 1.0, -3.99]} color={plan.colors.desk} />
+          {[-1, 1].map((side) => (
+            <group key={side}>
+              <Block size={[1.04, 0.82, 0.025]} position={[3.85 + side * 0.54, 0.53, -3.66]} color={dark ? '#8493a7' : '#b5c2d2'} />
+              <Block size={[0.04, 0.13, 0.035]} position={[3.85 + side * 0.12, 0.58, -3.637]} color="#65758a" metalness={0.4} />
+            </group>
+          ))}
+          <Plant position={[-5.72, 0.025, -3.6]} />
+          <Plant position={[5.76, 0.025, 3.55]} scale={0.88} />
+          <Plant position={[-5.7, 0.025, 3.48]} scale={0.75} />
         </group>
-      ))}
-      <Plant position={[-5.72, 0.025, -3.6]} />
-      <Plant position={[5.76, 0.025, 3.55]} scale={0.88} />
-      <Plant position={[-5.7, 0.025, 3.48]} scale={0.75} />
+      )}
     </group>
   )
 }

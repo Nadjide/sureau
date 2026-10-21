@@ -20,6 +20,10 @@ export interface SpatialPlan {
     desk: string
     accent: string
   }
+  display: {
+    walls: boolean
+    decor: boolean
+  }
   workstations: Workstation[]
 }
 
