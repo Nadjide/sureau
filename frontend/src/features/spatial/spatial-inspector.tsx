@@ -34,7 +34,17 @@ export function SpatialInspector({
 
   if (selectedAsset && local.locations[selectedAsset.id] === selectedWorkstationId)
     return (
-      <AssetDetails asset={selectedAsset} onClose={() => onSelectAsset(null)}>
+      <AssetDetails
+        asset={selectedAsset}
+        onClose={() => onSelectAsset(null)}
+        notice={inventory.status !== 'ready' && (
+          <div className="spatial-data-notice" role={inventory.status === 'error' ? 'alert' : 'status'}>
+            {inventory.status === 'error'
+              ? 'Inventaire indisponible. Les dernières données reçues restent affichées.'
+              : 'Actualisation de l’inventaire… Les dernières informations reçues restent affichées.'}
+          </div>
+        )}
+      >
         <AssetLocationActions asset={selectedAsset} local={local} onShowInPlan={onShowInPlan} />
         <Button variant="ghost" className="w-full mt-3" onClick={() => onSelectAsset(null)}>
           Retour au {station?.label.toLocaleLowerCase('fr') || 'poste'}

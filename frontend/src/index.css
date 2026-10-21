@@ -232,6 +232,7 @@
 .location-help { font-size: 11px; color: var(--muted-foreground); line-height: 1.8; margin: 12px 0; }
 .local-save-label { font-size: 10px; color: var(--muted-foreground); display: flex; align-items: center; gap: 6px; margin: 18px 0 0; }
 .storage-warning { color: var(--warning); font-size: 11px; line-height: 1.7; margin-top: 12px; }
+.spatial-data-notice { color: var(--warning); font-size: 11px; line-height: 1.8; margin-top: 20px; padding: 12px; background: color-mix(in srgb, var(--warning) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--warning) 25%, var(--border)); border-radius: 6px; }
 .linked-assets { margin-top: 18px; padding-top: 20px; border-top: 1px solid var(--border); }
 .linked-assets h3 > span { margin-left: auto; color: var(--muted-foreground); font-family: ui-monospace, monospace; font-size: 11px; }
 .no-linked-assets { text-align: center; padding: 22px 0; color: var(--muted-foreground); }
