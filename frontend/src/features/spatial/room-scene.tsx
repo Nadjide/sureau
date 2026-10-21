@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, OrthographicCamera, RoundedBox, useCursor } from '@react-three/drei'
 import { Plane, Raycaster, Vector2, Vector3, type Group, type OrthographicCamera as ThreeOrthographicCamera } from 'three'
-import type { Workstation } from './room-model'
+import type { FurnitureItem, Workstation } from './room-model'
 import type { SpatialPlan } from './plan-document'
-import { snapWorkstation } from './plan-geometry'
+import { snapFurniture, snapWorkstation } from './plan-geometry'
 import { FurnitureModel } from './furniture-model'
 
 type RoomSceneProps = {
@@ -24,6 +24,7 @@ type Vector = [number, number, number]
 type ControlsRef = RefObject<ComponentRef<typeof OrbitControls> | null>
 type RenderedDesks = Record<string, Group | null>
 type ActiveDrag = { id: string; pointerId: number; cancel: () => void }
+type SpatialEntity = Workstation | FurnitureItem
 type SceneObject = Pick<Workstation, 'id' | 'label' | 'position' | 'rotation' | 'width' | 'depth'> & {
   height: number
   labelHeight: number
@@ -107,8 +108,12 @@ function Chair() {
   )
 }
 
-function Desk({
-  workstation,
+function objectScale(item: SpatialEntity): Vector {
+  return 'kind' in item ? [item.width, item.height, item.depth] : [item.width / 2, 1, item.depth]
+}
+
+function Movable({
+  item,
   selected,
   onSelect,
   plan,
@@ -119,8 +124,9 @@ function Desk({
   controlsRef,
   renderedDesksRef,
   reducedMotion,
+  children,
 }: {
-  workstation: Workstation
+  item: SpatialEntity
   selected: boolean
   onSelect: (id: string) => void
   plan: SpatialPlan
@@ -131,15 +137,16 @@ function Desk({
   controlsRef: ControlsRef
   renderedDesksRef: RefObject<RenderedDesks>
   reducedMotion: boolean
+  children: ReactNode
 }) {
   const { gl, camera, invalidate } = useThree()
   const [hovered, setHovered] = useState(false)
   useCursor(hovered, editing ? 'grab' : 'pointer')
   const groupRef = useRef<Group | null>(null)
   const [initial] = useState(() => ({
-    position: [...workstation.position] as Vector,
-    rotation: [0, workstation.rotation, 0] as Vector,
-    scale: [workstation.width / 2, 1, workstation.depth] as Vector,
+    position: [...item.position] as Vector,
+    rotation: [0, item.rotation, 0] as Vector,
+    scale: objectScale(item),
   }))
   const motion = useRef<{
     startedAt: number
@@ -154,11 +161,11 @@ function Desk({
   const colors = plan.colors
   const accent = colors.accent
 
-  const animateTo = useCallback((station: Workstation) => {
+  const animateTo = useCallback((station: SpatialEntity) => {
     const group = groupRef.current
     if (!group) return
     const target = new Vector3(...station.position)
-    const scale = new Vector3(station.width / 2, 1, station.depth)
+    const scale = new Vector3(...objectScale(station))
     const delta = Math.atan2(Math.sin(station.rotation - group.rotation.y), Math.cos(station.rotation - group.rotation.y))
     if (group.position.distanceToSquared(target) < 1e-10
       && group.scale.distanceToSquared(scale) < 1e-10 && Math.abs(delta) < 1e-6) {
@@ -178,18 +185,18 @@ function Desk({
   }, [invalidate])
 
   useEffect(() => {
-    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
-    animateTo(workstation)
-  }, [workstation, dragRef, animateTo])
+    if (dragRef.current?.id === item.id) dragRef.current.cancel()
+    animateTo(item)
+  }, [item, dragRef, animateTo])
 
   useEffect(() => () => {
-    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
-    delete renderedDesksRef.current[workstation.id]
-  }, [dragRef, renderedDesksRef, workstation.id])
+    if (dragRef.current?.id === item.id) dragRef.current.cancel()
+    delete renderedDesksRef.current[item.id]
+  }, [dragRef, renderedDesksRef, item.id])
 
   useEffect(() => {
-    if (dragRef.current?.id === workstation.id) dragRef.current.cancel()
-  }, [editing, snap, plan.width, plan.depth, dragRef, workstation.id])
+    if (dragRef.current?.id === item.id) dragRef.current.cancel()
+  }, [editing, snap, plan.width, plan.depth, dragRef, item.id])
 
   useFrame(() => {
     const animation = motion.current
@@ -207,7 +214,7 @@ function Desk({
   function choose(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation()
     if (suppressClick.current || event.delta > 3) return
-    onSelect(workstation.id)
+    onSelect(item.id)
   }
 
   function beginDrag(event: ThreeEvent<PointerEvent>) {
@@ -234,7 +241,7 @@ function Desk({
     const controlsWereEnabled = controls?.enabled ?? true
     const previousCursor = canvas.style.cursor
     let moved = false
-    let draft = workstation
+    let draft = item
     motion.current = null
     suppressClick.current = false
     if (controls) controls.enabled = false
@@ -254,10 +261,10 @@ function Desk({
       ray.setFromCamera(pointer, camera)
       if (!ray.ray.intersectPlane(floor, point)) return
       moved = true
-      draft = snapWorkstation(plan, {
-        ...workstation,
-        position: [point.x + offsetX, 0, point.z + offsetZ],
-      }, snap)
+      const position: Vector = [point.x + offsetX, 0, point.z + offsetZ]
+      draft = 'kind' in item
+        ? snapFurniture(plan, { ...item, position }, snap)
+        : snapWorkstation(plan, { ...item, position }, snap)
       group!.position.set(...draft.position)
       invalidate()
     }
@@ -278,7 +285,7 @@ function Desk({
     function cancel() {
       cleanup()
       suppressClick.current = true
-      animateTo(workstation)
+      animateTo(item)
       invalidate()
     }
 
@@ -298,12 +305,12 @@ function Desk({
       cleanup()
       suppressClick.current = moved
       // Return to the current model if the parent rejects this move.
-      animateTo(workstation)
-      if (moved) onMove(workstation.id, draft.position[0], draft.position[2])
+      animateTo(item)
+      if (moved) onMove(item.id, draft.position[0], draft.position[2])
       invalidate()
     }
 
-    dragRef.current = { id: workstation.id, pointerId, cancel }
+    dragRef.current = { id: item.id, pointerId, cancel }
     window.addEventListener('pointermove', preview, { capture: true, passive: false })
     window.addEventListener('pointerup', finish, true)
     window.addEventListener('pointercancel', pointerCancelled, true)
@@ -316,13 +323,13 @@ function Desk({
       cancel()
       return
     }
-    onSelect(workstation.id)
+    onSelect(item.id)
     invalidate()
   }
 
   return (
     <group
-      ref={(group) => { groupRef.current = group; renderedDesksRef.current[workstation.id] = group }}
+      ref={(group) => { groupRef.current = group; renderedDesksRef.current[item.id] = group }}
       position={initial.position}
       rotation={initial.rotation}
       scale={initial.scale}
@@ -331,11 +338,27 @@ function Desk({
       onPointerOver={(event) => { event.stopPropagation(); setHovered(true) }}
       onPointerOut={() => setHovered(false)}
     >
-      {(selected || hovered) && (
-        <RoundedBox args={[2.28, 0.3, 2.24]} scale={[1, 0.057, 1]} radius={0.14} smoothness={3} position={[0, 0.043, 0.35]}>
-          <meshBasicMaterial color={accent} transparent opacity={selected ? 0.19 : 0.09} depthWrite={false} />
-        </RoundedBox>
+      {(selected || hovered) && ('kind' in item
+        ? <mesh position={[0, 0.025 / item.height, 0]}>
+            <boxGeometry args={[1.08, 0.02 / item.height, 1.08]} />
+            <meshBasicMaterial color={accent} transparent opacity={selected ? 0.2 : 0.1} depthWrite={false} />
+          </mesh>
+        : <RoundedBox args={[2.28, 0.3, 2.24]} scale={[1, 0.057, 1]} radius={0.14} smoothness={3} position={[0, 0.043, 0.35]}>
+            <meshBasicMaterial color={accent} transparent opacity={selected ? 0.19 : 0.09} depthWrite={false} />
+          </RoundedBox>
       )}
+      {children}
+    </group>
+  )
+}
+
+function DeskModel({ workstation, selected, colors }: {
+  workstation: Workstation
+  selected: boolean
+  colors: SpatialPlan['colors']
+}) {
+  const accent = colors.accent
+  return <>
       <RoundedBox args={[2, 0.09, 1]} radius={0.045} smoothness={3} position={[0, 0.79, 0]} castShadow receiveShadow>
         <meshStandardMaterial color={workstation.color || colors.desk} roughness={0.72} />
       </RoundedBox>
@@ -373,8 +396,7 @@ function Desk({
       <Block size={[0.27, 0.014, 0.35]} position={[-0.69, 0.845, 0.04]} rotation={[0, 0.08, 0]} color="#eee9db" />
       <Block size={[0.018, 0.018, 0.23]} position={[-0.62, 0.864, 0.04]} rotation={[0, 0.08, 0]} color="#536e69" />
       <Chair />
-    </group>
-  )
+  </>
 }
 
 function Architecture({ dark, plan }: { dark: boolean; plan: SpatialPlan }) {
@@ -456,9 +478,10 @@ function LabelProjector({ labels, objects, renderedDesksRef, selectedWorkstation
       const position = group?.position
       const rotation = group?.rotation.y ?? object.rotation
       const depth = group?.scale.z ?? object.depth
+      const labelHeight = object.workstation ? object.labelHeight : (group?.scale.y ?? object.height) + 0.25
       projected.set(
         (position?.x ?? object.position[0]) - Math.sin(rotation) * depth * object.labelDepthOffset,
-        (position?.y ?? object.position[1]) + object.labelHeight,
+        (position?.y ?? object.position[1]) + labelHeight,
         (position?.z ?? object.position[2]) - Math.cos(rotation) * depth * object.labelDepthOffset,
       ).project(camera)
       const x = (projected.x * 0.5 + 0.5) * size.width
@@ -659,11 +682,6 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
     })),
   ], [plan.workstations, plan.furniture, plan.display.decor])
 
-  const registerFurniture = useCallback((id: string, group: Group | null) => {
-    if (group) renderedDesksRef.current[id] = group
-    else delete renderedDesksRef.current[id]
-  }, [])
-
   useEffect(() => () => dragRef.current?.cancel(), [])
 
   return (
@@ -707,9 +725,9 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
         </mesh>
         <Architecture dark={dark} plan={plan} />
         {plan.workstations.map((workstation) => (
-          <Desk
+          <Movable
             key={workstation.id}
-            workstation={workstation}
+            item={workstation}
             plan={plan}
             selected={workstation.id === selectedWorkstationId}
             onSelect={onSelect}
@@ -720,17 +738,27 @@ export default function RoomScene({ plan, selectedWorkstationId, onSelect, reset
             controlsRef={controlsRef}
             renderedDesksRef={renderedDesksRef}
             reducedMotion={reducedMotion}
-          />
+          >
+            <DeskModel workstation={workstation} selected={workstation.id === selectedWorkstationId} colors={plan.colors} />
+          </Movable>
         ))}
         {plan.furniture.filter((item) => plan.display.decor || (item.kind !== 'plant' && item.kind !== 'cabinet')).map((item) => (
-          <FurnitureModel
+          <Movable
             key={item.id}
             item={item}
+            plan={plan}
             selected={item.id === selectedWorkstationId}
-            accent={plan.colors.accent}
             onSelect={onSelect}
-            onObjectRef={registerFurniture}
-          />
+            editing={editing}
+            snap={snap}
+            onMove={onMove}
+            dragRef={dragRef}
+            controlsRef={controlsRef}
+            renderedDesksRef={renderedDesksRef}
+            reducedMotion={reducedMotion}
+          >
+            <FurnitureModel item={item} />
+          </Movable>
         ))}
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>

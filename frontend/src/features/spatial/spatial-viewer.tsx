@@ -138,9 +138,9 @@ export function SpatialViewer({
           )}
           <div className="scene-instructions">
             <MousePointer2 size={12} aria-hidden="true" />
-            {editing ? (view === '3d' ? 'Glisser un poste pour le déplacer · Échap pour annuler' : 'Glisser un poste · flèches au clavier · Échap pour annuler') : view === '3d'
+            {editing ? (view === '3d' ? 'Glisser un objet pour le déplacer · Échap pour annuler' : 'Glisser un objet · flèches au clavier · Échap pour annuler') : view === '3d'
               ? 'Cliquer pour approcher · glisser pour tourner · molette pour zoomer'
-              : 'Sélectionner un poste · Tab puis Entrée au clavier'}
+              : 'Sélectionner un objet · Tab puis Entrée au clavier'}
           </div>
           <span className="scene-plan-mark" aria-hidden="true">
             {plan.name.toLocaleUpperCase('fr')}

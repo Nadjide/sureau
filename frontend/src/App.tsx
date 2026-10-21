@@ -11,7 +11,7 @@ import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { usePlanDocument } from '@/features/spatial/use-plan-document'
 import { WorkstationEditor } from '@/features/spatial/workstation-editor'
-import { clampWorkstation } from '@/features/spatial/plan-geometry'
+import { clampFurniture, clampWorkstation } from '@/features/spatial/plan-geometry'
 import { FurnitureSummary } from '@/features/spatial/furniture-catalog-panel'
 
 function currentTab(): WorkspaceTab {
@@ -131,6 +131,12 @@ function App() {
           onEditingChange={(value) => { setEditing(value); setSelectedAssetId(null) }}
           onMove={(id, x, z) => {
             const station = findWorkstation(id, plan.workstations)
+            const furniture = plan.furniture.find((item) => item.id === id)
+            if (furniture) {
+              const moved = clampFurniture(plan, { ...furniture, position: [x, 0, z] })
+              planStore.replace({ ...plan, furniture: plan.furniture.map((item) => item.id === id ? moved : item) })
+              return
+            }
             if (!station) return
             const moved = clampWorkstation(plan, { ...station, position: [x, 0, z] })
             planStore.replace({ ...plan, workstations: plan.workstations.map((item) => item.id === id ? moved : item) })
