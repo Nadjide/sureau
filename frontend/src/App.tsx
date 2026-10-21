@@ -10,6 +10,7 @@ import { getWorkstationAssetIds } from '@/features/spatial/local-locations'
 import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { usePlanDocument } from '@/features/spatial/use-plan-document'
+import { WorkstationEditor } from '@/features/spatial/workstation-editor'
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -20,6 +21,7 @@ function App() {
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [selectedWorkstationId, setSelectedWorkstationId] = useState<string | null>('desk-04')
   const [spatialView, setSpatialView] = useState<SpatialView>('3d')
+  const [editing, setEditing] = useState(false)
   const inventory = useInventory()
   const planStore = usePlanDocument()
   const { plan } = planStore
@@ -61,7 +63,7 @@ function App() {
     }
   }
 
-  function selectWorkstation(id: string) {
+  function selectWorkstation(id: string | null) {
     setSelectedWorkstationId(id)
     setSelectedAssetId(null)
   }
@@ -105,12 +107,15 @@ function App() {
       ) : (
         <SpatialViewer
           plan={plan}
+          editing={editing}
+          onEditingChange={(value) => { setEditing(value); setSelectedAssetId(null) }}
           view={spatialView}
           onViewChange={setSpatialView}
           selectedWorkstationId={selectedWorkstationId}
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
+            editing ? <WorkstationEditor plan={plan} selectedId={selectedWorkstationId} onChange={planStore.replace} onSelect={selectWorkstation} /> :
             <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}

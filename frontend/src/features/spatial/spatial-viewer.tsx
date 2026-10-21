@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Box, Grid2X2, LoaderCircle, MousePointer2, RotateCcw } from 'lucide-react'
+import { Box, Grid2X2, LoaderCircle, MousePointer2, Pencil, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
@@ -16,6 +16,8 @@ const getTheme = () => document.documentElement.classList.contains('dark')
 
 interface Props {
   plan: SpatialPlan
+  editing: boolean
+  onEditingChange: (editing: boolean) => void
   view: SpatialView
   onViewChange: (view: SpatialView) => void
   selectedWorkstationId: string | null
@@ -26,6 +28,8 @@ interface Props {
 
 export function SpatialViewer({
   plan,
+  editing,
+  onEditingChange,
   view,
   onViewChange: setView,
   selectedWorkstationId: selected,
@@ -41,7 +45,7 @@ export function SpatialViewer({
 
   function selectWorkstation(id: string) {
     setSelected(id)
-    if (view === '3d') setFocusToken((value) => value + 1)
+    if (view === '3d' && !editing) setFocusToken((value) => value + 1)
   }
 
   return (
@@ -67,6 +71,7 @@ export function SpatialViewer({
             </button>
           </div>
           <span className="spatial-local-label">Votre plan · dans ce navigateur</span>
+          <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => onEditingChange(!editing)}><Pencil />{editing ? 'Terminer' : 'Modifier'}</Button>
           <Button
             variant="outline"
             size="icon"
