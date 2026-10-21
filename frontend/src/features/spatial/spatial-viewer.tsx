@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, RotateCcw } from 'lucide-react'
+import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, Redo2, RotateCcw, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
@@ -19,6 +19,7 @@ interface Props {
   editing: boolean
   onEditingChange: (editing: boolean) => void
   onMove: (id: string, x: number, z: number) => void
+  history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void }
   view: SpatialView
   onViewChange: (view: SpatialView) => void
   selectedWorkstationId: string | null
@@ -32,6 +33,7 @@ export function SpatialViewer({
   editing,
   onEditingChange,
   onMove,
+  history,
   view,
   onViewChange: setView,
   selectedWorkstationId: selected,
@@ -76,6 +78,10 @@ export function SpatialViewer({
           <span className="spatial-local-label">Votre plan · dans ce navigateur</span>
           <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => onEditingChange(!editing)}><Pencil />{editing ? 'Terminer' : 'Modifier'}</Button>
           {editing && <Button variant={snap ? 'secondary' : 'outline'} size="icon" aria-label="Aimantation à la grille de 25 cm" aria-pressed={snap} onClick={() => setSnap(!snap)} title="Aimantation à la grille de 25 cm"><Magnet /></Button>}
+          {editing && <div className="editor-history" role="group" aria-label="Historique du plan">
+            <Button variant="outline" size="icon" aria-label="Annuler la dernière modification" title="Annuler · Ctrl / ⌘ Z" disabled={!history.canUndo} onClick={history.undo}><Undo2 /></Button>
+            <Button variant="outline" size="icon" aria-label="Rétablir la modification" title="Rétablir · Ctrl / ⌘ Maj Z" disabled={!history.canRedo} onClick={history.redo}><Redo2 /></Button>
+          </div>}
           <Button
             variant="outline"
             size="icon"
