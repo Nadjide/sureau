@@ -9,6 +9,10 @@ export function serializePlan(plan: SpatialPlan): string {
   return serialized
 }
 
+export function isSameRoomPlan(current: SpatialPlan, candidate: SpatialPlan): boolean {
+  return serializePlan(current) === serializePlan({ ...candidate, id: current.id })
+}
+
 export function createEmptyPlan(source: SpatialPlan): SpatialPlan {
   const validated = parsePlan(JSON.stringify(source))
   return { ...validated, workstations: [], furniture: [] }

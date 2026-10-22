@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPlan, parsePlan, planFileSizeLimit } from './plan-document'
 import { createPlanHistory, pushPlanChange, redoPlan, undoPlan } from './plan-history'
-import { createEmptyPlan, createExamplePlan, serializePlan } from './plan-transfer'
+import { createEmptyPlan, createExamplePlan, isSameRoomPlan, serializePlan } from './plan-transfer'
 
 describe('transfert de plans', () => {
+  it('reconnaît un import sans effet après adaptation à la salle cible, en conservant les identifiants des objets', () => {
+    const candidate = createExamplePlan()
+    const current = { ...structuredClone(candidate), id: 'room-target' }
+    expect(isSameRoomPlan(current, candidate)).toBe(true)
+    expect(isSameRoomPlan(current, { ...candidate, name: 'Une autre implantation' })).toBe(false)
+    expect(isSameRoomPlan(current, { ...candidate, workstations: candidate.workstations.map((item, index) => index === 0 ? { ...item, id: 'desk-replacement' } : item) })).toBe(false)
+    expect(candidate.id).toBe('plateau-a')
+  })
   it('exporte et réimporte le plateau versionné sans altérer ses propriétés', () => {
     const plan = createExamplePlan()
     plan.name = 'Équipe support 🪴'
