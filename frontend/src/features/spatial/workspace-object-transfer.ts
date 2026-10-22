@@ -63,7 +63,7 @@ export function moveSelectionToRoom(
         || bounds.maxZ + dz <= other.bounds.minZ + 1e-7 || bounds.minZ + dz >= other.bounds.maxZ - 1e-7 || !mixedOverlaps(moved, other.item))
     })
   })
-  if (!destination) throw new RangeError('Aucune zone libre ne peut accueillir toute la sélection dans cette salle. Aucun objet n’a été déplacé.')
+  if (!destination) throw new RangeError('Le placement automatique n’a pas trouvé de zone libre pour toute la sélection. Réorganisez la salle ou réduisez la sélection. Aucun objet n’a été déplacé.')
 
   const dx = destination.x - centerX, dz = destination.z - centerZ
   const removed = new Set(selectedIds)
