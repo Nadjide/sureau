@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
 import { translateSelection } from './plan-selection'
 
@@ -33,6 +33,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
   const clickIntent = useRef<{ id: string; additive: boolean; handled: boolean } | null>(null)
   const [preview, setPreview] = useState<SpatialPlan | null>(null)
   const displayed = preview || plan
+  const selectionKey = [...selectedIds].sort().join('|')
   const scale = Math.min(650 / plan.width, 450 / plan.depth)
   const width = plan.width * scale
   const depth = plan.depth * scale
@@ -41,19 +42,26 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
   const floorRgb = [1, 3, 5].map((offset) => parseInt(plan.colors.floor.slice(offset, offset + 2), 16))
   const ink = floorRgb[0]! * 0.299 + floorRgb[1]! * 0.587 + floorRgb[2]! * 0.114 > 145 ? '#243244' : '#f3f6fb'
 
-  function cancelDrag() {
+  const cancelDrag = useCallback(() => {
     const current = drag.current
     drag.current = null
     setPreview(null)
     if (current?.element.hasPointerCapture(current.pointerId)) current.element.releasePointerCapture(current.pointerId)
-  }
+  }, [])
+
+  useEffect(() => {
+    const current = drag.current
+    if (!current) return
+    const ids = selectionKey ? selectionKey.split('|') : []
+    if (current.ids.length !== ids.length || current.ids.some((id) => !ids.includes(id))) cancelDrag()
+  }, [selectionKey, cancelDrag])
 
   useEffect(() => {
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') cancelDrag() }
     window.addEventListener('keydown', escape)
     window.addEventListener('blur', cancelDrag)
     return () => { cancelDrag(); window.removeEventListener('keydown', escape); window.removeEventListener('blur', cancelDrag) }
-  }, [plan, editing])
+  }, [plan, editing, cancelDrag])
 
   function point(event: ReactPointerEvent<SVGElement>) {
     const svg = event.currentTarget.ownerSVGElement || event.currentTarget as SVGSVGElement
