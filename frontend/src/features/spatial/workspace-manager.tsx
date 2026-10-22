@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { createRoom, deleteRoom, duplicateRoom, renameRoom } from './workspace-rooms'
 import { workspaceRoomLimit, type WorkspaceDocument } from './workspace-document'
+import { moveRoomToFloor } from './workspace-floors'
+import { WorkspaceFloorPanel } from './workspace-floor-panel'
 
 interface Props {
   open: boolean; onOpenChange: (open: boolean) => void
@@ -15,7 +17,10 @@ interface Props {
 export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, onSelectRoom, onChange, persisted, history }: Props) {
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null)
   const [deleting, setDeleting] = useState<{ source: WorkspaceDocument; roomId: string } | null>(null)
+  const [section, setSection] = useState<'rooms' | 'floors'>('rooms')
+  const [creationFloorId, setCreationFloorId] = useState<string | null>(null)
   const room = workspace.rooms.find((item) => item.plan.id === activeRoomId) || workspace.rooms[0]!
+  const newFloorId = workspace.floors.some((floor) => floor.id === creationFloorId) ? creationFloorId! : room.floorId
   function apply(run: () => { workspace: WorkspaceDocument; roomId?: string }, text: string) {
     try {
       const result = run()
@@ -31,9 +36,11 @@ export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, 
   }
   return <Sheet open={open} onOpenChange={onOpenChange}>
     <SheetContent side="right" showCloseButton={false} className="workspace-manager">
-      <SheetHeader><p className="eyebrow">VOTRE ESPACE, À VOTRE MESURE</p><SheetTitle>Organiser les salles</SheetTitle><SheetDescription>Chaque salle possède son propre plan, son mobilier et son ambiance.</SheetDescription></SheetHeader>
-      <SheetClose asChild><Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer la gestion des salles"><X /></Button></SheetClose>
+      <SheetHeader><p className="eyebrow">VOTRE ESPACE, À VOTRE MESURE</p><SheetTitle>Organiser vos espaces</SheetTitle><SheetDescription>Des étages aux salles, composez un lieu qui vous ressemble.</SheetDescription></SheetHeader>
+      <SheetClose asChild><Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer la gestion des espaces"><X /></Button></SheetClose>
       <div className="workspace-manager-body">
+        <div className="editor-tabs" role="group" aria-label="Organisation des espaces"><button aria-pressed={section === 'rooms'} onClick={() => setSection('rooms')}>Salles</button><button aria-pressed={section === 'floors'} onClick={() => setSection('floors')}>Étages</button></div>
+        {section === 'floors' ? <WorkspaceFloorPanel workspace={workspace} onChange={onChange} onSelectRoom={(id) => { onSelectRoom(id); setSection('rooms') }} onCreateRoom={(id) => { setCreationFloorId(id); setSection('rooms'); setMessage(null) }} /> : <>
         <label className="manager-room-picker">Salle à organiser<select value={room.plan.id} onChange={(event) => { onSelectRoom(event.target.value); setDeleting(null); setMessage(null) }}>
           {workspace.floors.map((floor) => <optgroup key={floor.id} label={floor.name}>{workspace.rooms.filter((item) => item.floorId === floor.id).map((item) => <option key={item.plan.id} value={item.plan.id}>{item.plan.name}</option>)}</optgroup>)}
         </select></label>
@@ -44,6 +51,13 @@ export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, 
         }}>
           <label>Nom de la salle<input name="name" defaultValue={room.plan.name} maxLength={60} required /></label>
           <Button variant="outline" type="submit">Renommer la salle</Button>
+        </form>
+        <form key={`${room.plan.id}/${room.floorId}`} className="editor-form" onSubmit={(event) => {
+          event.preventDefault(); const floorId = String(new FormData(event.currentTarget).get('floor'))
+          apply(() => ({ workspace: moveRoomToFloor(workspace, room.plan.id, floorId) }), 'L’étage de la salle est enregistré.')
+        }}>
+          <label>Étage de cette salle<select name="floor" defaultValue={room.floorId}>{workspace.floors.map((floor) => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
+          <Button variant="outline" type="submit" disabled={workspace.floors.length === 1}>Déplacer la salle</Button>
         </form>
         <div className="editor-actions">
           <Button variant="outline" disabled={workspace.rooms.length >= workspaceRoomLimit} onClick={() => apply(() => duplicateRoom(workspace, room.plan.id), 'La copie est prête. Les localisations du matériel restent sur les postes d’origine.')}><Copy />Dupliquer la salle</Button>
@@ -57,13 +71,14 @@ export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, 
         </div>}
         <div className="manager-divider" />
         <p className="eyebrow">UN NOUVEL ESPACE À COMPOSER</p><h3>Créer une salle</h3>
-        <form key={workspace.rooms.length} className="editor-form" onSubmit={add}>
-          <label>Nom de la nouvelle salle<input name="name" defaultValue={`Salle ${String(workspace.rooms.length + 1).padStart(2, '0')}`} maxLength={60} required /></label>
-          <label>Étage de la nouvelle salle<select name="floor" defaultValue={room.floorId}>{workspace.floors.map((floor) => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
+        <form key={`${workspace.rooms.length}/${newFloorId}`} className="editor-form" onSubmit={add}>
+          <label>Nom de la nouvelle salle<input name="name" defaultValue={`Salle ${String(workspace.rooms.length + 1).padStart(2, '0')}`} maxLength={60} required autoFocus={creationFloorId !== null} /></label>
+          <label>Étage de la nouvelle salle<select name="floor" defaultValue={newFloorId}>{workspace.floors.map((floor) => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
           <p className="location-help">La salle commence vide, avec les dimensions et l’ambiance de la salle affichée. Ajustez ensuite son plan dans l’atelier.</p>
           <Button type="submit" disabled={workspace.rooms.length >= workspaceRoomLimit}><Plus />Créer la salle</Button>
         </form>
         {message && <p className={message.error ? 'storage-warning' : 'transfer-success'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
+        </>}
         <div className="manager-divider" />
         <div className="manager-history"><Button variant="outline" size="sm" disabled={!history.canUndo} onClick={() => { history.undo(); setMessage(null); setDeleting(null) }} aria-label="Annuler la dernière modification de l’espace"><Undo2 />Annuler</Button><Button variant="outline" size="sm" disabled={!history.canRedo} onClick={() => { history.redo(); setMessage(null); setDeleting(null) }} aria-label="Rétablir la modification de l’espace"><Redo2 />Rétablir</Button></div>
         <p className="location-help">{workspace.rooms.length} / {workspaceRoomLimit} salles · {persisted ? 'Conservé dans ce navigateur' : 'Cette session uniquement'}</p>
