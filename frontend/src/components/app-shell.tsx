@@ -149,7 +149,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
             </SheetTrigger>
             <SheetContent side="left" showCloseButton={false} className="w-72">
               <SheetHeader>
-                <SheetTitle>Votre espace Sentinel</SheetTitle>
+                <SheetTitle>Votre espace Sureau</SheetTitle>
                 <SheetDescription>Parcourir les espaces et le matériel.</SheetDescription>
               </SheetHeader>
               <SheetClose asChild>
@@ -220,7 +220,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
         </div>
 
         <footer className="app-footer">
-          <span>SENTINEL</span>
+          <span>SUREAU</span>
           <span>Le matériel, dans son espace.</span>
         </footer>
       </div>

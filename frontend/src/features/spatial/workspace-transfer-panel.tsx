@@ -33,7 +33,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
       const link = document.createElement('a')
       const name = workspace.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'espace'
       link.href = url
-      link.download = `sentinel-espace-${name}.json`
+      link.download = `sureau-espace-${name}.json`
       document.body.append(link)
       link.click()
       link.remove()
@@ -112,7 +112,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
     <div className="transfer-actions">
       <Button variant="outline" onClick={download}><Download aria-hidden="true" />Exporter l’espace (.json)</Button>
       <Button variant="outline" onClick={chooseFile}><Upload aria-hidden="true" />{reading ? 'Choisir un autre fichier' : 'Importer un espace'}</Button>
-      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier d’espace Sentinel" onChange={readFile} tabIndex={-1} />
+      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier d’espace Sureau" onChange={readFile} tabIndex={-1} />
     </div>
     {reading && <p className="location-help" role="status">Lecture et vérification de la sauvegarde…</p>}
     <p className="location-help">L’inventaire et les localisations du matériel ne sont pas inclus dans le fichier et restent dans leur environnement actuel. Les identifiants des postes et des meubles sont conservés.</p>

@@ -23,7 +23,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
       const link = document.createElement('a')
       const name = plan.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'plateau'
       link.href = url
-      link.download = `sentinel-${name}.json`
+      link.download = `sureau-${name}.json`
       document.body.append(link)
       link.click()
       link.remove()
@@ -83,7 +83,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
     <div className="transfer-actions">
       <Button variant="outline" onClick={download}><Download />Exporter le plan (.json)</Button>
       <Button variant="outline" disabled={reading} onClick={() => input.current?.click()}><Upload />{reading ? 'Lecture du plan…' : 'Importer un plan'}</Button>
-      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier de plan Sentinel" onChange={readFile} tabIndex={-1} />
+      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier de plan Sureau" onChange={readFile} tabIndex={-1} />
     </div>
     <p className="location-help">Le fichier contient l’implantation, les dimensions et les couleurs. L’inventaire et les localisations du matériel restent dans leur environnement actuel.</p>
     <div className="editor-section-title"><h3>Commencer autrement</h3></div>
