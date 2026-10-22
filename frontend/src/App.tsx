@@ -4,12 +4,12 @@ import { AppShell, type WorkspaceTab } from '@/components/app-shell'
 import { InventoryPanel } from '@/features/inventory/inventory-panel'
 import { useInventory } from '@/features/inventory/use-inventory'
 import { SpatialViewer } from '@/features/spatial/spatial-viewer'
-import { findWorkstation, type SpatialView } from '@/features/spatial/room-model'
+import { findWorkstation, type SpatialPlan, type SpatialView } from '@/features/spatial/room-model'
 import { useLocalLocations } from '@/features/spatial/use-local-locations'
 import { getWorkstationAssetIds } from '@/features/spatial/local-locations'
 import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
-import { usePlanDocument } from '@/features/spatial/use-plan-document'
+import { useWorkspaceDocument } from '@/features/spatial/use-workspace-document'
 import { WorkstationEditor } from '@/features/spatial/workstation-editor'
 import { selectIds, translateSelection } from '@/features/spatial/plan-selection'
 import { FurnitureSummary } from '@/features/spatial/furniture-catalog-panel'
@@ -25,8 +25,12 @@ function App() {
   const [spatialView, setSpatialView] = useState<SpatialView>('3d')
   const [editing, setEditing] = useState(false)
   const inventory = useInventory()
-  const planStore = usePlanDocument()
-  const { plan, undo, redo } = planStore
+  const workspaceStore = useWorkspaceDocument()
+  const activeRoom = workspaceStore.workspace.rooms[0]!
+  const plan = activeRoom.plan
+  const { undo, redo } = workspaceStore
+  const planStore = { ...workspaceStore, plan, replace: (next: SpatialPlan) => workspaceStore.replaceRoom(plan.id, { ...next, id: plan.id }) }
+  const floorName = workspaceStore.workspace.floors.find((floor) => floor.id === activeRoom.floorId)!.name
   const selectedIds = selection.filter((id) => [...plan.workstations, ...plan.furniture].some((item) => item.id === id))
   const selectedWorkstationId = selectedIds.at(-1) || null
   function setSelectedWorkstationId(id: string | null) { setSelection(id ? [id] : []) }
@@ -102,7 +106,7 @@ function App() {
       <div className="workspace-heading">
         <div>
           <p className="eyebrow">
-            {tab === 'spaces' ? 'ESPACE LOCAL / ÉTAGE 1' : 'PARC INFORMATIQUE'}
+            {tab === 'spaces' ? `ESPACE LOCAL / ${floorName.toLocaleUpperCase('fr')}` : 'PARC INFORMATIQUE'}
           </p>
           <h1>{tab === 'spaces' ? plan.name : 'Matériel'}</h1>
           <p className="workspace-description">
@@ -128,6 +132,7 @@ function App() {
         />
       ) : (
         <SpatialViewer
+          key={plan.id}
           plan={plan}
           history={planStore}
           editing={editing}
@@ -143,7 +148,7 @@ function App() {
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
-            editing ? <WorkstationEditor plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} onSelectionChange={setSelection} /> :
+            editing ? <WorkstationEditor key={plan.id} plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} onSelectionChange={setSelection} /> :
             selectedFurniture ? <aside className="asset-inspector" aria-label="Fiche du mobilier"><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
               plan={plan}
               selectedWorkstationId={selectedWorkstationId}

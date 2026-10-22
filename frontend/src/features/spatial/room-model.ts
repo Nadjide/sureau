@@ -24,7 +24,7 @@ export interface FurnitureItem {
 
 export interface SpatialPlan {
   version: 1
-  id: 'plateau-a'
+  id: string
   name: string
   width: number
   depth: number
