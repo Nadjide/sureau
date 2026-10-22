@@ -33,6 +33,8 @@ Le proxy concerne uniquement le développement. Une installation en production d
 
 ## Exploration spatiale
 
+L’inventaire, l’éditeur et la gestion des espaces se chargent à leur ouverture. Chaque panneau propose un état de chargement et un réessai local en cas d’échec, sans quitter l’espace ni effacer les modifications en cours. Certains navigateurs conservent un échec d’import en cache : un rechargement manuel est alors proposé uniquement si l’espace est enregistré. L’historique de session et les saisies non appliquées ne sont pas repris après ce rechargement ; les changements limités à la session doivent être exportés auparavant.
+
 Le catalogue propose tables de réunion, rangements, plantes, cloisons et canapés. Chaque ajout utilise des dimensions réelles et cherche une place libre parmi les postes et les meubles existants. Le décor initial est désormais représenté par des objets du plan ; les anciens documents sont convertis en mémoire en conservant leur implantation et leurs identifiants de postes. Un plan vide retire à la fois les postes et le mobilier.
 
 En mode Modifier, Maj/Ctrl/⌘ + clic ajoute ou retire un objet de la sélection. Le bouton Sélection multiple propose la même action sans clavier. Le glissement d’un membre sélectionné déplace l’ensemble ; les limites et l’aimantation s’appliquent à un delta commun pour conserver les écarts, fauteuils compris. Les flèches 2D et celles du panneau déplacent aussi l’ensemble, en une étape d’historique.
