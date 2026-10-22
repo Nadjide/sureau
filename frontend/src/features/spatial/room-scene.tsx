@@ -167,6 +167,7 @@ function Movable({
     rotationDelta: number
   } | null>(null)
   const suppressClick = useRef(false)
+  const clickIntent = useRef<boolean | null>(null)
   const colors = plan.colors
   const accent = colors.accent
   const selectionKey = [...selectedIds].sort().join('|')
@@ -241,14 +242,20 @@ function Movable({
 
   function choose(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation()
+    const additive = event.detail > 0 && clickIntent.current !== null
+      ? clickIntent.current : multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+    clickIntent.current = null
     if (suppressClick.current || event.delta > 3) return
-    onSelect(item.id, multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
+    onSelect(item.id, additive)
   }
 
   function beginDrag(event: ThreeEvent<PointerEvent>) {
-    if (event.button === 0 && !dragRef.current) suppressClick.current = false
+    if (event.button === 0 && !dragRef.current) {
+      suppressClick.current = false
+      clickIntent.current = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+    }
     if (!editing || event.button !== 0 || dragRef.current) return
-    if (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey) return
+    if (clickIntent.current) return
     const group = groupRef.current
     if (!group) return
     const floor = new Plane(new Vector3(0, 1, 0), 0)
@@ -702,6 +709,7 @@ function CameraRig({ resetToken, focusToken, selectedWorkstationId, plan, object
 
 export default function RoomScene({ plan, selectedWorkstationId, selectedIds, multipleMode, onSelect, resetToken, focusToken, dark, localizedCounts, editing, snap, onMove }: RoomSceneProps) {
   const labels = useRef<LabelElements>({})
+  const labelClickIntentsRef = useRef<Record<string, boolean | undefined>>({})
   const renderedDesksRef = useRef<RenderedDesks>({})
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   const dragRef = useRef<ActiveDrag | null>(null)
@@ -814,8 +822,18 @@ export default function RoomScene({ plan, selectedWorkstationId, selectedIds, mu
             aria-label={`Sélectionner ${object.label} dans la vue 3D`}
             title={object.label}
             aria-pressed={selectedIds.includes(object.id)}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => { event.stopPropagation(); onSelect(object.id, multipleMode || event.shiftKey || event.ctrlKey || event.metaKey) }}
+            onPointerDown={(event) => {
+              event.stopPropagation()
+              if (event.button === 0) labelClickIntentsRef.current[object.id] = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+            }}
+            onPointerCancel={() => { delete labelClickIntentsRef.current[object.id] }}
+            onClick={(event) => {
+              event.stopPropagation()
+              const intent = labelClickIntentsRef.current[object.id]
+              delete labelClickIntentsRef.current[object.id]
+              onSelect(object.id, event.detail > 0 && intent !== undefined
+                ? intent : multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
+            }}
           >
             {objects.length > 16 && selectedWorkstationId !== object.id ? index + 1 : object.label}
             {!!localizedCounts[object.id] && <span className="scene-link-count">{localizedCounts[object.id]}</span>}
