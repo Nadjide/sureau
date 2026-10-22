@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FurnitureIcon } from './furniture-catalog-panel'
+import { FurnitureIcon } from './furniture-summary'
 import { clampFurniture, findFreeFurniturePlacement, mixedOverlaps, normalizeRotation } from './plan-geometry'
 import type { FurnitureItem, SpatialPlan } from './room-model'
 

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
+import { LoaderCircle, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { AppShell, type WorkspaceTab } from '@/components/app-shell'
-import { InventoryPanel } from '@/features/inventory/inventory-panel'
+import { LazyPanel } from '@/components/lazy-panel'
 import { useInventory } from '@/features/inventory/use-inventory'
 import { SpatialViewer } from '@/features/spatial/spatial-viewer'
 import { type SpatialPlan, type SpatialView } from '@/features/spatial/room-model'
@@ -10,11 +13,38 @@ import { getWorkstationAssetIds } from '@/features/spatial/local-locations'
 import { AssetLocationActions } from '@/features/spatial/asset-location-actions'
 import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { useWorkspaceDocument } from '@/features/spatial/use-workspace-document'
-import { WorkstationEditor } from '@/features/spatial/workstation-editor'
 import { selectIds, translateSelection } from '@/features/spatial/plan-selection'
-import { FurnitureSummary } from '@/features/spatial/furniture-catalog-panel'
+import { FurnitureSummary } from '@/features/spatial/furniture-summary'
 import { findWorkspaceStation, prepareRoomReplacement } from '@/features/spatial/workspace-rooms'
-import { WorkspaceManager } from '@/features/spatial/workspace-manager'
+
+const loadInventoryPanel = () => import('@/features/inventory/inventory-panel').then((module) => ({ default: module.InventoryPanel }))
+const loadWorkstationEditor = () => import('@/features/spatial/workstation-editor').then((module) => ({ default: module.WorkstationEditor }))
+const loadWorkspaceManager = () => import('@/features/spatial/workspace-manager').then((module) => ({ default: module.WorkspaceManager }))
+
+function PanelStatus({ label, retry, persisted = false }: { label: string; retry?: () => void; persisted?: boolean }) {
+  return <div className="inventory-empty" role={retry ? 'alert' : 'status'}>
+    {!retry && <LoaderCircle className="animate-spin" size={24} aria-hidden="true" />}
+    <h2>{label}</h2>
+    {retry && <>
+      <p>Le reste de votre espace reste accessible. Réessayez après avoir vérifié votre connexion.</p>
+      <Button variant="outline" onClick={retry}>Réessayer le chargement</Button>
+      {persisted ? <>
+        <p>Si l’erreur persiste, rechargez la page. Votre espace enregistré sera repris ; l’historique et les saisies non appliquées seront perdus.</p>
+        <Button variant="ghost" onClick={() => window.location.reload()}>Recharger la page</Button>
+      </> : <p>Un rechargement peut être nécessaire. Exportez d’abord vos changements : ceux de cette session ne sont pas enregistrés.</p>}
+    </>}
+  </div>
+}
+
+function ManagerStatus({ open, onOpenChange, retry, persisted }: { open: boolean; onOpenChange: (open: boolean) => void; retry?: () => void; persisted: boolean }) {
+  return <Sheet open={open} onOpenChange={onOpenChange}>
+    <SheetContent side="right" showCloseButton={false} className="workspace-manager">
+      <SheetHeader><p className="eyebrow">VOTRE ESPACE, À VOTRE MESURE</p><SheetTitle>Organiser vos espaces</SheetTitle><SheetDescription>Des étages aux salles, composez un lieu qui vous ressemble.</SheetDescription></SheetHeader>
+      <SheetClose asChild><Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer la gestion des espaces"><X /></Button></SheetClose>
+      <div className="workspace-manager-body"><PanelStatus label={retry ? 'La gestion des espaces n’a pas pu être chargée.' : 'Préparation de vos outils…'} persisted={persisted} {...(retry ? { retry } : {})} /></div>
+    </SheetContent>
+  </Sheet>
+}
 
 function currentTab(): WorkspaceTab {
   return window.location.hash === '#inventory' ? 'inventory' : 'spaces'
@@ -28,6 +58,7 @@ function App() {
   const [editing, setEditing] = useState(false)
   const [activeRoomId, setActiveRoomId] = useState('plateau-a')
   const [organizing, setOrganizing] = useState(false)
+  const [managerRequested, setManagerRequested] = useState(false)
   const [roomError, setRoomError] = useState<string | null>(null)
   const inventory = useInventory()
   const workspaceStore = useWorkspaceDocument()
@@ -122,8 +153,13 @@ function App() {
   }
 
   return (
-    <AppShell tab={tab} onTabChange={navigate} workspace={workspace} activeRoomId={plan.id} onRoomChange={selectRoom} onManageSpaces={() => setOrganizing(true)}>
-      <WorkspaceManager open={organizing} onOpenChange={setOrganizing} workspace={workspace} activeRoomId={plan.id} onSelectRoom={selectRoom} onChange={workspaceStore.replace} persisted={workspaceStore.persisted} history={workspaceStore} />
+    <AppShell tab={tab} onTabChange={navigate} workspace={workspace} activeRoomId={plan.id} onRoomChange={selectRoom} onManageSpaces={() => { setManagerRequested(true); setOrganizing(true) }}>
+      {managerRequested && <LazyPanel
+        load={loadWorkspaceManager}
+        panelProps={{ open: organizing, onOpenChange: setOrganizing, workspace, activeRoomId: plan.id, onSelectRoom: selectRoom, onChange: workspaceStore.replace, persisted: workspaceStore.persisted, history: workspaceStore }}
+        loading={<ManagerStatus open={organizing} onOpenChange={setOrganizing} persisted={workspaceStore.persisted} />}
+        failure={(retry) => <ManagerStatus open={organizing} onOpenChange={setOrganizing} retry={retry} persisted={workspaceStore.persisted} />}
+      />}
       <div className="workspace-heading">
         <div>
           <p className="eyebrow">
@@ -140,17 +176,22 @@ function App() {
       </div>
       {tab === 'spaces' && (planStore.warning || roomError) && <p className="storage-warning px-8 pb-4" role="alert">{roomError || planStore.warning}</p>}
       {tab === 'inventory' ? (
-        <InventoryPanel
-          inventory={inventory}
-          selectedAssetId={selectedAssetId}
-          onSelect={selectAsset}
-          locationLabel={(id) => {
-            const target = findWorkspaceStation(workspace, local.locations[id] || null)
-            return target ? `${target.station.label} · ${target.room.plan.name} · ${target.floor.name}` : local.locations[id] ? 'Poste absent des salles' : 'Non localisé'
+        <LazyPanel
+          load={loadInventoryPanel}
+          loading={<PanelStatus label="Préparation de l’inventaire…" />}
+          failure={(retry) => <PanelStatus label="L’inventaire n’a pas pu être chargé." retry={retry} persisted={workspaceStore.persisted} />}
+          panelProps={{
+            inventory,
+            selectedAssetId,
+            onSelect: selectAsset,
+            locationLabel: (id) => {
+              const target = findWorkspaceStation(workspace, local.locations[id] || null)
+              return target ? `${target.station.label} · ${target.room.plan.name} · ${target.floor.name}` : local.locations[id] ? 'Poste absent des salles' : 'Non localisé'
+            },
+            renderAssetActions: (asset) => (
+              <AssetLocationActions asset={asset} local={local} onShowInPlan={showInPlan} plan={plan} workspace={workspace} />
+            ),
           }}
-          renderAssetActions={(asset) => (
-            <AssetLocationActions asset={asset} local={local} onShowInPlan={showInPlan} plan={plan} workspace={workspace} />
-          )}
         />
       ) : (
         <SpatialViewer
@@ -170,7 +211,13 @@ function App() {
           onSelectWorkstation={selectWorkstation}
           localizedCounts={localizedCounts}
           inspector={
-            editing ? <WorkstationEditor key={plan.id} plan={plan} persisted={planStore.persisted} selectedId={selectedWorkstationId} selectedIds={selectedIds} onChange={planStore.replace} onSelect={selectWorkstation} onSelectionChange={setSelection} workspace={workspace} onWorkspaceChange={workspaceStore.replace} onSelectionMoved={(roomId, ids) => { setActiveRoomId(roomId); setSelection(ids); setSelectedAssetId(null) }} /> :
+            editing ? <LazyPanel
+              key={plan.id}
+              load={loadWorkstationEditor}
+              panelProps={{ plan, persisted: planStore.persisted, selectedId: selectedWorkstationId, selectedIds, onChange: planStore.replace, onSelect: selectWorkstation, onSelectionChange: setSelection, workspace, onWorkspaceChange: workspaceStore.replace, onSelectionMoved: (roomId, ids) => { setActiveRoomId(roomId); setSelection(ids); setSelectedAssetId(null) } }}
+              loading={<aside className="asset-inspector plan-editor" aria-label="Chargement de l’éditeur"><PanelStatus label="Préparation de l’atelier…" /></aside>}
+              failure={(retry) => <aside className="asset-inspector plan-editor" aria-label="Éditeur indisponible"><PanelStatus label="L’atelier n’a pas pu être chargé." retry={retry} persisted={workspaceStore.persisted} /></aside>}
+            /> :
             selectedFurniture ? <aside className="asset-inspector" aria-label="Fiche du mobilier"><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
               plan={plan}
               workspace={workspace}
