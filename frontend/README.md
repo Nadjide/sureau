@@ -2,6 +2,8 @@
 
 Interface de gestion du parc informatique, construite avec React, TypeScript strict et Vite.
 
+[Présentation et captures du projet](../README.md) · [Développement](#développement) · [Inventaire](#inventaire) · [Exploration spatiale](#exploration-spatiale)
+
 ## Développement
 
 Prérequis : Node.js 22.12 ou supérieur et pnpm 12.14.0.
@@ -55,13 +57,13 @@ Dans l’éditeur d’objets, « Changer de salle » transfère un objet ou une 
 
 L’onglet Sauvegarde de la gestion des espaces exporte et importe l’organisation complète : étages, salles, objets, dimensions et ambiances (2 Mo maximum). L’import affiche un aperçu et demande confirmation avant de remplacer l’espace ; une édition survenue pendant la lecture invalide cette confirmation. Les identifiants restent stables et le remplacement est annulable. Le fichier ne contient ni inventaire ni associations de matériel ; celles déjà enregistrées dans le navigateur restent conservées.
 
-Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes doivent être replacés.
+Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes ou des meubles doivent être replacés.
 
 Les boutons Annuler / Rétablir et les raccourcis Ctrl/⌘ Z, Ctrl/⌘ Maj Z ou Ctrl Y conservent les 50 dernières modifications du plan pendant la session. Un glissement correspond à une seule étape. Les champs de formulaire gardent leur propre annulation de saisie. L’historique ne modifie ni les liens de matériel ni les données de l’inventaire ; supprimer puis annuler restaure le même identifiant de poste.
 
 « Fichiers » exporte et importe des plans JSON versionnés (256 ko maximum). Le document est validé intégralement avant remplacement, sans importer d’inventaire ni de localisations de matériel. Importer, partir d’un plateau vide ou reprendre l’exemple demande validation dans l’interface et reste annulable. Les liens de matériel existants suivent uniquement les identifiants conservés ; les autres restent récupérables depuis l’inventaire.
 
-Au-delà de 16 postes, les repères sont numérotés et renvoient à la liste ; le poste sélectionné garde son nom. La 3D masque les étiquettes qui se recouvrent en donnant priorité à la sélection. Les noms complets et la sélection restent disponibles dans la liste accessible.
+Au-delà de 16 objets (postes et meubles), les repères sont numérotés et renvoient à la liste ; l’objet sélectionné garde son nom. La 3D masque les étiquettes qui se recouvrent en donnant priorité à la sélection. Les noms complets et la sélection restent disponibles dans la liste accessible.
 
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
 
