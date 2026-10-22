@@ -1,3 +1,4 @@
+import { readStoredValue, storageKeys } from '@/lib/browser-storage'
 import { z } from 'zod'
 import { room } from './room-model'
 
@@ -18,7 +19,7 @@ export interface LoadedLocations extends LocationPersistence {
   locations: LocalLocations
 }
 
-export const locationStorageKey = 'sentinel-locations-v1'
+export const locationStorageKey = storageKeys.locations
 
 const emptyLocations: LocalLocations = Object.freeze({})
 const validWorkstationId = /^desk-[a-z0-9-]{2,80}$/
@@ -84,7 +85,7 @@ export function decodeLocations(raw: string | null): LoadedLocations {
 
 export function loadLocations(storage: LocationStorage | null): LoadedLocations {
   try {
-    if (storage !== null) return decodeLocations(storage.getItem(locationStorageKey))
+    if (storage !== null) return decodeLocations(readStoredValue(storage, 'locations'))
   } catch {
     // Browser privacy settings can deny reads as well as writes.
   }

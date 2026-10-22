@@ -1,3 +1,4 @@
+import { readStoredValue, storageKeys } from '@/lib/browser-storage'
 import { z } from 'zod'
 import { defaultPlan, loadPlan, parsePlan, type PlanPersistence, type PlanStorage, type SpatialPlan } from './plan-document'
 
@@ -32,7 +33,7 @@ export interface WorkspaceHistory {
   readonly future: readonly WorkspaceDocument[]
 }
 
-export const workspaceStorageKey = 'sentinel-workspace-v1'
+export const workspaceStorageKey = storageKeys.workspace
 export const workspaceFileSizeLimit = 2_000_000
 export const workspaceFloorLimit = 8
 export const workspaceRoomLimit = 32
@@ -105,7 +106,7 @@ export function loadWorkspace(storage: WorkspaceStorage | null): LoadedWorkspace
   let raw: string | null
   try {
     if (storage === null) throw new Error('Storage unavailable')
-    raw = storage.getItem(workspaceStorageKey)
+    raw = readStoredValue(storage, 'workspace')
   } catch {
     return { workspace: createWorkspaceFromPlan(), warning: unavailableStorageWarning, persisted: false, canPersist: false }
   }

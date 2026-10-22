@@ -1,3 +1,4 @@
+import { readStoredValue, storageKeys } from '@/lib/browser-storage'
 import { z } from 'zod'
 import { room, workstations, type SpatialPlan } from './room-model'
 import { clampFurniture, clampWorkstation } from './plan-geometry'
@@ -20,7 +21,7 @@ export interface LoadedPlan extends PlanPersistence {
   plan: SpatialPlan
 }
 
-export const planStorageKey = 'sentinel-plan-v1'
+export const planStorageKey = storageKeys.plan
 export const planFileSizeLimit = 256_000
 
 export const defaultPlan: SpatialPlan = {
@@ -144,7 +145,7 @@ export function loadPlan(storage: PlanStorage | null): LoadedPlan {
   let raw: string | null
   try {
     if (storage === null) throw new Error('Storage unavailable')
-    raw = storage.getItem(planStorageKey)
+    raw = readStoredValue(storage, 'plan')
   } catch {
     return { plan: freshDefaultPlan(), warning: unavailableStorageWarning, persisted: false, canPersist: false }
   }
