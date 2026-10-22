@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Download, FilePlus2, HardDrive, RotateCcw, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { parsePlan, planFileSizeLimit, type SpatialPlan } from './plan-document'
-import { createEmptyPlan, createExamplePlan, serializePlan } from './plan-transfer'
+import { createEmptyPlan, createExamplePlan, isSameRoomPlan, serializePlan } from './plan-transfer'
 
 interface Props { plan: SpatialPlan; persisted: boolean; onChange: (plan: SpatialPlan) => boolean }
 interface Pending { plan: SpatialPlan; source: SpatialPlan; kind: 'import' | 'empty' | 'example' }
@@ -64,7 +64,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
       setPending(null)
       return
     }
-    if (serializePlan(pending.plan) === serializePlan(plan)) {
+    if (isSameRoomPlan(plan, pending.plan)) {
       setPending(null)
       setMessage({ error: false, text: 'Ce plan est déjà identique au plateau courant. Aucun changement n’a été appliqué.' })
       return
