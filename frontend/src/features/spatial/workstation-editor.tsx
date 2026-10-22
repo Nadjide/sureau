@@ -14,7 +14,7 @@ interface Props {
   persisted: boolean
   selectedId: string | null
   selectedIds: readonly string[]
-  onChange: (plan: SpatialPlan) => void
+  onChange: (plan: SpatialPlan) => boolean
   onSelect: (id: string | null) => void
   onSelectionChange: (ids: string[]) => void
 }

@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import {
   Building2,
-  ChevronDown,
+  Layers,
   LayoutGrid,
   Menu,
   Monitor,
   Moon,
   PanelTop,
+  Settings2,
   Sun,
   X,
 } from 'lucide-react'
@@ -28,11 +29,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useTheme } from '@/hooks/use-theme'
+import type { WorkspaceDocument } from '@/features/spatial/workspace-document'
 
 export type WorkspaceTab = 'spaces' | 'inventory'
 
 type AppShellProps = {
-  planName: string
+  workspace: WorkspaceDocument
+  activeRoomId: string
+  onRoomChange: (id: string) => void
+  onManageSpaces: () => void
   tab: WorkspaceTab
   onTabChange: (tab: WorkspaceTab) => void
   children: ReactNode
@@ -44,50 +49,84 @@ const tabs = [
 ] as const
 
 function SpaceNavigation({
-  planName,
+  workspace,
+  activeRoomId,
   active,
   onSelect,
+  onManage,
 }: {
-  planName: string
+  workspace: WorkspaceDocument
+  activeRoomId: string
   active: boolean
-  onSelect: () => void
+  onSelect: (id: string) => void
+  onManage: () => void
 }) {
   return (
     <>
       <p className="sidebar-section-label">MES ESPACES</p>
-      <nav className="space-tree" aria-label="Plans locaux">
-        <div className="space-tree-item">
-          <ChevronDown size={13} aria-hidden="true" />
+      <nav className="space-tree min-h-0 flex-1 overflow-y-auto" aria-label="Salles de l’espace de travail">
+        <div className="space-tree-item space-tree-root">
           <Building2 size={16} aria-hidden="true" />
-          <span>Espace de travail</span>
+          <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{workspace.name}</span>
         </div>
-        <div className="space-tree-indent">
-          <button
-            type="button"
-            className={`space-tree-item${active ? ' is-current' : ''}`}
-            aria-current={active ? 'page' : undefined}
-            onClick={onSelect}
-          >
-            <PanelTop size={16} aria-hidden="true" />
-            <span>{planName}</span>
-          </button>
-        </div>
+        <ul className="space-floor-list">
+          {workspace.floors.map((floor) => {
+            const rooms = workspace.rooms.filter((room) => room.floorId === floor.id)
+            return <li key={floor.id} className="space-floor">
+              <div className="space-tree-item space-floor-label">
+                <Layers size={15} aria-hidden="true" />
+                <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{floor.name}</span>
+                <span className="space-room-count shrink-0" aria-label={`${rooms.length} salle${rooms.length > 1 ? 's' : ''}`}>{rooms.length}</span>
+              </div>
+              <ul className="space-tree-indent space-room-list" aria-label={`Salles de ${floor.name}`}>
+                {rooms.map(({ plan }) => {
+                  const current = active && activeRoomId === plan.id
+                  return <li key={plan.id}>
+                    <button
+                      type="button"
+                      className={`space-tree-item space-room-button${current ? ' is-current' : ''}`}
+                      aria-current={current ? 'page' : undefined}
+                      aria-label={`Ouvrir ${plan.name}, ${floor.name}`}
+                      onClick={() => onSelect(plan.id)}
+                    >
+                      <PanelTop size={16} aria-hidden="true" />
+                      <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{plan.name}</span>
+                    </button>
+                  </li>
+                })}
+              </ul>
+            </li>
+          })}
+        </ul>
       </nav>
+      <Button variant="outline" className="space-management-button my-4 w-full shrink-0" onClick={onManage}>
+        <Settings2 aria-hidden="true" />Gérer les salles
+      </Button>
       <div className="sidebar-note">
         <span>ATELIER LOCAL</span>
-        <p>Votre plateau et vos localisations restent dans ce navigateur.</p>
+        <p>Vos salles et vos localisations restent dans ce navigateur.</p>
       </div>
     </>
   )
 }
 
-export function AppShell({ tab, onTabChange, children, planName }: AppShellProps) {
+export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, onRoomChange, onManageSpaces }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
 
   function navigate(nextTab: WorkspaceTab) {
     onTabChange(nextTab)
+    setMenuOpen(false)
+  }
+
+  function chooseRoom(id: string) {
+    onRoomChange(id)
+    navigate('spaces')
+  }
+
+  function manageSpaces() {
+    onManageSpaces()
     setMenuOpen(false)
   }
 
@@ -137,8 +176,8 @@ export function AppShell({ tab, onTabChange, children, planName }: AppShellProps
                   </button>
                 ))}
               </nav>
-              <div className="mt-4 px-4">
-                <SpaceNavigation planName={planName} active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
+              <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} />
               </div>
             </SheetContent>
           </Sheet>
@@ -173,7 +212,7 @@ export function AppShell({ tab, onTabChange, children, planName }: AppShellProps
 
         <div className="app-body">
           <aside className="space-sidebar" aria-label="Vos espaces">
-            <SpaceNavigation planName={planName} active={tab === 'spaces'} onSelect={() => navigate('spaces')} />
+            <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} />
           </aside>
           <main id="workspace-main" className="workspace-main" tabIndex={-1}>
             {children}
