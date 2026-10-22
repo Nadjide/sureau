@@ -4,17 +4,22 @@ import type { Asset } from '@/features/inventory/asset-schema'
 import { findWorkstation, type SpatialPlan } from './room-model'
 import { defaultPlan } from './plan-document'
 import type { useLocalLocations } from './use-local-locations'
+import type { WorkspaceDocument } from './workspace-document'
+import { findWorkspaceStation } from './workspace-rooms'
 
 interface Props {
   plan?: SpatialPlan
+  workspace?: WorkspaceDocument
   asset: Asset
   local: ReturnType<typeof useLocalLocations>
   onShowInPlan: (id: number) => void
 }
 
-export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaultPlan }: Props) {
+export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaultPlan, workspace }: Props) {
   const stationId = local.locations[asset.id] || ''
-  const station = findWorkstation(stationId, plan.workstations)
+  const station = workspace
+    ? findWorkspaceStation(workspace, stationId)?.station
+    : findWorkstation(stationId, plan.workstations)
 
   return (
     <section className="location-actions" aria-label={`Localisation de ${asset.assetTag}`}>
@@ -30,11 +35,21 @@ export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaul
       >
         <option value="">Non localisé</option>
         {stationId && !station && <option value={stationId}>Poste absent du plan · lien conservé</option>}
-        {plan.workstations.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.label} · {plan.name}
-          </option>
-        ))}
+        {workspace
+          ? workspace.floors.flatMap((floor) => workspace.rooms
+            .filter((room) => room.floorId === floor.id && room.plan.workstations.length > 0)
+            .map((room) => (
+              <optgroup key={room.plan.id} label={`${floor.name} · ${room.plan.name}`}>
+                {room.plan.workstations.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </optgroup>
+            )))
+          : plan.workstations.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label} · {plan.name}
+            </option>
+          ))}
       </select>
       {station && (
         <Button variant="outline" className="w-full mt-3" onClick={() => onShowInPlan(asset.id)}>

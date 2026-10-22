@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { parsePlan, planFileSizeLimit, type SpatialPlan } from './plan-document'
 import { createEmptyPlan, createExamplePlan, serializePlan } from './plan-transfer'
 
-interface Props { plan: SpatialPlan; persisted: boolean; onChange: (plan: SpatialPlan) => void }
+interface Props { plan: SpatialPlan; persisted: boolean; onChange: (plan: SpatialPlan) => boolean }
 interface Pending { plan: SpatialPlan; source: SpatialPlan; kind: 'import' | 'empty' | 'example' }
 
 export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
@@ -69,7 +69,11 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
       setMessage({ error: false, text: 'Ce plan est déjà identique au plateau courant. Aucun changement n’a été appliqué.' })
       return
     }
-    onChange(pending.plan)
+    if (!onChange(pending.plan)) {
+      setMessage({ error: true, text: 'Ce plan ne peut pas être appliqué à cette salle. L’implantation actuelle est conservée.' })
+      setPending(null)
+      return
+    }
     setPending(null)
     setMessage({ error: false, text: 'Le plateau est prêt. Annuler permet de retrouver l’implantation précédente pendant cette session.' })
   }

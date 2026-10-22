@@ -8,9 +8,12 @@ import { getWorkstationAssetIds } from './local-locations'
 import { findWorkstation, type SpatialPlan } from './room-model'
 import { defaultPlan } from './plan-document'
 import type { useLocalLocations } from './use-local-locations'
+import type { WorkspaceDocument } from './workspace-document'
+import { findWorkspaceStation } from './workspace-rooms'
 
 interface Props {
   plan?: SpatialPlan
+  workspace?: WorkspaceDocument
   selectedWorkstationId: string | null
   selectedAssetId: number | null
   onSelectAsset: (id: number | null) => void
@@ -22,6 +25,7 @@ interface Props {
 
 export function SpatialInspector({
   plan = defaultPlan,
+  workspace,
   selectedWorkstationId,
   selectedAssetId,
   onSelectAsset,
@@ -30,7 +34,13 @@ export function SpatialInspector({
   inventory,
   local,
 }: Props) {
-  const station = findWorkstation(selectedWorkstationId, plan.workstations)
+  const location = workspace && selectedWorkstationId
+    ? findWorkspaceStation(workspace, selectedWorkstationId)
+    : undefined
+  const station = workspace ? location?.station : findWorkstation(selectedWorkstationId, plan.workstations)
+  const inspectedPlan = location?.room.plan ?? plan
+  const inspectedRoom = location?.room ?? workspace?.rooms.find((room) => room.plan.id === inspectedPlan.id)
+  const floor = location?.floor ?? workspace?.floors.find((item) => item.id === inspectedRoom?.floorId)
   const ids = station ? getWorkstationAssetIds(local.locations, station.id) : []
   const selectedAsset = inventory.assets?.find((asset) => asset.id === selectedAssetId)
   const verified = inventory.status === 'ready'
@@ -48,7 +58,13 @@ export function SpatialInspector({
           </div>
         )}
       >
-        <AssetLocationActions asset={selectedAsset} local={local} onShowInPlan={onShowInPlan} plan={plan} />
+        <AssetLocationActions
+          asset={selectedAsset}
+          local={local}
+          onShowInPlan={onShowInPlan}
+          plan={plan}
+          {...(workspace ? { workspace } : {})}
+        />
         <Button variant="ghost" className="w-full mt-3" onClick={() => onSelectAsset(null)}>
           Retour au {station?.label.toLocaleLowerCase('fr') || 'poste'}
         </Button>
@@ -67,8 +83,14 @@ export function SpatialInspector({
       <dl className="asset-specs mt-6">
         <div>
           <dt>Salle</dt>
-          <dd>{plan.name}</dd>
+          <dd>{inspectedPlan.name}</dd>
         </div>
+        {floor && (
+          <div>
+            <dt>Étage</dt>
+            <dd>{floor.name}</dd>
+          </div>
+        )}
         <div>
           <dt>Bureau</dt>
           <dd>{station ? `${Math.round(station.width * 100)} × ${Math.round(station.depth * 100)} cm` : '—'}</dd>
