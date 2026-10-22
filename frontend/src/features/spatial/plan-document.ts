@@ -65,7 +65,7 @@ const furnitureSchema = z.strictObject({
 
 const planSchema = z.strictObject({
   version: z.literal(1),
-  id: z.literal(room.id),
+  id: z.union([z.literal(room.id), z.string().regex(/^room-[a-z0-9-]{2,80}$/)]),
   name,
   width: finite.min(6).max(50),
   depth: finite.min(6).max(50),

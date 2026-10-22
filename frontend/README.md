@@ -43,7 +43,7 @@ L’onglet Espaces démarre avec un plateau de 13 × 9 m et huit postes. La vue 
 
 En mode Modifier, glisser directement un poste dans les vues 2D et 3D pour le déplacer. L’aimantation facultative utilise une grille de 25 cm. Échap ou une annulation du pointeur restaure le placement initial ; une manipulation terminée enregistre une seule modification. Le plan 2D permet aussi le déplacement avec les flèches du clavier (Maj accélère).
 
-Le plan est sauvegardé localement sous un format versionné. Les postes conservent leur identifiant pendant les modifications. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
+L’espace de travail local contient des étages et des salles, sous un format versionné limité à 8 étages et 32 salles. Un ancien plateau est repris en mémoire avec tous ses identifiants ; le nouveau document est enregistré à la première modification, sans effacer l’ancienne copie. Une donnée enregistrée illisible est préservée et les éditions restent alors limitées à la session. Les postes conservent leur identifiant pendant les modifications. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
 
 Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes doivent être replacés.
 
