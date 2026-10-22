@@ -51,6 +51,8 @@ Le panneau Étages permet de nommer l’espace de travail, ajouter et renommer d
 
 Dans l’éditeur d’objets, « Changer de salle » transfère un objet ou une sélection entière vers une zone libre d’une autre salle. Les écarts, identifiants et localisations sont conservés. Le déplacement est refusé intégralement si la destination manque de place ou dépasse ses limites ; Annuler restaure ensemble les salles de départ et d’arrivée.
 
+L’onglet Sauvegarde de la gestion des espaces exporte et importe l’organisation complète : étages, salles, objets, dimensions et ambiances (2 Mo maximum). L’import affiche un aperçu et demande confirmation avant de remplacer l’espace ; une édition survenue pendant la lecture invalide cette confirmation. Les identifiants restent stables et le remplacement est annulable. Le fichier ne contient ni inventaire ni associations de matériel ; celles déjà enregistrées dans le navigateur restent conservées.
+
 Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes doivent être replacés.
 
 Les boutons Annuler / Rétablir et les raccourcis Ctrl/⌘ Z, Ctrl/⌘ Maj Z ou Ctrl Y conservent les 50 dernières modifications du plan pendant la session. Un glissement correspond à une seule étape. Les champs de formulaire gardent leur propre annulation de saisie. L’historique ne modifie ni les liens de matériel ni les données de l’inventaire ; supprimer puis annuler restaure le même identifiant de poste.

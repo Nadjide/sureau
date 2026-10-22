@@ -303,6 +303,7 @@
 .manager-room-card p { color: var(--muted-foreground); font-size: 10px; line-height: 1.8; }
 .manager-divider { height: 1px; background: var(--border); margin: 26px 0; }
 .manager-history { display: flex; gap: 8px; }
+.manager-tabs button { flex: 1 1 0; min-width: 0; }
 .transfer-actions { display: grid; gap: 9px; margin: 18px 0; }
 .transfer-actions button { justify-content: flex-start; font-size: 11px; }
 .transfer-success { font-size: 11px; line-height: 1.8; color: var(--success); margin-top: 18px; }
