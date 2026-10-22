@@ -1,4 +1,4 @@
-package com.nadjide.sentinel.asset.entity;
+package com.nadjide.sureau.asset.entity;
 
 public enum AssetStatus {
     AVAILABLE,

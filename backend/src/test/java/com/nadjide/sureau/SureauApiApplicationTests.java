@@ -1,10 +1,10 @@
-package com.nadjide.sentinel;
+package com.nadjide.sureau;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class SentinelApiApplicationTests {
+class SureauApiApplicationTests {
 
 	@Test
 	void contextLoads() {

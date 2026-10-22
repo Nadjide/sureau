@@ -1,8 +1,8 @@
 
-package com.nadjide.sentinel.asset.dto;
+package com.nadjide.sureau.asset.dto;
 
-import com.nadjide.sentinel.asset.entity.AssetCategory;
-import com.nadjide.sentinel.asset.entity.AssetStatus;
+import com.nadjide.sureau.asset.entity.AssetCategory;
+import com.nadjide.sureau.asset.entity.AssetStatus;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
