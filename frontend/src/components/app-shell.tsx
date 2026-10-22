@@ -100,7 +100,7 @@ function SpaceNavigation({
         </ul>
       </nav>
       <Button variant="outline" className="space-management-button my-4 w-full shrink-0" onClick={onManage}>
-        <Settings2 aria-hidden="true" />Gérer les salles
+        <Settings2 aria-hidden="true" />Gérer les espaces
       </Button>
       <div className="sidebar-note">
         <span>ATELIER LOCAL</span>
