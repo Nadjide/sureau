@@ -6,6 +6,7 @@ import { createRoom, deleteRoom, duplicateRoom, renameRoom } from './workspace-r
 import { workspaceRoomLimit, type WorkspaceDocument } from './workspace-document'
 import { moveRoomToFloor } from './workspace-floors'
 import { WorkspaceFloorPanel } from './workspace-floor-panel'
+import { WorkspaceTransferPanel } from './workspace-transfer-panel'
 
 interface Props {
   open: boolean; onOpenChange: (open: boolean) => void
@@ -17,7 +18,7 @@ interface Props {
 export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, onSelectRoom, onChange, persisted, history }: Props) {
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null)
   const [deleting, setDeleting] = useState<{ source: WorkspaceDocument; roomId: string } | null>(null)
-  const [section, setSection] = useState<'rooms' | 'floors'>('rooms')
+  const [section, setSection] = useState<'rooms' | 'floors' | 'backup'>('rooms')
   const [creationFloorId, setCreationFloorId] = useState<string | null>(null)
   const room = workspace.rooms.find((item) => item.plan.id === activeRoomId) || workspace.rooms[0]!
   const newFloorId = workspace.floors.some((floor) => floor.id === creationFloorId) ? creationFloorId! : room.floorId
@@ -39,8 +40,8 @@ export function WorkspaceManager({ open, onOpenChange, workspace, activeRoomId, 
       <SheetHeader><p className="eyebrow">VOTRE ESPACE, À VOTRE MESURE</p><SheetTitle>Organiser vos espaces</SheetTitle><SheetDescription>Des étages aux salles, composez un lieu qui vous ressemble.</SheetDescription></SheetHeader>
       <SheetClose asChild><Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer la gestion des espaces"><X /></Button></SheetClose>
       <div className="workspace-manager-body">
-        <div className="editor-tabs" role="group" aria-label="Organisation des espaces"><button aria-pressed={section === 'rooms'} onClick={() => setSection('rooms')}>Salles</button><button aria-pressed={section === 'floors'} onClick={() => setSection('floors')}>Étages</button></div>
-        {section === 'floors' ? <WorkspaceFloorPanel workspace={workspace} onChange={onChange} onSelectRoom={(id) => { onSelectRoom(id); setSection('rooms') }} onCreateRoom={(id) => { setCreationFloorId(id); setSection('rooms'); setMessage(null) }} /> : <>
+        <div className="editor-tabs manager-tabs" role="group" aria-label="Organisation des espaces"><button aria-pressed={section === 'rooms'} onClick={() => setSection('rooms')}>Salles</button><button aria-pressed={section === 'floors'} onClick={() => setSection('floors')}>Étages</button><button aria-pressed={section === 'backup'} onClick={() => setSection('backup')}>Sauvegarde</button></div>
+        {section === 'backup' ? <WorkspaceTransferPanel workspace={workspace} persisted={persisted} onChange={onChange} onImported={onSelectRoom} /> : section === 'floors' ? <WorkspaceFloorPanel workspace={workspace} onChange={onChange} onSelectRoom={(id) => { onSelectRoom(id); setSection('rooms') }} onCreateRoom={(id) => { setCreationFloorId(id); setSection('rooms'); setMessage(null) }} /> : <>
         <label className="manager-room-picker">Salle à organiser<select value={room.plan.id} onChange={(event) => { onSelectRoom(event.target.value); setDeleting(null); setMessage(null) }}>
           {workspace.floors.map((floor) => <optgroup key={floor.id} label={floor.name}>{workspace.rooms.filter((item) => item.floorId === floor.id).map((item) => <option key={item.plan.id} value={item.plan.id}>{item.plan.name}</option>)}</optgroup>)}
         </select></label>
