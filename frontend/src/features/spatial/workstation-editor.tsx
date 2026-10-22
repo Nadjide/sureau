@@ -8,6 +8,8 @@ import { PlanTransferPanel } from './plan-transfer-panel'
 import { FurnitureCatalogPanel } from './furniture-catalog-panel'
 import { FurnitureEditor } from './furniture-editor'
 import { SelectionPanel } from './selection-panel'
+import type { WorkspaceDocument } from './workspace-document'
+import { SelectionRoomTransfer } from './selection-room-transfer'
 
 interface Props {
   plan: SpatialPlan
@@ -17,9 +19,12 @@ interface Props {
   onChange: (plan: SpatialPlan) => boolean
   onSelect: (id: string | null) => void
   onSelectionChange: (ids: string[]) => void
+  workspace: WorkspaceDocument
+  onWorkspaceChange: (next: WorkspaceDocument) => boolean
+  onSelectionMoved: (roomId: string, ids: string[]) => void
 }
 
-export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect, onSelectionChange }: Props) {
+export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect, onSelectionChange, workspace, onWorkspaceChange, onSelectionMoved }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
   const furniture = plan.furniture.find((item) => item.id === selectedId)
   const [error, setError] = useState<string | null>(null)
@@ -126,6 +131,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
           <Button variant="ghost" onClick={() => setDeleting(null)}>Conserver le poste</Button>
         </div> : <Button variant="ghost" className="editor-delete" onClick={() => setDeleting(station.id)}><Trash2 />Supprimer ce poste</Button>}
       </> : <div className="editor-empty"><p>Sélectionnez un poste dans le plan pour modifier ses propriétés, ou ajoutez le premier poste de votre espace.</p></div>}
+      <SelectionRoomTransfer key={selectedIds.join('|')} workspace={workspace} sourceRoomId={plan.id} ids={selectedIds} onChange={onWorkspaceChange} onMoved={onSelectionMoved} />
       </>}
     </aside>
   )
