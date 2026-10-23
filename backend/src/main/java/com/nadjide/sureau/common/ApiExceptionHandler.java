@@ -56,6 +56,8 @@ public class ApiExceptionHandler {
         String code = switch (exception.getStatusCode().value()) {
             case 400 -> "INVALID_REQUEST";
             case 404 -> "NOT_FOUND";
+            case 401 -> "AUTHENTICATION_REQUIRED";
+            case 403 -> "ACCESS_DENIED";
             case 409 -> "CONFLICT";
             default -> "REQUEST_FAILED";
         };

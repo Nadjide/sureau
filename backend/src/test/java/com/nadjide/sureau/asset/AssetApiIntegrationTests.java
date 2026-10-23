@@ -12,11 +12,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -28,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = "EDITOR")
 class AssetApiIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
@@ -44,7 +48,7 @@ class AssetApiIntegrationTests {
                 {"assetTag":"  PC-01  ","name":"  Poste accueil  ","serialNumber":"  ",
                  "brand":"  Lenovo  ","model":"  ","category":"COMPUTER","status":"AVAILABLE"}
                 """;
-        String response = mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content(body))
+        String response = mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.assetTag").value("PC-01"))
                 .andExpect(jsonPath("$.name").value("Poste accueil"))
@@ -70,7 +74,7 @@ class AssetApiIntegrationTests {
 
     @Test
     void returnsStructuredFieldValidationAndDoesNotSaveInvalidAsset() throws Exception {
-        mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("""
                 {"assetTag":"  ","name":"  ","category":"COMPUTER","status":"AVAILABLE"}
                 """))
                 .andExpect(status().isBadRequest())
@@ -85,13 +89,13 @@ class AssetApiIntegrationTests {
 
     @Test
     void rejectsInvalidEnumsAndMalformedJsonWithoutInternalDetails() throws Exception {
-        mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("""
                 {"assetTag":"PC-01","name":"Poste","category":"INVALID","status":"AVAILABLE"}
                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"))
                 .andExpect(jsonPath("$.exception").doesNotExist());
-        mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content("{"))
+        mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
@@ -99,10 +103,10 @@ class AssetApiIntegrationTests {
     @Test
     void rejectsDuplicateNormalizedTagAndSerialNumber() throws Exception {
         create("PC-01", "SN-01");
-        mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content(payload(" PC-01 ", "SN-02")))
+        mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload(" PC-01 ", "SN-02")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
-        mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content(payload("PC-02", " SN-01 ")))
+        mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload("PC-02", " SN-01 ")))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
         assertThat(repository.count()).isOne();
@@ -111,7 +115,7 @@ class AssetApiIntegrationTests {
     @Test
     void updatesAnAssetWithoutConflictingWithItsOwnIdentifiers() throws Exception {
         long id = create("PC-01", "SN-01");
-        mvc.perform(put("/api/assets/{id}", id).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put("/api/assets/{id}", id).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(payload(" PC-01 ", " SN-01 ").replace("Poste", "  Nouveau nom  ")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Nouveau nom"));
@@ -121,7 +125,7 @@ class AssetApiIntegrationTests {
     void aConflictingUpdatePreservesTheOriginalAsset() throws Exception {
         create("PC-01", "SN-01");
         long secondId = create("PC-02", "SN-02");
-        mvc.perform(put("/api/assets/{id}", secondId).contentType(MediaType.APPLICATION_JSON).content(payload("PC-01", "SN-02")))
+        mvc.perform(put("/api/assets/{id}", secondId).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload("PC-01", "SN-02")))
                 .andExpect(status().isConflict());
         mvc.perform(get("/api/assets/{id}", secondId))
                 .andExpect(status().isOk())
@@ -133,7 +137,7 @@ class AssetApiIntegrationTests {
     void returnsAnInventoryArrayInStableIdOrderAfterUpdates() throws Exception {
         long firstId = create("ZZ-01", "SN-01");
         long secondId = create("AA-02", "SN-02");
-        mvc.perform(put("/api/assets/{id}", firstId).contentType(MediaType.APPLICATION_JSON).content(payload("ZZ-01", "SN-01")))
+        mvc.perform(put("/api/assets/{id}", firstId).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload("ZZ-01", "SN-01")))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/assets"))
                 .andExpect(status().isOk())
@@ -144,20 +148,20 @@ class AssetApiIntegrationTests {
 
     @Test
     void preservesAssignedAssetsAndOnlyRetiresEligibleAssetsOnce() throws Exception {
-        String assigned = mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON)
+        String assigned = mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(payload("PC-01", "SN-01").replace("AVAILABLE", "ASSIGNED")))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long assignedId = mapper.readTree(assigned).path("id").asLong();
-        mvc.perform(patch("/api/assets/{id}/retire", assignedId))
+        mvc.perform(patch("/api/assets/{id}/retire", assignedId).with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
         assertThat(repository.findById(assignedId).orElseThrow().getStatus().name()).isEqualTo("ASSIGNED");
 
         long availableId = create("PC-02", "SN-02");
-        mvc.perform(patch("/api/assets/{id}/retire", availableId))
+        mvc.perform(patch("/api/assets/{id}/retire", availableId).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RETIRED"));
-        mvc.perform(patch("/api/assets/{id}/retire", availableId)).andExpect(status().isConflict());
+        mvc.perform(patch("/api/assets/{id}/retire", availableId).with(csrf())).andExpect(status().isConflict());
     }
 
     @Test
@@ -179,7 +183,7 @@ class AssetApiIntegrationTests {
             var requests = List.of(1, 2).stream().map(index -> executor.submit(() -> {
                 ready.countDown();
                 if (!start.await(10, TimeUnit.SECONDS)) throw new AssertionError("Concurrent request did not start.");
-                return mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON)
+                return mvc.perform(post("/api/assets").with(user("editor").roles("EDITOR")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                                 .content(payload("PC-CONCURRENT", "SN-" + index)))
                         .andReturn().getResponse().getStatus();
             })).toList();
@@ -194,7 +198,7 @@ class AssetApiIntegrationTests {
     }
 
     private long create(String tag, String serial) throws Exception {
-        String response = mvc.perform(post("/api/assets").contentType(MediaType.APPLICATION_JSON).content(payload(tag, serial)))
+        String response = mvc.perform(post("/api/assets").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload(tag, serial)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return mapper.readTree(response).path("id").asLong();
     }
