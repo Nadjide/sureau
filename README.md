@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="frontend/public/sentinel.svg" alt="Logo Sentinel" width="56" height="62" />
+  <img src="frontend/public/sureau.svg" alt="Logo Sureau" width="56" height="62" />
 </p>
 
-<h1 align="center">Sentinel</h1>
+<h1 align="center">Sureau</h1>
 
 <p align="center">
   <strong>Le matériel, dans son espace.</strong><br />
@@ -17,20 +17,20 @@
   <a href="frontend/README.md">Guide frontend</a>
 </p>
 
-Sentinel associe un inventaire de matériel à un atelier spatial en **2D et 3D**. L’objectif : retrouver les équipements dans leur environnement et donner à chaque équipe les outils pour dessiner ses salles, organiser ses postes et personnaliser son plateau.
+Sureau associe un inventaire de matériel à un atelier spatial en **2D et 3D**. L’objectif : retrouver les équipements dans leur environnement et donner à chaque équipe les outils pour dessiner ses salles, organiser ses postes et personnaliser son plateau.
 
 Le projet est en cours de refonte : une API **Java / Spring Boot** gère les matériels, et une interface **React / TypeScript** propose l’exploration du parc et l’aménagement des espaces. Les plans et les associations spatiales sont actuellement conservés dans le navigateur.
 
 ## Aperçu
 
-![Atelier Sentinel en 3D, avec postes de travail, navigation entre les étages et catalogue de mobilier](frontend/docs/images/atelier-3d.jpg)
+![Atelier Sureau en 3D, avec postes de travail, navigation entre les étages et catalogue de mobilier](frontend/docs/images/atelier-3d.jpg)
 
 *Un atelier manipulable : sélectionner un poste rapproche la caméra ; le mode édition permet de déplacer les objets et d’ajouter du mobilier à sa taille réelle.*
 
 <details>
   <summary><strong>Voir le plan 2D et la sélection multiple</strong></summary>
 
-![Plan 2D de Sentinel avec plusieurs postes sélectionnés et des actions de groupe](frontend/docs/images/plan-2d.jpg)
+![Plan 2D de Sureau avec plusieurs postes sélectionnés et des actions de groupe](frontend/docs/images/plan-2d.jpg)
 
 Le plan 2D et les listes d’objets offrent aussi une navigation au clavier. Une sélection peut être déplacée, pivotée, dupliquée ou transférée vers une autre salle.
 
@@ -39,7 +39,7 @@ Le plan 2D et les listes d’objets offrent aussi une navigation au clavier. Une
 <details>
   <summary><strong>Voir l’organisation des salles et des étages</strong></summary>
 
-![Gestion des étages de Sentinel, avec les salles rattachées à chaque niveau](frontend/docs/images/organisation-espaces.jpg)
+![Gestion des étages de Sureau, avec les salles rattachées à chaque niveau](frontend/docs/images/organisation-espaces.jpg)
 
 Les salles peuvent être créées, copiées, renommées et déplacées entre les étages. L’organisation complète est exportable dans un fichier JSON.
 
@@ -65,15 +65,15 @@ Les vues 2D et 3D partagent le même plan. L’aimantation à une grille de 25 c
 **Prérequis :** Node.js **22.12 ou supérieur** et pnpm **12.14.0**.
 
 ```sh
-git clone https://github.com/Nadjide/sentinel.git
-cd sentinel/frontend
+git clone https://github.com/Nadjide/sureau.git
+cd sureau/frontend
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
 Ouvrir l’adresse affichée par Vite, généralement **http://127.0.0.1:5173**.
 
-L’atelier spatial est utilisable sans connexion à l’API. Pour consulter les matériels, un service compatible doit être disponible : le proxy de développement relaie `/api` vers **http://127.0.0.1:8080** par défaut. Pour choisir une autre adresse, copier `frontend/.env.example` dans `frontend/.env.local` et adapter `SENTINEL_API_TARGET` avant de relancer Vite.
+L’atelier spatial est utilisable sans connexion à l’API. Pour consulter les matériels, un service compatible doit être disponible : le proxy de développement relaie `/api` vers **http://127.0.0.1:8080** par défaut. Pour choisir une autre adresse, copier `frontend/.env.example` dans `frontend/.env.local` et adapter `SUREAU_API_TARGET` avant de relancer Vite.
 
 Une API indisponible produit un message explicite. L’interface conserve l’accès à l’espace local et ne remplace pas l’inventaire par des matériels fictifs.
 
@@ -116,12 +116,14 @@ Les versions résolues du frontend sont conservées dans le [lockfile pnpm](fron
 
 Placer un équipement sur un poste ne change pas son statut métier. Les objets dessinés dans la scène sont du mobilier illustratif ; un équipement n’y est localisé qu’après une association explicite.
 
+Les sauvegardes créées avant le changement de nom sont récupérées automatiquement sur la même origine navigateur. Les nouvelles écritures utilisent les clés Sureau et conservent les anciens contenus. Pour changer de domaine ou de navigateur, exporter puis importer l’espace en JSON.
+
 Les plans ne sont pas encore synchronisés entre navigateurs ou utilisateurs. L’import / export permet de conserver ou de transférer une implantation ; l’interface signale les échecs de stockage. Un espace peut contenir jusqu’à **8 étages et 32 salles**, avec **64 postes et 64 meubles par salle**.
 
 ## Architecture
 
 ```text
-sentinel/
+sureau/
 ├── frontend/
 │   ├── docs/images/           # Captures du projet
 │   ├── public/               # Identité visuelle
