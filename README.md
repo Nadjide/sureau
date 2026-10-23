@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="#présentation-vidéo">Vidéo</a> ·
   <a href="#aperçu">Aperçu</a> ·
   <a href="#fonctionnalités">Fonctionnalités</a> ·
   <a href="#démarrage-rapide">Démarrage rapide</a> ·
@@ -20,6 +21,14 @@
 Sureau associe un inventaire de matériel à un atelier spatial en **2D et 3D**. L’objectif : retrouver les équipements dans leur environnement et donner à chaque équipe les outils pour dessiner ses salles, organiser ses postes et personnaliser son plateau.
 
 Le projet est en cours de refonte : une API **Java / Spring Boot** gère les matériels, et une interface **React / TypeScript** propose l’exploration du parc et l’aménagement des espaces. Les plans et les associations spatiales sont actuellement conservés dans le navigateur.
+
+## Présentation vidéo
+
+[![Ouvrir la présentation de Sureau : atelier 3D, personnalisation, mobilier, salles et étages](frontend/docs/images/sureau-presentation.jpg)](frontend/docs/videos/sureau-presentation.mp4?raw=true "Ouvrir la présentation de Sureau en MP4")
+
+**[▶ Ouvrir la vidéo](frontend/docs/videos/sureau-presentation.mp4?raw=true)** · 1 min 37 s · Full HD (1080p) · 30 images/s · MP4, 8,4 Mo
+
+Une démonstration enregistrée dans l’application : exploration et zoom 3D, ajout de mobilier, ambiances, sélection multiple en 2D, création de salles et d’étages. L’implantation présentée est locale et illustrative.
 
 ## Aperçu
 
@@ -129,7 +138,7 @@ Les plans ne sont pas encore synchronisés entre navigateurs ou utilisateurs. L�
 ```text
 sureau/
 ├── frontend/
-│   ├── docs/images/           # Captures du projet
+│   ├── docs/                  # Captures et vidéo de présentation
 │   ├── public/               # Identité visuelle
 │   └── src/
 │       ├── components/       # Navigation et composants d’interface
