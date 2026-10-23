@@ -19,7 +19,7 @@ interface Props {
   onSelectAsset: (id: number | null) => void
   onOpenInventory: () => void
   onShowInPlan: (id: number) => void
-  inventory: ReturnType<typeof useInventory>
+  inventory: Pick<ReturnType<typeof useInventory>, 'assets' | 'status' | 'error' | 'reload'>
   local: ReturnType<typeof useLocalLocations>
 }
 

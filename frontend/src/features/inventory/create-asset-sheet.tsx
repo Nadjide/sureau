@@ -1,0 +1,116 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { LoaderCircle, PackagePlus, Plus, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ApiError } from '@/lib/api-client'
+import { assetInputSchema } from './asset-input'
+import { createAsset } from './asset-mutations'
+import { assetCategorySchema, assetStatusSchema, categoryLabels, statusLabels, type Asset, type AssetCategory, type AssetStatus } from './asset-schema'
+import './asset-form.css'
+
+const initialValues = { assetTag: '', serialNumber: '', name: '', brand: '', model: '',
+  category: 'COMPUTER' as AssetCategory, status: 'AVAILABLE' as AssetStatus, purchaseDate: '' }
+type FormValues = typeof initialValues
+type Field = keyof FormValues
+
+export function CreateAssetSheet({ onCreated, canEdit }: { onCreated: (asset: Asset) => void; canEdit: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [values, setValues] = useState<FormValues>(initialValues)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [fields, setFields] = useState<Readonly<Record<string, string>>>({})
+  const [confirmClose, setConfirmClose] = useState(false)
+  const controller = useRef<AbortController | null>(null)
+  const continueButton = useRef<HTMLButtonElement | null>(null)
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues)
+
+  useEffect(() => () => { controller.current?.abort() }, [])
+  useEffect(() => { if (confirmClose) continueButton.current?.focus() }, [confirmClose])
+
+  function close() {
+    setOpen(false); setConfirmClose(false); setValues(initialValues); setError(null); setFields({})
+  }
+  function requestOpen(next: boolean) {
+    if (next) { if (canEdit) setOpen(true); return }
+    if (controller.current) return
+    if (dirty) { setConfirmClose(true); return }
+    close()
+  }
+  function update(field: Field, value: string) {
+    setValues((previous) => ({ ...previous, [field]: value }))
+    setFields((previous) => { const next = { ...previous }; delete next[field]; return next })
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (controller.current || !canEdit) return
+    setError(null); setFields({})
+    const parsed = assetInputSchema.safeParse(values)
+    if (!parsed.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parsed.error.issues) if (typeof issue.path[0] === 'string') errors[issue.path[0]] = issue.message
+      setFields(errors); setError('Vérifiez les champs indiqués avant d’enregistrer le matériel.')
+      const first = Object.keys(errors)[0]
+      const input = first ? event.currentTarget.elements.namedItem(first) : null
+      if (input instanceof HTMLElement) input.focus()
+      return
+    }
+    const request = new AbortController()
+    controller.current = request
+    setPending(true)
+    try {
+      const asset = await createAsset(parsed.data, request.signal)
+      if (request.signal.aborted) return
+      onCreated(asset)
+      close()
+    } catch (failure) {
+      if (request.signal.aborted) return
+      setError(failure instanceof ApiError && failure.status === 409
+        ? 'Cet identifiant ou ce numéro de série est déjà utilisé. Votre saisie est conservée ; modifiez la valeur avant de réessayer.'
+        : failure instanceof Error ? failure.message : 'Le matériel n’a pas pu être enregistré.')
+      if (failure instanceof ApiError) setFields(failure.fieldErrors)
+    } finally {
+      if (controller.current === request) { controller.current = null; setPending(false) }
+    }
+  }
+  function fieldProps(field: Field) {
+    return { id: `asset-create-${field}`, name: field, value: values[field], 'aria-invalid': Boolean(fields[field]),
+      'aria-describedby': fields[field] ? `asset-create-${field}-error` : undefined }
+  }
+  function fieldError(field: Field) {
+    return fields[field] && <small className="asset-field-error" id={`asset-create-${field}-error`}>{fields[field]}</small>
+  }
+
+  return <>
+    {canEdit && <Button className="inventory-create-button" onClick={() => requestOpen(true)}><Plus aria-hidden="true" />Ajouter du matériel</Button>}
+    <Sheet open={open} onOpenChange={requestOpen}>
+      <SheetContent className="asset-form-sheet" showCloseButton={false}
+        onOpenAutoFocus={(event) => { event.preventDefault(); document.getElementById('asset-create-name')?.focus() }}
+        onEscapeKeyDown={(event) => { if (pending || confirmClose) { event.preventDefault(); if (!pending) setConfirmClose(false) } }}
+        onInteractOutside={(event) => { if (pending) event.preventDefault() }}>
+        <SheetHeader><p className="eyebrow">VOTRE PARC PREND FORME</p><SheetTitle>Un nouvel équipement</SheetTitle><SheetDescription>Enregistrez sa fiche dans l’inventaire partagé. Vous pourrez ensuite le localiser dans vos espaces.</SheetDescription></SheetHeader>
+        <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer l’ajout de matériel" disabled={pending} onClick={() => requestOpen(false)}><X aria-hidden="true" /></Button>
+        <form className="asset-entry-form" noValidate onSubmit={(event) => { void submit(event) }}>
+          <div className="asset-entry-scroll">
+            <div className="asset-form-heading"><PackagePlus size={21} strokeWidth={1.5} aria-hidden="true" /><div><h3>La fiche du matériel</h3><p>Les champs marqués d’un astérisque sont obligatoires.</p></div></div>
+            {!canEdit && <p className="asset-form-error" role="status">Une session avec les droits d’édition est nécessaire pour enregistrer cette fiche. Votre saisie est conservée.</p>}
+            <fieldset disabled={pending || confirmClose || !canEdit}>
+              <label htmlFor="asset-create-name">Nom du matériel *<input {...fieldProps('name')} onChange={(event) => update('name', event.target.value)} required maxLength={150} autoComplete="off" placeholder="Ex. Ordinateur de l’accueil" />{fieldError('name')}</label>
+              <label htmlFor="asset-create-assetTag">Identifiant de parc *<input {...fieldProps('assetTag')} onChange={(event) => update('assetTag', event.target.value)} required maxLength={50} autoComplete="off" placeholder="Ex. IT-0042" />{fieldError('assetTag')}<small>Une référence unique pour retrouver cet équipement.</small></label>
+              <div className="asset-field-pair"><label htmlFor="asset-create-category">Catégorie *<select {...fieldProps('category')} onChange={(event) => update('category', event.target.value)} required>{assetCategorySchema.options.map((category) => <option key={category} value={category}>{categoryLabels[category]}</option>)}</select>{fieldError('category')}</label>
+                <label htmlFor="asset-create-status">État *<select {...fieldProps('status')} onChange={(event) => update('status', event.target.value)} required>{assetStatusSchema.options.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select>{fieldError('status')}</label></div>
+              <div className="asset-form-divider" />
+              <h3>Les détails utiles</h3>
+              <label htmlFor="asset-create-serialNumber">Numéro de série<input {...fieldProps('serialNumber')} onChange={(event) => update('serialNumber', event.target.value)} maxLength={100} autoComplete="off" />{fieldError('serialNumber')}</label>
+              <div className="asset-field-pair"><label htmlFor="asset-create-brand">Marque<input {...fieldProps('brand')} onChange={(event) => update('brand', event.target.value)} maxLength={100} autoComplete="off" />{fieldError('brand')}</label>
+                <label htmlFor="asset-create-model">Modèle<input {...fieldProps('model')} onChange={(event) => update('model', event.target.value)} maxLength={100} autoComplete="off" />{fieldError('model')}</label></div>
+              <label htmlFor="asset-create-purchaseDate">Date d’achat<input {...fieldProps('purchaseDate')} onChange={(event) => update('purchaseDate', event.target.value)} type="date" />{fieldError('purchaseDate')}<small>Laissez ce champ vide si la date est inconnue.</small></label>
+            </fieldset>
+            {error && <p className="asset-form-error" role="alert">{error}</p>}
+            {confirmClose && <div className="asset-discard-confirm" role="alert"><h3>Quitter sans enregistrer ?</h3><p>La fiche en cours de saisie sera effacée.</p><div><Button type="button" variant="outline" ref={continueButton} onClick={() => setConfirmClose(false)}>Continuer la saisie</Button><Button type="button" variant="ghost" onClick={close}>Effacer et fermer</Button></div></div>}
+          </div>
+          <div className="asset-form-footer"><Button type="button" variant="outline" disabled={pending || confirmClose} onClick={() => requestOpen(false)}>Annuler</Button><Button type="submit" disabled={pending || confirmClose || !canEdit}>{pending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}{pending ? 'Enregistrement…' : 'Enregistrer le matériel'}</Button></div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  </>
+}
