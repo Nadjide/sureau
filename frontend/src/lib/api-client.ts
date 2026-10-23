@@ -24,6 +24,7 @@ export interface ApiRequestOptions {
   signal?: AbortSignal
   notifyAuthFailure?: boolean
   fetcher?: typeof fetch
+  ifMatch?: number
 }
 
 type AuthFailureListener = (error: ApiError) => void
@@ -37,6 +38,8 @@ const messages: Record<string, string> = {
   MALFORMED_REQUEST: 'La demande contient des données invalides.',
   INVALID_REQUEST: 'Les informations saisies ne permettent pas de terminer cette action.',
   DUPLICATE_RESOURCE: 'Cet identifiant est déjà utilisé. Choisissez-en un autre.',
+  ASSET_CONFLICT: 'Cette fiche a été modifiée par une autre personne. Votre saisie est conservée. Rechargez la version du serveur avant de poursuivre.',
+  ASSET_STATUS_CONFLICT: 'Un matériel affecté doit d’abord être désaffecté et enregistré avant de pouvoir être retiré du parc.',
   WORKSPACE_CONFLICT: 'L’espace a changé sur le serveur. Votre brouillon est conservé.',
   WORKSPACE_INVALID: 'L’espace contient des données invalides et n’a pas été enregistré.',
   WORKSPACE_TOO_LARGE: 'L’espace dépasse la taille autorisée.',
@@ -72,8 +75,9 @@ async function responseError(response: Response): Promise<ApiError> {
       : response.status === 403 ? messages.ACCESS_DENIED!
         : response.status === 404 ? 'La ressource demandée est introuvable.'
           : response.status === 409 ? 'Ces informations ont changé ou sont déjà utilisées. Vérifiez-les avant de réessayer.'
+            : response.status === 412 ? 'Cette fiche a changé sur le serveur. Votre saisie est conservée ; rechargez la fiche avant de poursuivre.'
             : 'La demande n’a pas pu être terminée. Réessayez dans un instant.'
-  return new ApiError('http', (code && messages[code]) || fallback, response.status, code, fields)
+  return new ApiError('http', code && Object.hasOwn(messages, code) ? messages[code]! : fallback, response.status, code, fields)
 }
 
 /** One instance per browser origin. Credentials and CSRF never enter browser storage. */
@@ -85,9 +89,13 @@ export function createApiClient(defaultFetcher: typeof fetch = (...args) => fetc
   async function request(path: string, options: ApiRequestOptions): Promise<Response> {
     if (!path.startsWith('/api/') || path.startsWith('//')) throw new Error('An API path on the current origin is required.')
     options.signal?.throwIfAborted()
+    if (options.ifMatch !== undefined && (!Number.isSafeInteger(options.ifMatch) || options.ifMatch < 0)) {
+      throw new RangeError('Une révision entière positive ou nulle est requise.')
+    }
     const method = options.method || 'GET'
     const fetcher = options.fetcher || defaultFetcher
     const headers = new Headers({ Accept: 'application/json' })
+    if (options.ifMatch !== undefined) headers.set('If-Match', `"${options.ifMatch}"`)
     if (method !== 'GET') {
       const token = csrf || await refreshCsrf(options.signal, fetcher)
       options.signal?.throwIfAborted()

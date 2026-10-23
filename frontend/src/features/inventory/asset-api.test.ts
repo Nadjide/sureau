@@ -4,6 +4,7 @@ import type { Asset } from './asset-schema'
 
 const asset: Asset = {
   id: 42,
+  revision: 0,
   assetTag: 'SEN-0042',
   serialNumber: null,
   name: 'Poste de travail',

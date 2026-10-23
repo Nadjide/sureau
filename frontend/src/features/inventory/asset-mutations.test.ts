@@ -9,7 +9,7 @@ const input: AssetInput = {
   category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: null,
 }
 const asset: Asset = {
-  ...input, id: 42, createdAt: '2026-10-23T10:00:00Z', updatedAt: '2026-10-23T10:00:00Z',
+  ...input, id: 42, revision: 0, createdAt: '2026-10-23T10:00:00Z', updatedAt: '2026-10-23T10:00:00Z',
 }
 
 function json(payload: unknown, status = 200): Response {

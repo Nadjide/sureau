@@ -7,6 +7,7 @@ import { SpatialInspector } from './spatial-inspector'
 
 const asset: Asset = {
   id: 73,
+  revision: 0,
   assetTag: 'SNT-HS-0073',
   name: 'Casque du poste',
   serialNumber: null,

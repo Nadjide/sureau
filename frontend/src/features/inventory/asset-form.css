@@ -16,6 +16,10 @@
 .asset-entry-form .asset-field-error { color: var(--destructive); }
 .asset-field-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .asset-form-divider { height: 1px; background: var(--border); margin-block: 6px; }
+.asset-status-help, .asset-conflict-actions p { color: var(--muted-foreground); font-size: 11px; line-height: 1.8; }
+.asset-conflict-actions { margin-top: 18px; display: grid; gap: 12px; }
+.asset-conflict-actions button { white-space: normal; height: auto; min-height: 36px; padding-block: 9px; font-size: 11px; }
+.asset-edit-button { width: 100%; margin-top: 20px; font-size: 11px; }
 .asset-form-footer { flex-shrink: 0; display: flex; gap: 10px; justify-content: flex-end; padding: 18px 26px; border-top: 1px solid var(--border); background: var(--card); }
 .asset-form-footer button { font-size: 11px; }
 .asset-form-error { padding: 12px; margin: 20px 0 0; border: 1px solid color-mix(in srgb, var(--destructive) 35%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--destructive) 5%, var(--card)); color: var(--destructive); font-size: 11px; line-height: 1.8; }
