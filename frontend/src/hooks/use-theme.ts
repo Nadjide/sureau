@@ -1,14 +1,15 @@
+import { readStoredValue, storageKeys } from '@/lib/browser-storage'
 import { useEffect, useState } from 'react'
 
 type Theme = 'light' | 'dark'
 
-const storageKey = 'sentinel-theme'
+const storageKey = storageKeys.theme
 
 function initialTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
 
   try {
-    const saved = window.localStorage.getItem(storageKey)
+    const saved = readStoredValue(window.localStorage, 'theme')
     if (saved === 'light' || saved === 'dark') return saved
   } catch {
     // The browser can deny preference storage in private or restricted contexts.

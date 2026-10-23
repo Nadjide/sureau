@@ -1,3 +1,4 @@
+import { legacyStorageKeys } from '@/lib/browser-storage'
 import { describe, expect, it, vi } from 'vitest'
 import { defaultPlan, parsePlan, planStorageKey, type SpatialPlan } from './plan-document'
 import {
@@ -48,15 +49,15 @@ describe('document d’espace de travail', () => {
     plan.display.walls = false
     const oldRaw = JSON.stringify(plan)
     const locations = JSON.stringify({ version: 1, planId: 'plateau-a', associations: { 42: 'desk-01' } })
-    const { storage, raw } = memoryStorage({ [planStorageKey]: oldRaw, 'sentinel-locations-v1': locations })
+    const { storage, raw } = memoryStorage({ [planStorageKey]: oldRaw, [legacyStorageKeys.locations]: locations })
     const loaded = loadWorkspace(storage)
     expect(loaded.workspace.rooms[0]!.plan).toEqual(plan)
     expect(loaded).toMatchObject({ warning: null, persisted: true, canPersist: true })
     expect(raw(planStorageKey)).toBe(oldRaw)
-    expect(raw('sentinel-locations-v1')).toBe(locations)
+    expect(raw(legacyStorageKeys.locations)).toBe(locations)
     expect(raw(workspaceStorageKey)).toBeNull()
     expect(storage.setItem).not.toHaveBeenCalled()
-    expect(storage.getItem.mock.calls.map(([key]) => key)).toEqual([workspaceStorageKey, planStorageKey])
+    expect(storage.getItem.mock.calls.map(([key]) => key)).toEqual([workspaceStorageKey, legacyStorageKeys.workspace, planStorageKey])
   })
 
   it('migre aussi un plateau antérieur au mobilier et aux options d’affichage', () => {
@@ -107,13 +108,13 @@ describe('document d’espace de travail', () => {
   it('enregistre uniquement la nouvelle clé et préserve l’ancien plateau et ses liens', () => {
     const old = JSON.stringify(defaultPlan)
     const locations = '{"version":1,"planId":"plateau-a","associations":{"42":"desk-01"}}'
-    const { storage, raw } = memoryStorage({ [planStorageKey]: old, 'sentinel-locations-v1': locations })
+    const { storage, raw } = memoryStorage({ [planStorageKey]: old, [legacyStorageKeys.locations]: locations })
     const workspace = twoRooms()
     expect(saveWorkspace(storage, workspace)).toEqual({ warning: null, persisted: true, canPersist: true })
     expect(loadWorkspace(storage).workspace).toEqual(workspace)
     expect(storage.setItem.mock.calls.map(([key]) => key)).toEqual([workspaceStorageKey])
     expect(raw(planStorageKey)).toBe(old)
-    expect(raw('sentinel-locations-v1')).toBe(locations)
+    expect(raw(legacyStorageKeys.locations)).toBe(locations)
   })
 
   it.each([
