@@ -1,5 +1,5 @@
 
-package com.nadjide.sentinel.asset.entity;
+package com.nadjide.sureau.asset.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

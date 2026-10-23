@@ -1,8 +1,8 @@
-package com.nadjide.sentinel.asset.controller;
+package com.nadjide.sureau.asset.controller;
 
-import com.nadjide.sentinel.asset.dto.AssetRequest;
-import com.nadjide.sentinel.asset.dto.AssetResponse;
-import com.nadjide.sentinel.asset.service.AssetService;
+import com.nadjide.sureau.asset.dto.AssetRequest;
+import com.nadjide.sureau.asset.dto.AssetResponse;
+import com.nadjide.sureau.asset.service.AssetService;
 
 import jakarta.validation.Valid;
 

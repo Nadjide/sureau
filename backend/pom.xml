@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.nadjide</groupId>
-	<artifactId>sentinel-api</artifactId>
+	<artifactId>sureau-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>Sureau API</name>
+	<description>API de gestion de materiel Sureau.</description>
 	<url/>
 	<licenses>
 		<license/>

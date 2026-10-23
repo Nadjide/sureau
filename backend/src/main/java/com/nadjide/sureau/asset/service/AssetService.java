@@ -1,10 +1,10 @@
-package com.nadjide.sentinel.asset.service;
+package com.nadjide.sureau.asset.service;
 
-import com.nadjide.sentinel.asset.dto.AssetRequest;
-import com.nadjide.sentinel.asset.dto.AssetResponse;
-import com.nadjide.sentinel.asset.entity.Asset;
-import com.nadjide.sentinel.asset.entity.AssetStatus;
-import com.nadjide.sentinel.asset.repository.AssetRepository;
+import com.nadjide.sureau.asset.dto.AssetRequest;
+import com.nadjide.sureau.asset.dto.AssetResponse;
+import com.nadjide.sureau.asset.entity.Asset;
+import com.nadjide.sureau.asset.entity.AssetStatus;
+import com.nadjide.sureau.asset.repository.AssetRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
