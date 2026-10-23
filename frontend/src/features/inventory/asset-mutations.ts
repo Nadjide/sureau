@@ -18,6 +18,25 @@ export async function getAsset(id: number, signal?: AbortSignal,
   return client.requestJson(`/api/assets/${id}`, (payload) => matchingAsset(payload, id), signal ? { signal } : {})
 }
 
+export async function retireAsset(id: number, revision: number, signal?: AbortSignal,
+  client: ReturnType<typeof createApiClient> = apiClient): Promise<Asset> {
+  assetIdSchema.parse(id)
+  revisionSchema.parse(revision)
+  try {
+    return await client.requestJson(`/api/assets/${id}/retire`, (payload) => {
+      const asset = matchingAsset(payload, id)
+      if (asset.status !== 'RETIRED' || asset.revision <= revision) throw new Error('The server did not confirm the retirement.')
+      return asset
+    }, { method: 'PATCH', ifMatch: revision, ...(signal ? { signal } : {}) })
+  } catch (error) {
+    signal?.throwIfAborted()
+    if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
+      throw new ApiError(error.kind, 'Le retrait n’a pas pu être confirmé. Actualisez la fiche du serveur pour vérifier son état avant de réessayer.', error.status, error.code, error.fieldErrors)
+    }
+    throw error
+  }
+}
+
 export async function updateAsset(id: number, revision: number, input: AssetInput, signal?: AbortSignal,
   client: ReturnType<typeof createApiClient> = apiClient): Promise<Asset> {
   assetIdSchema.parse(id)
