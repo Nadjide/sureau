@@ -154,7 +154,7 @@ class AssetApiIntegrationTests {
         long assignedId = mapper.readTree(assigned).path("id").asLong();
         mvc.perform(patch("/api/assets/{id}/retire", assignedId).with(csrf()))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CONFLICT"));
+                .andExpect(jsonPath("$.code").value("ASSET_STATUS_CONFLICT"));
         assertThat(repository.findById(assignedId).orElseThrow().getStatus().name()).isEqualTo("ASSIGNED");
 
         long availableId = create("PC-02", "SN-02");

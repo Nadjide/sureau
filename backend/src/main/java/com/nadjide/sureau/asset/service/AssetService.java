@@ -75,13 +75,19 @@ public class AssetService {
     }
 
     @Transactional
-    public AssetResponse updateAsset(Long id, AssetRequest request) {
+    public AssetResponse updateAsset(Long id, AssetRequest request, Long expectedRevision) {
 
         Asset asset = assetRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Asset not found: " + id
                 ));
+
+        requireRevision(asset, expectedRevision);
+
+        if (asset.getStatus() == AssetStatus.ASSIGNED && request.status() == AssetStatus.RETIRED) {
+            throw new AssetStatusConflictException("Assigned asset cannot be retired");
+        }
 
         if (!asset.getAssetTag().equals(request.assetTag())
                 && assetRepository.existsByAssetTag(request.assetTag())) {
@@ -113,7 +119,7 @@ public class AssetService {
     }
 
     @Transactional
-    public AssetResponse retireAsset(Long id) {
+    public AssetResponse retireAsset(Long id, Long expectedRevision) {
 
         Asset asset = assetRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -121,23 +127,26 @@ public class AssetService {
                         "Asset not found: " + id
                 ));
 
+        requireRevision(asset, expectedRevision);
+
         if (asset.getStatus() == AssetStatus.RETIRED) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Asset is already retired"
-            );
+            throw new AssetStatusConflictException("Asset is already retired");
         }
 
         if (asset.getStatus() == AssetStatus.ASSIGNED) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Assigned asset cannot be retired"
-            );
+            throw new AssetStatusConflictException("Assigned asset cannot be retired");
         }
 
         asset.setStatus(AssetStatus.RETIRED);
 
         return toResponse(assetRepository.saveAndFlush(asset));
+    }
+
+    private static void requireRevision(Asset asset, Long expectedRevision) {
+        if (expectedRevision != null && !expectedRevision.equals(asset.getRevision())) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                    "The asset changed since it was loaded. Reload it before saving.");
+        }
     }
 
     private AssetResponse toResponse(Asset asset) {
@@ -152,7 +161,8 @@ public class AssetService {
                 asset.getStatus(),
                 asset.getPurchaseDate(),
                 asset.getCreatedAt(),
-                asset.getUpdatedAt()
+                asset.getUpdatedAt(),
+                asset.getRevision()
         );
     }
 }

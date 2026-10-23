@@ -18,5 +18,6 @@ public record AssetResponse(
     AssetStatus status,
     LocalDate purchaseDate,
     OffsetDateTime createdAt,
-    OffsetDateTime updatedAt
+    OffsetDateTime updatedAt,
+    long revision
 ) {}
