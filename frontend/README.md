@@ -1,4 +1,4 @@
-# Sentinel · Frontend
+# Sureau · Frontend
 
 Interface de gestion du parc informatique, construite avec React, TypeScript strict et Vite.
 

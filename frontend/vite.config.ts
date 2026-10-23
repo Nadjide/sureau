@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
     host: '127.0.0.1',
     proxy: {
       '/api': {
-        target: loadEnv(mode, process.cwd(), 'SENTINEL_').SENTINEL_API_TARGET || 'http://127.0.0.1:8080',
+        target: loadEnv(mode, process.cwd(), 'SUREAU_').SUREAU_API_TARGET || 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },
