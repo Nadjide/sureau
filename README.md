@@ -80,7 +80,11 @@ Une API indisponible produit un message explicite. L’interface conserve l’ac
 <details>
   <summary><strong>Lancer également l’API Java</strong></summary>
 
-Le module serveur nécessite **Java 21** et une base **PostgreSQL** disponible. Adapter les paramètres de connexion de la [configuration du backend](backend/src/main/resources/application.properties), puis lancer le wrapper Maven depuis `backend/` :
+Le module serveur nécessite **Java 21** et une base **PostgreSQL** disponible. Le [fichier Compose](docker-compose.yml) configure une base locale avec les valeurs par défaut `sureau` pour la base et l’utilisateur, et le volume physique `sureau_postgres_data`.
+
+Pour réutiliser une base existante, renseigner son volume physique dans `SUREAU_POSTGRES_VOLUME` et conserver ses valeurs dans `DB_NAME`, `DB_USERNAME` et `DB_PASSWORD` pour Compose. Fournir aussi `DB_URL` au processus Java si le nom de base diffère de la valeur par défaut. Le renommage des fichiers ne migre pas les données : sans ces paramètres, un prochain démarrage utilise le nouveau volume. Les variables `POSTGRES_*` initialisent seulement un volume neuf et ne renomment pas une base déjà présente.
+
+Adapter les paramètres de connexion de la [configuration du backend](backend/src/main/resources/application.properties), puis lancer le wrapper Maven depuis `backend/` :
 
 ```sh
 ./mvnw spring-boot:run
