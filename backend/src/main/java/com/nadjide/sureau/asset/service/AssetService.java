@@ -7,6 +7,7 @@ import com.nadjide.sureau.asset.entity.AssetStatus;
 import com.nadjide.sureau.asset.repository.AssetRepository;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,7 +25,7 @@ public class AssetService {
 
     @Transactional(readOnly = true)
     public List<AssetResponse> getAllAssets() {
-        return assetRepository.findAll()
+        return assetRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -70,7 +71,7 @@ public class AssetService {
         asset.setStatus(request.status());
         asset.setPurchaseDate(request.purchaseDate());
 
-        return toResponse(assetRepository.save(asset));
+        return toResponse(assetRepository.saveAndFlush(asset));
     }
 
     @Transactional
