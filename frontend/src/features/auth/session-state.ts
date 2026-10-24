@@ -21,6 +21,11 @@ export function expiredSession(previous: SessionState): SessionState {
   return previous.user ? { ...previous, phase: 'expired', error: null } : previous
 }
 
+export function updateSessionUser(previous: SessionState, input: Pick<SessionUser, 'id' | 'displayName'>): SessionState {
+  if (!previous.user || previous.user.id !== input.id || previous.user.displayName === input.displayName) return previous
+  return { ...previous, user: { ...previous.user, displayName: input.displayName } }
+}
+
 export function signedOutSession(previous: SessionState, message: string | null = null): SessionState {
   return { phase: 'anonymous', user: null, error: message, generation: previous.generation + 1 }
 }

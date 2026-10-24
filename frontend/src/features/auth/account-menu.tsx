@@ -1,10 +1,17 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Download, LoaderCircle, LogOut } from 'lucide-react'
+import { Download, LoaderCircle, LogOut, Users } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useSession } from './use-session'
 import { roleLabels } from './session-state'
+import { LazyPanel } from '@/components/lazy-panel'
+
+const loadUserManagement = () => import('@/features/users/user-management-sheet').then((module) => ({ default: module.UserManagementSheet }))
+
+function UserManagementPlaceholder({ open, onOpenChange, retry }: { open: boolean; onOpenChange: (open: boolean) => void; retry?: () => void }) {
+  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent><SheetHeader><SheetTitle>Gérer l’équipe</SheetTitle><SheetDescription>Les comptes et les droits d’accès à votre instance Sureau.</SheetDescription></SheetHeader><div className="account-details">{retry ? <><p role="alert">La gestion de l’équipe n’a pas pu être chargée.</p><Button variant="outline" onClick={retry}>Réessayer le chargement</Button></> : <p className="auth-status" role="status"><LoaderCircle className="animate-spin" size={18} />Préparation de la gestion des comptes…</p>}</div></SheetContent></Sheet>
+}
 
 export interface WorkspaceDepartureGuard {
   dirty: boolean
@@ -13,12 +20,14 @@ export interface WorkspaceDepartureGuard {
 }
 
 export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepartureGuard }) {
-  const { state, logout, busy } = useSession()
+  const { state, logout, busy, canAdmin } = useSession()
   const [error, setError] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [confirmation, setConfirmation] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
   const [pending, setPending] = useState(false)
+  const [managementRequested, setManagementRequested] = useState(false)
+  const [managementOpen, setManagementOpen] = useState(false)
   const pendingRef = useRef(false)
   const current = useRef({ departureGuard, busy, phase: state.phase, confirmation, logout })
   useLayoutEffect(() => {
@@ -74,7 +83,7 @@ export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepa
   const saving = departureGuard?.saving === true
   const dirty = departureGuard?.dirty === true
   const disabled = pending || busy || saving || state.phase !== 'authenticated'
-  return <Sheet open={sheetOpen} onOpenChange={(open) => {
+  return <><Sheet open={sheetOpen} onOpenChange={(open) => {
     if (pendingRef.current) return
     setSheetOpen(open)
     if (!open) { setConfirmation(false); setError(null); setExportNotice(false) }
@@ -83,6 +92,10 @@ export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepa
     <SheetContent className="account-sheet">
       <SheetHeader><SheetTitle>Votre compte</SheetTitle><SheetDescription>Votre session sur cette instance Sureau.</SheetDescription></SheetHeader>
       <div className="account-details"><span className="user-avatar" aria-hidden="true">{initials}</span><h2>{user.displayName}</h2><p>@{user.username}</p><p>{roleLabels[user.role]}</p>
+        {canAdmin && <Button variant="outline" disabled={pending || busy} onClick={() => {
+          if (!canAdmin || pendingRef.current || busy || state.phase !== 'authenticated') return
+          setSheetOpen(false); setManagementRequested(true); setManagementOpen(true)
+        }}><Users aria-hidden="true" />Gérer l’équipe</Button>}
         <Button ref={logoutButton} variant="outline" disabled={disabled} onClick={() => { void signOut() }}>{pending || busy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <LogOut aria-hidden="true" />}Se déconnecter</Button>
         {saving && <p className="account-departure-status" role="status">L’enregistrement de l’espace est en cours. Attendez sa confirmation avant de vous déconnecter.</p>}
         {error && !confirmation && <p className="auth-error" role="alert">{error}</p>}
@@ -113,5 +126,5 @@ export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepa
         </Dialog.Portal>
       </Dialog.Root>
     </SheetContent>
-  </Sheet>
+  </Sheet>{managementRequested && <LazyPanel load={loadUserManagement} panelProps={{ open: managementOpen, onOpenChange: setManagementOpen }} loading={<UserManagementPlaceholder open={managementOpen} onOpenChange={setManagementOpen} />} failure={(retry) => <UserManagementPlaceholder open={managementOpen} onOpenChange={setManagementOpen} retry={retry} />} />}</>
 }

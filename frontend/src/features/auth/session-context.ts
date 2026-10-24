@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { LoginInput, SetupInput } from './auth-api'
+import type { LoginInput, SessionUser, SetupInput } from './auth-api'
 import type { SessionState } from './session-state'
 
 export interface SessionContextValue {
@@ -10,6 +10,8 @@ export interface SessionContextValue {
   login(input: LoginInput): Promise<void>
   setup(input: SetupInput): Promise<void>
   logout(): Promise<void>
+  expire(): void
+  updateUser(input: Pick<SessionUser, 'id' | 'displayName'>): void
   refresh(): void
 }
 
