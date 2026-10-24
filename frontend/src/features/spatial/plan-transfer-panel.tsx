@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { parsePlan, planFileSizeLimit, type SpatialPlan } from './plan-document'
 import { createEmptyPlan, createExamplePlan, isSameRoomPlan, serializePlan } from './plan-transfer'
 
-interface Props { plan: SpatialPlan; persisted: boolean; onChange: (plan: SpatialPlan) => boolean }
+interface Props { plan: SpatialPlan; canEdit?: boolean; persisted: boolean; onChange: (plan: SpatialPlan) => boolean }
 interface Pending { plan: SpatialPlan; source: SpatialPlan; kind: 'import' | 'empty' | 'example' }
 
-export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
+export function PlanTransferPanel({ plan, canEdit = true, persisted, onChange }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const generation = useRef(0)
   const [reading, setReading] = useState(false)
@@ -35,7 +35,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
   async function readFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
-    if (!file) return
+    if (!canEdit || !file) return
     const ticket = ++generation.current
     setMessage(null)
     setPending(null)
@@ -51,6 +51,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
   }
 
   function prepare(kind: 'empty' | 'example') {
+    if (!canEdit) return
     generation.current++
     setReading(false)
     setMessage(null)
@@ -58,7 +59,7 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
   }
 
   function confirm() {
-    if (!pending) return
+    if (!canEdit || !pending) return
     if (pending.source !== plan) {
       setMessage({ error: true, text: 'Le plateau a changé pendant cette préparation. Relancez cette action pour conserver vos dernières modifications.' })
       setPending(null)
@@ -75,30 +76,30 @@ export function PlanTransferPanel({ plan, persisted, onChange }: Props) {
       return
     }
     setPending(null)
-    setMessage({ error: false, text: 'Le plateau est prêt. Annuler permet de retrouver l’implantation précédente pendant cette session.' })
+    setMessage({ error: false, text: 'Le plan est appliqué au brouillon. Enregistrez l’espace pour le partager. Annuler permet de retrouver l’implantation précédente.' })
   }
 
   return <div className="plan-transfer-panel">
     <p className="location-help">Gardez une copie de votre travail, transportez un plan ou commencez une nouvelle implantation.</p>
     <div className="transfer-actions">
       <Button variant="outline" onClick={download}><Download />Exporter le plan (.json)</Button>
-      <Button variant="outline" disabled={reading} onClick={() => input.current?.click()}><Upload />{reading ? 'Lecture du plan…' : 'Importer un plan'}</Button>
-      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier de plan Sureau" onChange={readFile} tabIndex={-1} />
+      <Button variant="outline" disabled={!canEdit || reading} onClick={() => { if (canEdit) input.current?.click() }}><Upload />{reading ? 'Lecture du plan…' : 'Importer un plan'}</Button>
+      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier de plan Sureau" disabled={!canEdit} onChange={readFile} tabIndex={-1} />
     </div>
     <p className="location-help">Le fichier contient l’implantation, les dimensions et les couleurs. L’inventaire et les localisations du matériel restent dans leur environnement actuel.</p>
     <div className="editor-section-title"><h3>Commencer autrement</h3></div>
     <div className="transfer-actions">
-      <Button variant="outline" disabled={reading} onClick={() => prepare('empty')}><FilePlus2 />Partir d’un plateau vide</Button>
-      <Button variant="ghost" disabled={reading} onClick={() => prepare('example')}><RotateCcw />Reprendre l’exemple initial</Button>
+      <Button variant="outline" disabled={!canEdit || reading} onClick={() => prepare('empty')}><FilePlus2 />Partir d’un plateau vide</Button>
+      <Button variant="ghost" disabled={!canEdit || reading} onClick={() => prepare('example')}><RotateCcw />Reprendre l’exemple initial</Button>
     </div>
     {pending && <div className="editor-delete-confirm" role="alert">
       <h3>{pending.kind === 'import' ? 'Importer cette implantation ?' : pending.kind === 'empty' ? 'Vider l’implantation ?' : 'Reprendre le plateau initial ?'}</h3>
       <p><strong>{pending.plan.name}</strong> · {pending.plan.width} × {pending.plan.depth} m · {pending.plan.workstations.length} postes</p>
       <p>Le plan courant sera remplacé. Les localisations de matériel sont conservées et suivent les identifiants de postes retrouvés. Les autres liens restent récupérables dans l’inventaire.</p>
-      <Button onClick={confirm}>{pending.kind === 'import' ? 'Importer ce plateau' : pending.kind === 'empty' ? 'Créer le plateau vide' : 'Reprendre cet exemple'}</Button>
+      <Button disabled={!canEdit} onClick={confirm}>{pending.kind === 'import' ? 'Importer ce plateau' : pending.kind === 'empty' ? 'Créer le plateau vide' : 'Reprendre cet exemple'}</Button>
       <Button variant="ghost" onClick={() => setPending(null)}>Annuler</Button>
     </div>}
     {message && <p className={message.error ? 'storage-warning' : 'transfer-success'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
-    <p className="local-save-label"><HardDrive size={12} />{persisted ? 'Plan conservé dans ce navigateur' : 'Session uniquement · exportez pour garder une copie'}</p>
+    <p className="local-save-label"><HardDrive size={12} />{persisted ? 'Version enregistrée sur le serveur' : 'Brouillon à enregistrer · exportez pour garder une copie'}</p>
   </div>
 }

@@ -30,19 +30,20 @@ import {
 } from '@/components/ui/tooltip'
 import { useTheme } from '@/hooks/use-theme'
 import type { WorkspaceDocument } from '@/features/spatial/workspace-document'
-import { AccountMenu } from '@/features/auth/account-menu'
+import { AccountMenu, type WorkspaceDepartureGuard } from '@/features/auth/account-menu'
 import { roleLabels } from '@/features/auth/session-state'
 import { useSession } from '@/features/auth/use-session'
 
 export type WorkspaceTab = 'spaces' | 'inventory'
 
 type AppShellProps = {
-  workspace: WorkspaceDocument
+  workspace: WorkspaceDocument | null
   activeRoomId: string
   onRoomChange: (id: string) => void
   onManageSpaces: () => void
   tab: WorkspaceTab
   onTabChange: (tab: WorkspaceTab) => void
+  departureGuard?: WorkspaceDepartureGuard
   children: ReactNode
 }
 
@@ -57,18 +58,20 @@ function SpaceNavigation({
   active,
   onSelect,
   onManage,
+  canManage,
 }: {
-  workspace: WorkspaceDocument
+  workspace: WorkspaceDocument | null
   activeRoomId: string
   active: boolean
   onSelect: (id: string) => void
   onManage: () => void
+  canManage: boolean
 }) {
   return (
     <>
       <p className="sidebar-section-label">MES ESPACES</p>
       <nav className="space-tree min-h-0 flex-1 overflow-y-auto" aria-label="Salles de l’espace de travail">
-        <div className="space-tree-item space-tree-root">
+        {workspace ? <><div className="space-tree-item space-tree-root">
           <Building2 size={16} aria-hidden="true" />
           <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{workspace.name}</span>
         </div>
@@ -100,23 +103,26 @@ function SpaceNavigation({
               </ul>
             </li>
           })}
-        </ul>
+        </ul></> : <div className="space-tree-item space-tree-root items-start">
+          <Building2 size={16} aria-hidden="true" />
+          <div className="min-w-0"><span className="space-tree-title">Vos espaces partagés</span><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Ouvrez Espaces pour consulter le chargement ou préparer votre atelier.</p></div>
+        </div>}
       </nav>
-      <Button variant="outline" className="space-management-button my-4 w-full shrink-0" onClick={onManage}>
+      {workspace && canManage && <Button variant="outline" className="space-management-button my-4 w-full shrink-0" onClick={onManage}>
         <Settings2 aria-hidden="true" />Gérer les espaces
-      </Button>
+      </Button>}
       <div className="sidebar-note">
-        <span>ATELIER LOCAL</span>
-        <p>Vos salles et vos localisations restent dans ce navigateur.</p>
+        <span>ATELIER PARTAGÉ</span>
+        <p>Enregistrez vos salles et vos localisations pour les retrouver sur le serveur de cette instance.</p>
       </div>
     </>
   )
 }
 
-export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, onRoomChange, onManageSpaces }: AppShellProps) {
+export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, onRoomChange, onManageSpaces, departureGuard }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const { state } = useSession()
+  const { state, canEdit } = useSession()
   const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
 
   function navigate(nextTab: WorkspaceTab) {
@@ -125,11 +131,13 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
   }
 
   function chooseRoom(id: string) {
+    if (!workspace?.rooms.some((room) => room.plan.id === id)) return
     onRoomChange(id)
     navigate('spaces')
   }
 
   function manageSpaces() {
+    if (!workspace || !canEdit) return
     onManageSpaces()
     setMenuOpen(false)
   }
@@ -181,7 +189,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
                 ))}
               </nav>
               <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} />
+                <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} canManage={canEdit} />
               </div>
             </SheetContent>
           </Sheet>
@@ -211,12 +219,12 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={8}>{themeLabel}</TooltipContent>
           </Tooltip>
-          <AccountMenu />
+          <AccountMenu {...(departureGuard ? { departureGuard } : {})} />
         </header>
 
         <div className="app-body">
           <aside className="space-sidebar" aria-label="Vos espaces">
-            <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} />
+            <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} canManage={canEdit} />
           </aside>
           <main id="workspace-main" className="workspace-main" tabIndex={-1}>
             {children}

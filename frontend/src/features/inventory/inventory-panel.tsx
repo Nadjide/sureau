@@ -143,7 +143,7 @@ export function InventoryPanel({
             <h2>Le matériel reste à portée.</h2>
             <p>
               La connexion à l’inventaire est momentanément indisponible. Vous pouvez continuer à
-              parcourir votre espace local.
+              parcourir votre espace.
             </p>
           </div>
         )}
