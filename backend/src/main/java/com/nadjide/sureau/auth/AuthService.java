@@ -47,4 +47,24 @@ public class AuthService {
         return users.findByUsername(username).filter(UserAccount::enabled).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.UNAUTHORIZED, "The user no longer exists.")).response();
     }
+
+    @Transactional
+    public void changeOwnPassword(SessionPrincipal actor, ChangePasswordRequest request) {
+        users.lockAccounts();
+        if (actor == null) throw invalidSession();
+        UserAccount account = users.findById(actor.getId()).orElseThrow(AuthService::invalidSession);
+        if (!account.enabled() || !account.username().equals(actor.getUsername())
+                || account.authVersion() != actor.getAuthVersion()) throw invalidSession();
+        AccountValidation.password(request.newPassword());
+        if (!passwordEncoder.matches(request.currentPassword(), account.passwordHash())) {
+            throw new UserAdministrationException(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_INVALID",
+                    "The current password is incorrect.");
+        }
+        UserAccount saved = users.updatePassword(account.id(), passwordEncoder.encode(request.newPassword()));
+        users.revokeSessions(saved.username());
+    }
+
+    private static ResponseStatusException invalidSession() {
+        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "The account session is no longer valid.");
+    }
 }

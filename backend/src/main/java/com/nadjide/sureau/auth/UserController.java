@@ -41,6 +41,13 @@ public class UserController {
         return users.update(principal(authentication), id, request);
     }
 
+    @PostMapping("/{id}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(Authentication authentication, @PathVariable long id,
+                              @Valid @RequestBody ResetPasswordRequest request) {
+        users.resetPassword(principal(authentication), id, request);
+    }
+
     private SessionPrincipal principal(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof SessionPrincipal principal)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
