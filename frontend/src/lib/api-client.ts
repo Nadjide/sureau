@@ -38,6 +38,8 @@ const messages: Record<string, string> = {
   MALFORMED_REQUEST: 'La demande contient des données invalides.',
   INVALID_REQUEST: 'Les informations saisies ne permettent pas de terminer cette action.',
   DUPLICATE_RESOURCE: 'Cet identifiant est déjà utilisé. Choisissez-en un autre.',
+  LAST_ADMIN_REQUIRED: 'Conservez au moins un compte administrateur actif. Cette modification n’a pas été appliquée.',
+  CURRENT_PASSWORD_INVALID: 'Le mot de passe actuel est incorrect. Vérifiez-le avant de réessayer.',
   ASSET_CONFLICT: 'Cette fiche a été modifiée par une autre personne. Votre saisie est conservée. Rechargez la version du serveur avant de poursuivre.',
   ASSET_STATUS_CONFLICT: 'Un matériel affecté doit d’abord être désaffecté et enregistré avant de pouvoir être retiré du parc.',
   WORKSPACE_CONFLICT: 'L’espace a changé sur le serveur. Votre brouillon est conservé.',
