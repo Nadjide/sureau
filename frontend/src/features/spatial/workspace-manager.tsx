@@ -7,16 +7,19 @@ import { workspaceRoomLimit, type WorkspaceDocument } from './workspace-document
 import { moveRoomToFloor } from './workspace-floors'
 import { WorkspaceFloorPanel } from './workspace-floor-panel'
 import { WorkspaceTransferPanel } from './workspace-transfer-panel'
+import type { LocalLocations } from './local-locations'
+import type { SpatialDraft } from './shared-workspace-model'
 
 interface Props {
   canEdit?: boolean
   open: boolean; onOpenChange: (open: boolean) => void
   workspace: WorkspaceDocument; activeRoomId: string; onSelectRoom: (id: string) => void
+  locations: LocalLocations; onSpatialChange: (next: SpatialDraft) => boolean
   onChange: (next: WorkspaceDocument) => boolean; persisted: boolean
   history: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean }
 }
 
-export function WorkspaceManager({ open, onOpenChange, canEdit = true, workspace, activeRoomId, onSelectRoom, onChange, persisted, history }: Props) {
+export function WorkspaceManager({ open, onOpenChange, canEdit = true, workspace, locations, activeRoomId, onSelectRoom, onChange, onSpatialChange, persisted, history }: Props) {
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null)
   const [deleting, setDeleting] = useState<{ source: WorkspaceDocument; roomId: string } | null>(null)
   const [section, setSection] = useState<'rooms' | 'floors' | 'backup'>('rooms')
@@ -24,6 +27,7 @@ export function WorkspaceManager({ open, onOpenChange, canEdit = true, workspace
   const room = workspace.rooms.find((item) => item.plan.id === activeRoomId) || workspace.rooms[0]!
   const newFloorId = workspace.floors.some((floor) => floor.id === creationFloorId) ? creationFloorId! : room.floorId
   const changeWorkspace = (next: WorkspaceDocument) => canEdit && onChange(next)
+  const changeSpatialDraft = (next: SpatialDraft) => canEdit && onSpatialChange(next)
   function apply(run: () => { workspace: WorkspaceDocument; roomId?: string }, text: string) {
     if (!canEdit) return
     try {
@@ -46,7 +50,7 @@ export function WorkspaceManager({ open, onOpenChange, canEdit = true, workspace
       <div className="workspace-manager-body">
         <div className="editor-tabs manager-tabs" role="group" aria-label="Organisation des espaces"><button aria-pressed={section === 'rooms'} onClick={() => setSection('rooms')}>Salles</button><button aria-pressed={section === 'floors'} onClick={() => setSection('floors')}>Étages</button><button aria-pressed={section === 'backup'} onClick={() => setSection('backup')}>Sauvegarde</button></div>
         {!canEdit && <p className="location-help" role="status">Les outils de modification sont en lecture seule. Vos saisies restent affichées.</p>}
-        {section === 'backup' ? <WorkspaceTransferPanel workspace={workspace} canEdit={canEdit} persisted={persisted} onChange={changeWorkspace} onImported={onSelectRoom} /> : <fieldset disabled={!canEdit} className="spatial-edit-fields">
+        {section === 'backup' ? <WorkspaceTransferPanel workspace={workspace} locations={locations} canEdit={canEdit} persisted={persisted} onChange={changeSpatialDraft} onImported={onSelectRoom} /> : <fieldset disabled={!canEdit} className="spatial-edit-fields">
         {section === 'floors' ? <WorkspaceFloorPanel workspace={workspace} onChange={changeWorkspace} onSelectRoom={(id) => { onSelectRoom(id); setSection('rooms') }} onCreateRoom={(id) => { if (!canEdit) return; setCreationFloorId(id); setSection('rooms'); setMessage(null) }} /> : <>
         <label className="manager-room-picker">Salle à organiser<select value={room.plan.id} onChange={(event) => { onSelectRoom(event.target.value); setDeleting(null); setMessage(null) }}>
           {workspace.floors.map((floor) => <optgroup key={floor.id} label={floor.name}>{workspace.rooms.filter((item) => item.floorId === floor.id).map((item) => <option key={item.plan.id} value={item.plan.id}>{item.plan.name}</option>)}</optgroup>)}

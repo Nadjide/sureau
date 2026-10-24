@@ -119,7 +119,7 @@ describe('outils spatiaux selon les permissions', () => {
 
   it('garde l’export d’espace disponible en lecture seule sans annoncer de sauvegarde locale', () => {
     const markup = renderToStaticMarkup(createElement(WorkspaceTransferPanel, {
-      workspace, canEdit: false, persisted: true, onChange: vi.fn(), onImported: vi.fn(),
+      workspace, locations: local.locations, canEdit: false, persisted: true, onChange: vi.fn(), onImported: vi.fn(),
     }))
     const buttons = [...markup.matchAll(/<button\b[^>]*>.*?<\/button>/g)].map(([button]) => button)
     expect(buttons.find((button) => button.includes('Exporter l’espace'))).not.toContain('disabled=""')
