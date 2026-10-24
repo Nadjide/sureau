@@ -2,16 +2,19 @@ import { ArrowRight, Box, FilePlus2, Layers3, LoaderCircle, RefreshCw } from 'lu
 import { Button } from '@/components/ui/button'
 import type { SharedWorkspaceResult } from './use-shared-workspace'
 import type { InitialWorkspaceKind } from './shared-workspace-transfer'
+import type { SpatialDraft } from './shared-workspace-model'
+import { LocalWorkspaceRecoveryPanel } from './local-workspace-recovery-panel'
 
 interface Props {
   store: Pick<SharedWorkspaceResult, 'phase' | 'loading' | 'error' | 'warning'>
   canEdit: boolean
   onInitialize: (kind: InitialWorkspaceKind) => void
+  onRecover: (draft: SpatialDraft) => boolean
   onRetry: () => void
   onOpenInventory: () => void
 }
 
-export function WorkspaceStartPanel({ store, canEdit, onInitialize, onRetry, onOpenInventory }: Props) {
+export function WorkspaceStartPanel({ store, canEdit, onInitialize, onRecover, onRetry, onOpenInventory }: Props) {
   if (store.loading) return <section className="workspace-start workspace-start-status" aria-label="Chargement de l’espace partagé" role="status">
     <LoaderCircle className="animate-spin" size={28} aria-hidden="true" />
     <h2>Retrouvons vos espaces.</h2>
@@ -42,6 +45,7 @@ export function WorkspaceStartPanel({ store, canEdit, onInitialize, onRetry, onO
       <p className="workspace-start-note">Votre choix prépare un brouillon. Le bouton « Enregistrer l’espace » le rendra disponible à votre équipe.</p>
     </> : <p className="workspace-start-note">Un administrateur ou un éditeur peut préparer le premier espace. Vous pouvez déjà consulter le matériel de votre équipe.</p>}
     {store.warning && <p className="storage-warning" role="alert">{store.warning}</p>}
+    <LocalWorkspaceRecoveryPanel current={null} canEdit={canEdit} onRecover={onRecover} />
     <Button variant="ghost" onClick={onOpenInventory}>Consulter le matériel<ArrowRight /></Button>
   </section>
 }

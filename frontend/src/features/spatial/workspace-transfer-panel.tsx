@@ -9,6 +9,7 @@ import {
 } from './shared-workspace-transfer'
 import type { WorkspaceDocument } from './workspace-document'
 import { getWorkspaceSummary } from './workspace-transfer'
+import { LocalWorkspaceRecoveryPanel } from './local-workspace-recovery-panel'
 
 interface Props {
   canEdit?: boolean
@@ -157,5 +158,6 @@ export function WorkspaceTransferPanel({ workspace, locations, canEdit = true, p
     </div>}
     {message && <p className={message.error ? 'storage-warning' : 'transfer-success'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
     <p className="local-save-label"><HardDrive size={12} aria-hidden="true" />{persisted ? 'Version enregistrée sur le serveur' : 'Brouillon à enregistrer · exportez pour garder une copie'}</p>
+    <LocalWorkspaceRecoveryPanel current={{ workspace, locations }} canEdit={canEdit} onRecover={onChange} onRecovered={onImported} />
   </section>
 }
