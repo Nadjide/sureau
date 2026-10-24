@@ -18,8 +18,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.TestExecutionEvent;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.ResultActions;
@@ -43,11 +46,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "EDITOR")
+@Sql("/test-users.sql")
+@WithUserDetails(value = "test-editor", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class WorkspaceApiIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired JdbcTemplate jdbc;
+    @Autowired UserDetailsService users;
 
     @BeforeEach
     @AfterEach
@@ -81,7 +86,7 @@ class WorkspaceApiIntegrationTests {
         JsonNode snapshot = mapper.readTree(saved);
         assertThat(OffsetDateTime.parse(snapshot.path("updatedAt").asString())).isNotNull();
 
-        String loaded = mvc.perform(get("/api/workspace").with(user("another-editor").roles("EDITOR")))
+        String loaded = mvc.perform(get("/api/workspace").with(user(users.loadUserByUsername("test-editor-2"))))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readTree(loaded)).isEqualTo(snapshot);
         assertThat(snapshot.path("workspace")).isEqualTo(request.path("workspace"));
@@ -254,14 +259,14 @@ class WorkspaceApiIntegrationTests {
 
     @Test
     void viewerCanReadButCannotInitializeOrReplaceTheWorkspace() throws Exception {
-        mvc.perform(put("/api/workspace").with(user("viewer").roles("VIEWER")).with(csrf())
+        mvc.perform(put("/api/workspace").with(user(users.loadUserByUsername("test-viewer"))).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(payload(0).toString()))
                 .andExpect(status().isForbidden());
         assertThat(workspaceCount()).isZero();
         save(payload(0)).andExpect(status().isOk());
-        mvc.perform(get("/api/workspace").with(user("viewer").roles("VIEWER")))
+        mvc.perform(get("/api/workspace").with(user(users.loadUserByUsername("test-viewer"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(1));
-        mvc.perform(put("/api/workspace").with(user("viewer").roles("VIEWER")).with(csrf())
+        mvc.perform(put("/api/workspace").with(user(users.loadUserByUsername("test-viewer"))).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(payload(1).toString()))
                 .andExpect(status().isForbidden());
     }
@@ -302,7 +307,7 @@ class WorkspaceApiIntegrationTests {
 
     private RequestBuilder rawPutWithDeclaredLength(byte[] body, int declaredLength) {
         MockHttpServletRequestBuilder authentication = put("/api/workspace")
-                .with(user("editor").roles("EDITOR")).with(csrf());
+                .with(user(users.loadUserByUsername("test-editor"))).with(csrf());
         return new SmartRequestBuilder() {
             @Override
             public MockHttpServletRequest buildRequest(ServletContext servletContext) {
@@ -332,7 +337,7 @@ class WorkspaceApiIntegrationTests {
                 ((ObjectNode) request.path("workspace")).put("name", "Édition " + index);
                 ready.countDown();
                 if (!start.await(10, TimeUnit.SECONDS)) throw new AssertionError("Concurrent workspace update did not start.");
-                return mvc.perform(put("/api/workspace").with(user("editor-" + index).roles("EDITOR")).with(csrf())
+                return mvc.perform(put("/api/workspace").with(user(users.loadUserByUsername(index == 1 ? "test-editor" : "test-editor-2"))).with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
                         .andReturn().getResponse().getStatus();
             })).toList();

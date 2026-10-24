@@ -20,9 +20,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.TestExecutionEvent;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
@@ -42,12 +45,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "EDITOR")
+@Sql("/test-users.sql")
+@WithUserDetails(value = "test-editor", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class AssetRevisionIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @MockitoSpyBean AssetRepository repository;
     @Autowired JdbcTemplate jdbc;
+    @Autowired UserDetailsService users;
     @PersistenceContext EntityManager entityManager;
 
     @BeforeEach
@@ -202,7 +207,7 @@ class AssetRevisionIntegrationTests {
             var requests = List.of(1, 2).stream().map(index -> executor.submit(() -> {
                 ready.countDown();
                 if (!start.await(10, TimeUnit.SECONDS)) throw new AssertionError("Concurrent edit did not start.");
-                return mvc.perform(put("/api/assets/{id}", id).with(user("editor-" + index).roles("EDITOR")).with(csrf())
+                return mvc.perform(put("/api/assets/{id}", id).with(user(users.loadUserByUsername(index == 1 ? "test-editor" : "test-editor-2"))).with(csrf())
                                 .header(HttpHeaders.IF_MATCH, "\"0\"").contentType(MediaType.APPLICATION_JSON)
                                 .content(payload("PC-01", "Édition " + index, "AVAILABLE")))
                         .andReturn();

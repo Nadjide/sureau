@@ -37,15 +37,14 @@ public class AuthService {
                 request.setupToken().getBytes(StandardCharsets.UTF_8))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Initial setup is disabled or the setup token is invalid.");
         }
-        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The password must not exceed 72 UTF-8 bytes.");
-        }
+        AccountValidation.password(request.password());
+        AccountValidation.displayName(request.displayName());
         return users.createAdministrator(request.username(), request.displayName(), passwordEncoder.encode(request.password()))
                 .response();
     }
 
     public UserResponse currentUser(String username) {
-        return users.findByUsername(username).orElseThrow(() ->
+        return users.findByUsername(username).filter(UserAccount::enabled).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.UNAUTHORIZED, "The user no longer exists.")).response();
     }
 }

@@ -15,12 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.session.web.http.CookieSerializer;
@@ -49,7 +49,7 @@ public class SecurityConfiguration {
             }
             UserAccount account = users.findByUsername(username).orElseThrow(() ->
                     new UsernameNotFoundException("Invalid username or password."));
-            return User.withUsername(account.username()).password(account.passwordHash()).roles(account.role().name()).build();
+            return new SessionPrincipal(account);
         };
     }
 
@@ -73,7 +73,7 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, UserRepository users) throws Exception {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(new HttpSessionCsrfTokenRepository())
@@ -108,11 +108,12 @@ public class SecurityConfiguration {
                         .logoutUrl("/api/auth/logout")
                         .deleteCookies("SESSION")
                         .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_NO_CONTENT))
-                        .permitAll());
+                        .permitAll())
+                .addFilterBefore(new AccountSessionFilter(users, mapper), AuthorizationFilter.class);
         return http.build();
     }
 
-    private static void writeProblem(ObjectMapper mapper, HttpServletRequest request, HttpServletResponse response,
+    static void writeProblem(ObjectMapper mapper, HttpServletRequest request, HttpServletResponse response,
                                      HttpStatus status, String code, String detail) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
