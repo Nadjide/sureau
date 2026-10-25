@@ -13,7 +13,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Le frontend est indépendant du projet Java. Les commandes suivantes s’exécutent dans ce dossier :
+Le frontend se compile sans le projet Java, mais l’interface exige une API Sureau et une connexion (voir ci-dessous). Les commandes suivantes s’exécutent dans ce dossier :
 
 ```sh
 pnpm typecheck
@@ -25,13 +25,21 @@ pnpm preview
 
 Les versions exactes des dépendances résolues sont conservées dans `pnpm-lock.yaml`.
 
+## Connexion et comptes
+
+Toute l’interface est derrière une session. Sur une instance neuve, la première page crée le compte administrateur avec la clé d’installation (`SUREAU_SETUP_TOKEN`) ; ensuite, elle propose la connexion. Le rôle du compte (administrateur, éditeur ou lecteur) active ou désactive les actions d’écriture : un lecteur consulte et exporte, un éditeur modifie l’inventaire et l’espace, un administrateur gère aussi l’équipe depuis le menu du compte. Chacun peut y changer son mot de passe.
+
+Une session expirée ne fait pas perdre le travail : le brouillon de l’atelier, l’historique et les champs saisis restent à l’écran pendant la reconnexion, et aucune action n’est rejouée automatiquement. Un résultat incertain (réponse perdue, erreur réseau) est signalé et demande une vérification explicite avant toute nouvelle tentative.
+
 ## Inventaire
 
-Le frontend consulte `GET /api/assets`. En développement, Vite relaie `/api` vers `http://127.0.0.1:8080`. Pour changer cette adresse, copier `.env.example` dans `.env.local` puis relancer Vite. Le backend doit être lancé séparément.
+Le frontend consulte et modifie les matériels via `/api/assets`. En développement, Vite relaie `/api` vers `http://127.0.0.1:8080`. Pour changer cette adresse, copier `.env.example` dans `.env.local` puis relancer Vite. Le backend doit être lancé séparément.
 
-Une erreur de connexion est affichée explicitement ; aucun matériel fictif ne remplace les données réelles. La recherche et les filtres sont locaux, l’API renvoyant actuellement la liste complète.
+Un éditeur peut ajouter un matériel, modifier sa fiche et le retirer du parc, après confirmation. Chaque modification porte le numéro de version connu : si la fiche a changé entre-temps, l’enregistrement est suspendu, la saisie reste affichée et la fiche du serveur se recharge à la demande.
 
-Le proxy concerne uniquement le développement. Une installation en production doit router `/api` vers le service de matériel.
+Une erreur de connexion est affichée explicitement ; aucun matériel fictif ne remplace les données réelles. La recherche et les filtres sont locaux, l’API renvoyant la liste complète.
+
+Le proxy concerne uniquement le développement. En production, l’interface compilée est servie par l’API sur la même origine (voir le [guide d’installation](../docs/installation.md)).
 
 ## Exploration spatiale
 
@@ -41,13 +49,15 @@ Le catalogue propose tables de réunion, rangements, plantes, cloisons et canap�
 
 En mode Modifier, Maj/Ctrl/⌘ + clic ajoute ou retire un objet de la sélection. Le bouton Sélection multiple propose la même action sans clavier. Le glissement d’un membre sélectionné déplace l’ensemble ; les limites et l’aimantation s’appliquent à un delta commun pour conserver les écarts, fauteuils compris. Les flèches 2D et celles du panneau déplacent aussi l’ensemble, en une étape d’historique.
 
-L’onglet Espaces démarre avec un plateau de 13 × 9 m et huit postes. La vue 3D se charge uniquement à l’ouverture de cette vue ; cliquer sur un poste rapproche la caméra, et le bouton de recentrage revient à la vue générale. Une manipulation interrompt l’animation et le réglage système de réduction des mouvements est respecté. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
+Tant qu’aucun espace n’a été enregistré sur l’instance, l’onglet Espaces ne fabrique aucun plan : il propose de préparer un espace vide ou l’exemple (un plateau de 13 × 9 m et huit postes) comme brouillon, sans rien enregistrer. La vue 3D se charge uniquement à l’ouverture de cette vue ; cliquer sur un poste rapproche la caméra, et le bouton de recentrage revient à la vue générale. Une manipulation interrompt l’animation et le réglage système de réduction des mouvements est respecté. Le plan 2D et la liste des postes restent accessibles au clavier, y compris sans WebGL.
 
 « Modifier » ouvre l’atelier : ajouter, dupliquer, renommer, pivoter ou supprimer les postes et régler leurs positions et dimensions. Le fauteuil est inclus dans les limites de placement ; les chevauchements sont signalés et restent modifiables. Le plateau est limité à 64 postes pour conserver une manipulation fluide. Les meubles et écrans représentés sont illustratifs. Aucun matériel n’y est placé automatiquement.
 
 En mode Modifier, glisser directement un poste dans les vues 2D et 3D pour le déplacer. L’aimantation facultative utilise une grille de 25 cm. Échap ou une annulation du pointeur restaure le placement initial ; une manipulation terminée enregistre une seule modification. Le plan 2D permet aussi le déplacement avec les flèches du clavier (Maj accélère).
 
-L’espace de travail local contient des étages et des salles, sous un format versionné limité à 8 étages et 32 salles. Un ancien plateau est repris en mémoire avec tous ses identifiants ; le nouveau document est enregistré à la première modification, sans effacer l’ancienne copie. Une donnée enregistrée illisible est préservée et les éditions restent alors limitées à la session. Les postes conservent leur identifiant pendant les modifications. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
+L’espace de travail contient des étages et des salles, sous un format versionné limité à 8 étages et 32 salles. Il est **partagé par toute l’instance** : les modifications restent un brouillon tant que « Enregistrer l’espace » n’a pas été utilisé, puis les salles et les localisations sont envoyées ensemble, de façon atomique, avec le numéro de version connu. Le serveur répond avant que l’interface n’affiche « Espace enregistré sur cette instance » ; aucune synchronisation en temps réel n’existe. Si quelqu’un a enregistré entre-temps, la barre d’enregistrement annonce « Une autre version est disponible » et bloque l’envoi : le brouillon, l’historique et la version connue sont conservés, « Exporter le brouillon » en garde une copie, et « Recharger » ne remplace le travail par la version du serveur qu’après confirmation. Les postes conservent leur identifiant pendant les modifications.
+
+Les plans créés avant l’espace partagé restent dans le stockage du navigateur. Le panneau « Retrouver vos anciens plans » les recherche uniquement à la demande, présente un aperçu et les copie dans le brouillon, avec ou sans leurs anciennes localisations ; les données d’origine ne sont ni modifiées ni supprimées, et rien n’est partagé avant l’enregistrement. Un ancien plateau est repris avec tous ses identifiants. Supprimer un poste conserve ses liens de matériel ; l’inventaire les signale comme « Poste absent du plan » et permet de les relocaliser.
 
 « Gérer les espaces » crée une salle vide, renomme, copie ou supprime une salle. La navigation affiche chaque salle dans son étage. Une copie renouvelle les identifiants de tous ses objets ; les associations de matériel restent sur l’original. Le choix d’un poste dans l’inventaire et « Voir dans le plan » fonctionnent sur toutes les salles. L’import d’un plan renouvelle uniquement les identifiants déjà utilisés ailleurs dans l’espace.
 
@@ -55,7 +65,7 @@ Le panneau Étages permet de nommer l’espace de travail, ajouter et renommer d
 
 Dans l’éditeur d’objets, « Changer de salle » transfère un objet ou une sélection entière vers une zone libre d’une autre salle. Les écarts, identifiants et localisations sont conservés. Le déplacement est refusé intégralement si la destination manque de place ou dépasse ses limites ; Annuler restaure ensemble les salles de départ et d’arrivée.
 
-L’onglet Sauvegarde de la gestion des espaces exporte et importe l’organisation complète : étages, salles, objets, dimensions et ambiances (2 Mo maximum). L’import affiche un aperçu et demande confirmation avant de remplacer l’espace ; une édition survenue pendant la lecture invalide cette confirmation. Les identifiants restent stables et le remplacement est annulable. Le fichier ne contient ni inventaire ni associations de matériel ; celles déjà enregistrées dans le navigateur restent conservées.
+L’onglet Sauvegarde de la gestion des espaces exporte et importe l’espace complet au format `sureau-spatial` : étages, salles, objets, dimensions, ambiances et localisations de matériel (8 Mo maximum). L’import affiche un aperçu et demande confirmation avant de remplacer le brouillon ; une édition survenue pendant la lecture invalide cette confirmation. Par défaut, les localisations actuelles sont conservées : celles du fichier ne sont appliquées que si l’option « fichier provenant de cette instance » est cochée, car les identifiants de matériel sont propres à chaque instance. Le remplacement prépare le brouillon, reste annulable et ne partage rien avant l’enregistrement. L’inventaire et les comptes ne sont pas inclus : ils restent dans la base de l’instance, qui se sauvegarde avec `deploy/sureau.sh backup` (voir le [guide d’exploitation](../docs/exploitation.md)).
 
 Dans l’atelier, « Plateau & couleurs » permet de renommer la pièce, choisir ses dimensions entre 6 et 50 m, appliquer une ambiance ou des couleurs libres et masquer murs ou décor. Les postes peuvent hériter de la couleur des bureaux ou utiliser leur propre couleur. Réduire la pièce demande validation lorsque des postes ou des meubles doivent être replacés.
 
@@ -67,4 +77,4 @@ Au-delà de 16 objets (postes et meubles), les repères sont numérotés et renv
 
 Pour localiser un équipement, sélectionner sa fiche dans Matériel puis choisir son poste. « Voir dans le plan » ouvre le poste correspondant. Une sélection de poste dans les vues 3D/2D donne accès aux équipements explicitement localisés à cet endroit.
 
-Les localisations sont enregistrées uniquement dans le stockage de ce navigateur, séparément de l’inventaire serveur. Elles ne changent pas le statut métier du matériel. Les liens vers un équipement devenu introuvable restent conservés et signalés. Un refus ou une corruption du stockage produit un avertissement ; l’interface reste utilisable pour la session, sans prétendre enregistrer les changements.
+Les localisations font partie de l’espace partagé : elles s’enregistrent avec les salles, par identifiant stable du matériel, et suivent l’espace même si la liste de l’inventaire est réordonnée. Elles ne changent pas le statut métier du matériel. Les liens vers un équipement devenu introuvable restent conservés et signalés. Un échec de l’API n’est jamais présenté comme un enregistrement réussi, ni comme un espace ou un inventaire vide : l’erreur est affichée, le brouillon est conservé et l’inventaire reste consultable.
