@@ -97,6 +97,13 @@ jobs:
             echo "docker-compose.install.yml must require SUREAU_DB_PASSWORD and SUREAU_SETUP_TOKEN" >&2
             exit 1
           fi
+      - name: Kubernetes manifests render without any secret
+        run: |
+          kubectl kustomize deploy/kubernetes/base > rendered.yaml
+          if grep -q '^kind: Secret' rendered.yaml; then
+            echo "secrets must be created outside the repository" >&2
+            exit 1
+          fi
 
   e2e:
     name: End-to-end

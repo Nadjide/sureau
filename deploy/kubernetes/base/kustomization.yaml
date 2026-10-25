@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Une instance Sureau dans son propre namespace. Pour en installer une autre,
+# créez un overlay qui reprend cette base et change le namespace.
+namespace: sureau
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - app.yaml
+  - networkpolicy.yaml
+
+configMapGenerator:
+  - name: sureau-config
+    literals:
+      # Le cookie de session n'est envoyé qu'en HTTPS. Passez à "false" seulement
+      # pour un accès en HTTP clair en dehors de localhost.
+      - SUREAU_COOKIE_SECURE=true
+
+# L'image de l'application n'est pas fixée ici : désignez une version précise
+# dans votre overlay ou avec « kustomize edit set image ».
+images:
+  - name: sureau
+    newName: sureau
+    newTag: local

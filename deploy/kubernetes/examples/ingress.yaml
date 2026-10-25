@@ -1,0 +1,24 @@
+# Exemple d'exposition en HTTPS, à adapter puis à appliquer à la main :
+#   kubectl apply -n sureau -f deploy/kubernetes/examples/ingress.yaml
+# Il suppose un contrôleur Ingress installé et un secret TLS existant. Sureau
+# se place à la racine d'un domaine ou sous-domaine, pas sous un sous-chemin.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sureau
+spec:
+  # ingressClassName: nginx
+  tls:
+    - hosts: [sureau.example.org]
+      secretName: sureau-tls
+  rules:
+    - host: sureau.example.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sureau
+                port:
+                  name: http
