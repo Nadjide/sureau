@@ -12,8 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.TestExecutionEvent;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -31,11 +34,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(roles = "EDITOR")
+@Sql("/test-users.sql")
+@WithUserDetails(value = "test-editor", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class AssetApiIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired AssetRepository repository;
+    @Autowired UserDetailsService users;
 
     @BeforeEach
     void clearTestInventory() {
@@ -183,7 +188,7 @@ class AssetApiIntegrationTests {
             var requests = List.of(1, 2).stream().map(index -> executor.submit(() -> {
                 ready.countDown();
                 if (!start.await(10, TimeUnit.SECONDS)) throw new AssertionError("Concurrent request did not start.");
-                return mvc.perform(post("/api/assets").with(user("editor").roles("EDITOR")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                return mvc.perform(post("/api/assets").with(user(users.loadUserByUsername(index == 1 ? "test-editor" : "test-editor-2"))).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                                 .content(payload("PC-CONCURRENT", "SN-" + index)))
                         .andReturn().getResponse().getStatus();
             })).toList();

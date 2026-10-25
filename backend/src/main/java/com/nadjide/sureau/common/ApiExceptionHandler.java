@@ -8,6 +8,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 
 import com.nadjide.sureau.asset.service.AssetStatusConflictException;
+import com.nadjide.sureau.auth.UserAdministrationException;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -57,6 +58,7 @@ public class ApiExceptionHandler {
     ResponseEntity<ProblemDetail> businessRule(ResponseStatusException exception,
                                               HttpServletRequest request) {
         String code = exception instanceof AssetStatusConflictException ? "ASSET_STATUS_CONFLICT"
+                : exception instanceof UserAdministrationException accountException ? accountException.code()
                 : switch (exception.getStatusCode().value()) {
             case 400 -> "INVALID_REQUEST";
             case 404 -> "NOT_FOUND";
