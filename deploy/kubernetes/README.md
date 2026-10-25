@@ -30,7 +30,7 @@ Les commandes sont écrites pour un shell POSIX (Linux, macOS, WSL, Git Bash), d
 
    Pour un essai avec un cluster kind, construisez l'image puis chargez-la : `docker build -t sureau:local .` puis `kind load docker-image sureau:local --name <cluster>`. La base utilise `sureau:local` tant que vous ne la remplacez pas.
 
-2. **Créez le namespace puis les secrets.** Ils ne sont jamais dans le dépôt :
+2. **Créez le namespace puis les secrets.** Le namespace est géré séparément de la base Kustomize afin qu'une désinstallation conserve les données. Cette étape est obligatoire pour une nouvelle instance ; les valeurs des secrets ne sont jamais dans le dépôt :
 
    ```sh
    kubectl apply -f deploy/kubernetes/base/namespace.yaml
@@ -39,7 +39,9 @@ Les commandes sont écrites pour un shell POSIX (Linux, macOS, WSL, Git Bash), d
      --from-literal=setup-token="$(openssl rand -hex 24)"
    ```
 
-   Le secret `sureau-secrets` peut aussi venir d'un gestionnaire de secrets externe (External Secrets, Sealed Secrets, etc.) : seuls son nom et ses deux clés, `db-password` et `setup-token`, comptent.
+   Le secret `sureau-secrets` peut aussi venir d'un gestionnaire de secrets externe (External Secrets, Sealed Secrets, etc.) : seuls son nom et ses deux clés, `db-password` et `setup-token`, comptent. Si votre overlay change le namespace, créez ce namespace avec les mêmes labels de sécurité que `namespace.yaml` et utilisez son nom dans toutes les commandes `kubectl -n`.
+
+   Pour une instance déjà installée, conservez son namespace et son secret existants : une mise à jour par `kubectl apply -k` ne les supprime pas et ne nécessite pas de recréer les secrets.
 
 3. **Appliquez et attendez.**
 
@@ -98,4 +100,18 @@ Les sessions sont purgées : chacun doit se reconnecter. Restaurez une sauvegard
 
 ## Désinstaller
 
-`kubectl delete -k mon-instance` retire l'application et la base, mais **conserve le volume persistant** (`data-postgres-0`) et les secrets. Supprimer le namespace efface tout, données comprises : ne le faites qu'après avoir mis une sauvegarde en lieu sûr.
+Avec cette version des manifestes, `kubectl delete -k mon-instance` retire l'application, le StatefulSet PostgreSQL et leurs ressources de service, mais **conserve le namespace, le PVC `data-postgres-0` et le secret `sureau-secrets`**. Le namespace et les secrets ne font pas partie de la base Kustomize ; le StatefulSet garde explicitement ses PVC lors d'une suppression ou d'une réduction du nombre de répliques. Gardez aussi votre overlay et une sauvegarde récente hors du cluster.
+
+Cette conservation suppose que votre overlay n'ajoute pas le namespace, les secrets ou le PVC dans ses propres `resources`. Avant de désinstaller, vérifiez le rendu avec `kubectl kustomize mon-instance`. **Les anciennes versions de la base incluaient le namespace : ne lancez pas leur commande de suppression en supposant que les données seront conservées.**
+
+Pour réinstaller, utilisez le même namespace, le même overlay, la même version de l'image et les identifiants conservés :
+
+```sh
+kubectl apply -k mon-instance
+kubectl -n sureau rollout status statefulset/postgres
+kubectl -n sureau rollout status deployment/sureau
+```
+
+Le StatefulSet retrouve son PVC et l'application retrouve ses données. Ne recréez pas le secret avec un nouveau mot de passe : PostgreSQL conserve celui de l'initialisation dans le volume.
+
+**Supprimer le namespace ou le PVC retire l'accès aux données et peut supprimer le volume physique**, selon la politique du stockage. La rétention du StatefulSet ne protège pas ces suppressions : elles doivent rester des opérations distinctes et volontaires, après sauvegarde vérifiée. Un PVC conservé dans le cluster ne remplace pas une sauvegarde.

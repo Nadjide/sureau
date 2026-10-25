@@ -28,6 +28,11 @@ metadata:
 spec:
   serviceName: postgres
   replicas: 1
+  # La suppression du StatefulSet ou la réduction de ses répliques conserve
+  # le PVC. Cette règle ne protège pas contre la suppression du namespace.
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
   selector:
     matchLabels:
       app.kubernetes.io/name: sureau

@@ -6,7 +6,8 @@ kind: Kustomization
 namespace: sureau
 
 resources:
-  - namespace.yaml
+  # Le namespace est créé séparément : supprimer cette base ne doit pas
+  # supprimer les secrets et les volumes de l'instance avec lui.
   - postgres.yaml
   - app.yaml
   - networkpolicy.yaml
