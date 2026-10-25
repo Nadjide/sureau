@@ -26,3 +26,6 @@ Thumbs.db
 
 # Logs
 *.log
+# Sauvegardes de base de données (données sensibles : jamais dans Git)
+backups/
+*.dump
