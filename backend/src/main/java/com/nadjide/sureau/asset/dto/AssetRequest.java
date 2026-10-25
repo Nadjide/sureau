@@ -30,4 +30,21 @@ public record AssetRequest(
     AssetStatus status,
 
     LocalDate purchaseDate
-) {}
+) {
+    public AssetRequest {
+        assetTag = trim(assetTag);
+        name = trim(name);
+        serialNumber = optional(serialNumber);
+        brand = optional(brand);
+        model = optional(model);
+    }
+
+    private static String trim(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private static String optional(String value) {
+        String normalized = trim(value);
+        return normalized == null || normalized.isEmpty() ? null : normalized;
+    }
+}
