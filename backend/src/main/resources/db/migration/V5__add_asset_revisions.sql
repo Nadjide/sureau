@@ -1,0 +1,3 @@
+ALTER TABLE assets
+    ADD COLUMN revision BIGINT NOT NULL DEFAULT 0,
+    ADD CONSTRAINT assets_revision_safe CHECK (revision BETWEEN 0 AND 9007199254740991);

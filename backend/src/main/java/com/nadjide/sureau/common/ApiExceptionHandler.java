@@ -7,7 +7,10 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.nadjide.sureau.asset.service.AssetStatusConflictException;
+
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -53,16 +56,25 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<ProblemDetail> businessRule(ResponseStatusException exception,
                                               HttpServletRequest request) {
-        String code = switch (exception.getStatusCode().value()) {
+        String code = exception instanceof AssetStatusConflictException ? "ASSET_STATUS_CONFLICT"
+                : switch (exception.getStatusCode().value()) {
             case 400 -> "INVALID_REQUEST";
             case 404 -> "NOT_FOUND";
             case 401 -> "AUTHENTICATION_REQUIRED";
             case 403 -> "ACCESS_DENIED";
             case 409 -> "CONFLICT";
+            case 412 -> "ASSET_CONFLICT";
             default -> "REQUEST_FAILED";
         };
         return response(problem(exception.getStatusCode(), code,
                 exception.getReason() == null ? "The request could not be completed." : exception.getReason(), request));
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> concurrentUpdate(OptimisticLockingFailureException exception,
+                                                   HttpServletRequest request) {
+        return response(problem(HttpStatus.PRECONDITION_FAILED, "ASSET_CONFLICT",
+                "The asset changed since it was loaded. Reload it before saving.", request));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

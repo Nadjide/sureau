@@ -21,6 +21,10 @@ public class Asset {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    private Long revision;
+
     @Column(name = "asset_tag", nullable = false, unique = true, length = 50)
     private String assetTag;
 
