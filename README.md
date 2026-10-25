@@ -24,9 +24,9 @@ Le projet est en cours de refonte : une API **Java / Spring Boot** gère les mat
 
 ## Présentation vidéo
 
-[![Ouvrir la présentation de Sureau : atelier 3D, personnalisation, mobilier, salles et étages](frontend/docs/images/sureau-presentation.jpg)](frontend/docs/videos/sureau-presentation.mp4?raw=true "Ouvrir la présentation de Sureau en MP4")
+[![Ouvrir la présentation de Sureau : atelier 3D, personnalisation, mobilier, salles et étages](frontend/docs/images/sureau-presentation.jpg)](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4 "Ouvrir la présentation de Sureau sur GitHub")
 
-**[▶ Ouvrir la vidéo](frontend/docs/videos/sureau-presentation.mp4?raw=true)** · 1 min 37 s · Full HD (1080p) · 30 images/s · MP4, 8,4 Mo
+**[▶ Ouvrir la vidéo](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4)** · 1 min 37 s · Full HD (1080p) · 30 images/s · MP4, 8,4 Mo
 
 Une démonstration enregistrée dans l’application : exploration et zoom 3D, ajout de mobilier, ambiances, sélection multiple en 2D, création de salles et d’étages. L’implantation présentée est locale et illustrative.
 
