@@ -15,6 +15,7 @@ function render(workspace: WorkspaceDocument | null, role: 'ADMIN' | 'EDITOR' | 
     state, ...sessionPermissions(state), busy: false,
     login: vi.fn().mockResolvedValue(undefined), setup: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined), refresh: vi.fn(),
+    expire: vi.fn(), updateUser: vi.fn(),
   }
   const shellProps = {
     workspace, activeRoomId: workspace?.rooms[0]?.plan.id ?? '', tab: 'inventory' as const,

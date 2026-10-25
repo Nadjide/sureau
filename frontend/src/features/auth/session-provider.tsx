@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ApiError, apiClient } from '@/lib/api-client'
-import { AccountCreatedError, authApi, type LoginInput, type SetupInput } from './auth-api'
+import { AccountCreatedError, authApi, type LoginInput, type SessionUser, type SetupInput } from './auth-api'
 import { SessionContext } from './session-context'
-import { authenticatedSession, expiredSession, initialSession, sessionPermissions, signedOutSession, type SessionState } from './session-state'
+import { authenticatedSession, expiredSession, initialSession, sessionPermissions, signedOutSession, updateSessionUser, type SessionState } from './session-state'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>(initialSession)
@@ -10,9 +10,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0)
   const stateRef = useRef(state)
   const action = useRef<AbortController | null>(null)
-  const probing = useRef(false)
+  const probing = useRef<symbol | null>(null)
   const authEpoch = useRef(0)
   useEffect(() => { stateRef.current = state }, [state])
+
+  const expire = useCallback(() => {
+    authEpoch.current += 1
+    probing.current = null
+    apiClient.clearCsrf()
+    setState((previous) => expiredSession(previous))
+  }, [])
+
+  const updateUser = useCallback((input: Pick<SessionUser, 'id' | 'displayName'>) => {
+    if (stateRef.current.user?.id !== input.id) return
+    authEpoch.current += 1
+    probing.current = null
+    setState((previous) => updateSessionUser(previous, input))
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,14 +59,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [attempt])
 
   useEffect(() => apiClient.subscribeAuthFailure((error) => {
-    if (!stateRef.current.user) return
+    // Auth requests manage their own failures. Other responses may belong to the preceding session.
+    if (!stateRef.current.user || action.current) return
     if (error.status === 401) {
-      apiClient.clearCsrf()
-      setState((previous) => expiredSession(previous))
+      expire()
       return
     }
     if (probing.current) return
-    probing.current = true
+    const probe = Symbol('session-probe')
+    probing.current = probe
     const userId = stateRef.current.user.id
     const epoch = authEpoch.current
     // A 403 may be a permission denial, an expired session, or a stale CSRF token.
@@ -63,15 +78,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await authApi.refreshCsrf()
     }).catch((failure: unknown) => {
       if (failure instanceof ApiError && failure.status === 401 && authEpoch.current === epoch) {
-        setState((previous) => previous.user?.id === userId ? expiredSession(previous) : previous)
+        if (stateRef.current.user?.id === userId) expire()
       }
-    }).finally(() => { probing.current = false })
-  }), [])
+    }).finally(() => { if (probing.current === probe) probing.current = null })
+  }), [expire])
 
   useEffect(() => () => { action.current?.abort() }, [])
 
   const authenticate = useCallback(async (input: LoginInput | SetupInput, setup: boolean) => {
-    authEpoch.current += 1
+    const epoch = ++authEpoch.current
+    probing.current = null
     action.current?.abort()
     const controller = new AbortController()
     action.current = controller
@@ -80,9 +96,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const user = setup
         ? await authApi.setup(input as SetupInput, controller.signal)
         : await authApi.login(input, controller.signal)
-      if (!controller.signal.aborted) setState((previous) => authenticatedSession(previous, user))
+      if (!controller.signal.aborted && authEpoch.current === epoch) setState((previous) => authenticatedSession(previous, user))
     } catch (error) {
-      if (!controller.signal.aborted && error instanceof AccountCreatedError) {
+      if (!controller.signal.aborted && authEpoch.current === epoch && error instanceof AccountCreatedError) {
         setState((previous) => signedOutSession(previous, error.message))
       }
       throw error
@@ -92,20 +108,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    authEpoch.current += 1
+    const epoch = ++authEpoch.current
+    probing.current = null
     action.current?.abort()
     const controller = new AbortController()
     action.current = controller
     setBusy(true)
     try {
       await authApi.logout(controller.signal)
-      if (!controller.signal.aborted) setState((previous) => signedOutSession(previous))
+      if (!controller.signal.aborted && action.current === controller) {
+        authEpoch.current += 1
+        probing.current = null
+        setState((previous) => signedOutSession(previous))
+      }
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      if (authEpoch.current === epoch && error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         try { await authApi.me(controller.signal) } catch (probeError) {
-          if (probeError instanceof ApiError && probeError.status === 401) setState((previous) => signedOutSession(previous))
+          if (authEpoch.current === epoch && probeError instanceof ApiError && probeError.status === 401) {
+            setState((previous) => signedOutSession(previous))
+          }
         }
-        await authApi.refreshCsrf(controller.signal)
+        if (authEpoch.current === epoch) await authApi.refreshCsrf(controller.signal)
       }
       throw error
     } finally {
@@ -114,7 +137,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return <SessionContext value={{ state, ...sessionPermissions(state), busy,
-    login: (input) => authenticate(input, false), setup: (input) => authenticate(input, true), logout,
+    login: (input) => authenticate(input, false), setup: (input) => authenticate(input, true), logout, expire, updateUser,
     refresh: () => { setState((previous) => ({ ...initialSession, generation: previous.generation })); setAttempt((value) => value + 1) },
   }}>{children}</SessionContext>
 }
