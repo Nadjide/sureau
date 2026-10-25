@@ -1,0 +1,21 @@
+# Seule l'application joint la base. Cette règle n'a d'effet que si le plugin
+# réseau du cluster applique les NetworkPolicy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-from-app
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sureau
+      app.kubernetes.io/component: database
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: sureau
+              app.kubernetes.io/component: app
+      ports:
+        - protocol: TCP
+          port: 5432
