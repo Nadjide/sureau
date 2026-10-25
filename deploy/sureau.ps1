@@ -276,13 +276,28 @@ function Invoke-Restore {
     Write-Output "État précédent conservé dans $($safety.Path)"
 }
 
+# Démarre ou met à jour l'application. L'image est construite à partir des
+# sources, sauf si SUREAU_IMAGE désigne une image publiée : elle est alors
+# téléchargée, ce qui évite d'avoir les sources sur la machine. Le résultat
+# se lit dans $LASTEXITCODE.
+function Start-App {
+    $image = if ($env:SUREAU_IMAGE) { $env:SUREAU_IMAGE } else { Get-EnvValue 'SUREAU_IMAGE' }
+    if ($image -and $image -ne 'sureau:local') {
+        Invoke-ComposeRaw pull app
+        if ($LASTEXITCODE -ne 0) { return }
+        Invoke-ComposeRaw up -d --wait --wait-timeout 300
+    } else {
+        Invoke-ComposeRaw up -d --build --wait --wait-timeout 300
+    }
+}
+
 function Invoke-Update {
     Assert-Instance
     $backup = New-Backup $BackupDir "$Project-avant-mise-a-jour"
     Write-Output "Sauvegarde avant mise à jour : $($backup.Path)"
-    Invoke-ComposeRaw up -d --build --wait --wait-timeout 300
+    Start-App
     if ($LASTEXITCODE -ne 0) {
-        Fail "La mise à jour a échoué. Revenez aux sources précédentes puis restaurez : deploy\sureau.cmd restore $($backup.Path) --yes"
+        Fail "La mise à jour a échoué. Revenez à la version précédente (sources ou SUREAU_IMAGE) puis restaurez : deploy\sureau.cmd restore $($backup.Path) --yes"
     }
     Write-Output ''
     Write-Output 'Mise à jour terminée.'
@@ -292,7 +307,8 @@ switch ($Command) {
     'init' { Invoke-Init }
     'up' {
         Assert-Instance
-        Invoke-Compose up -d --build --wait --wait-timeout 300
+        Start-App
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $bind = Get-EnvValue 'SUREAU_HTTP_BIND'
         if (-not $bind) { $bind = '127.0.0.1' }
         Write-Output ''
