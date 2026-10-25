@@ -18,9 +18,16 @@ import {
 // données dont les projets suivants vérifient la conservation.
 test.describe.configure({ mode: 'serial' });
 
+interface PlanContent {
+  name: string;
+  workstations: { id: string }[];
+  furniture: unknown[];
+  colors: { floor: string };
+}
+
 interface WorkspaceSnapshot {
   revision: number;
-  workspace: { rooms: { plan: { workstations: { id: string }[] } }[] };
+  workspace: { floors: unknown[]; rooms: { plan: PlanContent }[] };
   locations: Record<string, string>;
 }
 
@@ -173,6 +180,84 @@ test('keeps the example plan as a draft until it is saved, then links the asset 
 
   // Placer un matériel ne change pas son statut métier.
   expect(await getJson(context.request, `/api/assets/${asset.id}`)).toMatchObject({ status: 'AVAILABLE' });
+});
+
+test('customizes the plan with a desk, furniture, colors, a floor and a room, then keeps it after a reload', async () => {
+  const second = await mutate(context.request, 'post', '/api/assets', {
+    assetTag: 'E2E-02',
+    serialNumber: 'E2E-SERIAL-02',
+    name: 'Portable de recette',
+    category: 'COMPUTER',
+    status: 'AVAILABLE',
+  });
+  expect(second.status()).toBe(201);
+  const secondAsset = (await second.json()) as { id: number };
+
+  // L'espace a été enregistré par l'API au test précédent : recharger la page
+  // récupère cette version, sinon l'enregistrement serait refusé comme périmé.
+  await page.goto('/#spaces');
+  await page.reload();
+  await page.getByText('Espace enregistré sur cette instance', { exact: true }).waitFor();
+  const before = await getJson<WorkspaceSnapshot>(context.request, '/api/workspace');
+  const planBefore = before.workspace.rooms[0]!.plan;
+
+  await page.getByRole('button', { name: 'Plan 2D', exact: true }).click();
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajouter un poste', exact: true }).click();
+  await page.getByLabel('Nom du poste', { exact: true }).fill('Poste recette');
+  await page.getByRole('button', { name: 'Appliquer au poste', exact: true }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajouter : Table de réunion', exact: true }).click();
+  await page.getByRole('button', { name: 'Plateau & couleurs', exact: true }).click();
+  await page.getByRole('button', { name: /Botanique Sauge/ }).click();
+  await page.getByLabel('Nom du plateau', { exact: true }).fill('Accueil recette');
+  await page.getByRole('button', { name: 'Appliquer au plateau', exact: true }).click();
+  await page.getByRole('button', { name: 'Terminer', exact: true }).click();
+
+  // Le second matériel est localisé sur le nouveau poste, par son identifiant.
+  await page.getByRole('button', { name: 'Matériel', exact: true }).click();
+  await page.getByRole('button', { name: /Portable de recette/ }).click();
+  const deskOption = page.locator(`#location-${secondAsset.id} option`).filter({ hasText: 'Poste recette' });
+  const newDesk = await deskOption.getAttribute('value');
+  expect(newDesk).toBeTruthy();
+  await page.locator(`#location-${secondAsset.id}`).selectOption(newDesk!);
+  await page.getByRole('button', { name: 'Enregistrer l’espace', exact: true }).click();
+  await page.getByText('Espace enregistré sur cette instance', { exact: true }).waitFor();
+
+  const saved = await getJson<WorkspaceSnapshot>(context.request, '/api/workspace');
+  const plan = saved.workspace.rooms[0]!.plan;
+  expect(plan.name).toBe('Accueil recette');
+  expect(plan.workstations).toHaveLength(planBefore.workstations.length + 1);
+  expect(plan.furniture).toHaveLength(planBefore.furniture.length + 1);
+  expect(plan.colors.floor).not.toBe(planBefore.colors.floor);
+  expect(saved.locations[String(secondAsset.id)]).toBe(newDesk);
+  // Les liens existants, y compris celui d'un matériel inconnu, sont conservés.
+  expect(saved.locations[String(asset.id)]).toBe(before.locations[String(asset.id)]);
+  expect(saved.locations['999999']).toBe('desk-e2e-orphan');
+  // Placer ou personnaliser ne change jamais le statut métier.
+  expect(await getJson(context.request, `/api/assets/${secondAsset.id}`)).toMatchObject({ status: 'AVAILABLE' });
+
+  await page.getByRole('button', { name: 'Espaces', exact: true }).click();
+  await page.getByRole('button', { name: 'Gérer les espaces', exact: true }).click();
+  await page.getByRole('button', { name: 'Étages', exact: true }).click();
+  await page.getByLabel('Nom du nouvel étage', { exact: true }).fill('Étage recette');
+  await page.getByRole('button', { name: 'Créer l’étage', exact: true }).click();
+  await page.getByRole('button', { name: 'Créer une salle ici', exact: true }).click();
+  await page.getByLabel('Nom de la nouvelle salle', { exact: true }).fill('Salle recette');
+  await page.getByRole('button', { name: 'Créer la salle', exact: true }).click();
+  await page.getByRole('button', { name: 'Fermer la gestion des espaces', exact: true }).click();
+  await page.getByRole('button', { name: 'Enregistrer l’espace', exact: true }).click();
+  await page.getByText('Espace enregistré sur cette instance', { exact: true }).waitFor();
+
+  const organized = await getJson<WorkspaceSnapshot>(context.request, '/api/workspace');
+  expect(organized.workspace.floors).toHaveLength(2);
+  expect(organized.workspace.rooms.map((room) => room.plan.name)).toEqual(['Accueil recette', 'Salle recette']);
+
+  // Après un rechargement complet, le navigateur retrouve la version du serveur.
+  await page.reload();
+  await page.getByText('Espace enregistré sur cette instance', { exact: true }).waitFor();
+  await page.getByRole('button', { name: /Ouvrir Accueil recette,/ }).click();
+  await expect(page.locator('.workstation-strip button')).toHaveCount(plan.workstations.length);
 
   saveState({
     expected: {
@@ -182,6 +267,7 @@ test('keeps the example plan as a draft until it is saved, then links the asset 
     },
   });
   expect(loadState().session).not.toBe('');
+  expect(watched.errors).toEqual([]);
 });
 
 test('answers unknown API routes with JSON and no internal details', async () => {
