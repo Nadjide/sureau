@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   X,
   Pencil,
+  Archive,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AssetDetails, AssetIcon, AssetStatus } from './asset-details'
@@ -23,6 +24,7 @@ import type { useInventory } from './use-inventory'
 import { useSession } from '@/features/auth/use-session'
 import { CreateAssetSheet } from './create-asset-sheet'
 import { EditAssetSheet } from './edit-asset-sheet'
+import { RetireAssetDialog } from './retire-asset-dialog'
 
 type Props = {
   inventory: ReturnType<typeof useInventory>
@@ -41,8 +43,9 @@ export function InventoryPanel({
 }: Props) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<Status | ''>('')
-  const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' | 'retired' } | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+  const [retiringAsset, setRetiringAsset] = useState<Asset | null>(null)
   const { canEdit } = useSession()
   const { assets, status: requestStatus, error, reload } = inventory
   const selected = assets?.find((asset) => asset.id === selectedAssetId)
@@ -100,7 +103,7 @@ export function InventoryPanel({
             setConfirmation({ asset, action: 'created' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id)
           }} />
         </div>
-        {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) a été {confirmation.action === 'created' ? 'enregistré' : 'mis à jour'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation" onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
+        {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) a été {confirmation.action === 'created' ? 'enregistré' : confirmation.action === 'updated' ? 'mis à jour' : 'retiré du parc'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation" onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
         {error && (
           <div className="inventory-alert" role="alert">
             <AlertCircle size={17} aria-hidden="true" />
@@ -238,9 +241,12 @@ export function InventoryPanel({
       <AssetDetails asset={selected} onClose={() => onSelect(null)}>
         {selected && canEdit && <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}><Pencil aria-hidden="true" />Modifier la fiche</Button>}
         {selected && renderAssetActions(selected)}
+        {selected && canEdit && selected.status !== 'RETIRED' && <div className="asset-retire-action"><Button variant="ghost" disabled={selected.status === 'ASSIGNED'} onClick={() => setRetiringAsset(selected)}><Archive aria-hidden="true" />Retirer du parc</Button>{selected.status === 'ASSIGNED' && <p>Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.</p>}</div>}
       </AssetDetails>
       {editingAsset && <EditAssetSheet key={editingAsset.id} asset={editingAsset} canEdit={canEdit} onClose={() => setEditingAsset(null)}
         onReloaded={inventory.refreshAfterMutation} onSaved={(asset) => { setConfirmation({ asset, action: 'updated' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
+      {retiringAsset && <RetireAssetDialog key={retiringAsset.id} asset={retiringAsset} canEdit={canEdit} onClose={() => setRetiringAsset(null)} onReloaded={inventory.refreshAfterMutation}
+        onRetired={(asset) => { setConfirmation({ asset, action: 'retired' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
     </div>
   )
 }
