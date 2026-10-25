@@ -252,6 +252,9 @@
 .spatial-data-notice { color: var(--warning); font-size: 11px; line-height: 1.8; margin-top: 20px; padding: 12px; background: color-mix(in srgb, var(--warning) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--warning) 25%, var(--border)); border-radius: 6px; }
 .plan-editor { width: 300px; }
 .spatial-edit-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.spatial-transfer-options { display: grid; gap: 12px; }
+.spatial-location-import { display: flex; align-items: flex-start; gap: 9px; color: var(--foreground); font-size: 11px; line-height: 1.65; }
+.spatial-location-import input { width: 15px; height: 15px; padding: 0; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
 .editor-heading { display: flex; align-items: center; gap: 12px; }
 .editor-heading > svg { color: var(--primary); flex-shrink: 0; }
 .editor-heading .eyebrow { margin: 0 0 5px; }

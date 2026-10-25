@@ -203,7 +203,7 @@ function App() {
     {...(workspaceStore.draft ? { departureGuard: { dirty: needsDepartureGuard, saving: workspaceStore.saving, exportDraft } } : {})}>
     {managerRequested && workspace && plan && <LazyPanel
       load={loadWorkspaceManager}
-      panelProps={{ open: organizing, onOpenChange: setOrganizing, workspace, activeRoomId: plan.id, onSelectRoom: selectRoom, onChange: workspaceStore.replace, persisted, history: workspaceStore, canEdit: editable }}
+      panelProps={{ open: organizing, onOpenChange: setOrganizing, workspace, locations: local.locations, activeRoomId: plan.id, onSelectRoom: selectRoom, onChange: workspaceStore.replace, onSpatialChange: workspaceStore.replaceDraft, persisted, history: workspaceStore, canEdit: editable }}
       loading={<ManagerStatus open={organizing} onOpenChange={setOrganizing} persisted={persisted} />}
       failure={(retry) => <ManagerStatus open={organizing} onOpenChange={setOrganizing} retry={retry} persisted={persisted} />}
     />}
