@@ -10,7 +10,7 @@ interface InventoryState {
 
 export interface InventoryResult extends InventoryState {
   reload: () => void
-  refreshAfterCreate: (asset: Asset) => void
+  refreshAfterMutation: (asset: Asset) => void
 }
 
 export function useInventory(): InventoryResult {
@@ -26,9 +26,9 @@ export function useInventory(): InventoryResult {
     setState((previous) => ({ ...previous, status: 'loading', error: null }))
     setRequestVersion((version) => version + 1)
   }, [])
-  const refreshAfterCreate = useCallback((asset: Asset) => {
+  const refreshAfterMutation = useCallback((asset: Asset) => {
     activeController.current?.abort()
-    // This is the validated POST response, never an optimistic or fabricated record.
+    // This is a validated server response, never an optimistic or fabricated record.
     setState((previous) => ({ assets: [...(previous.assets || []).filter((existing) => existing.id !== asset.id), asset].sort((a, b) => a.id - b.id), status: 'loading', error: null }))
     setRequestVersion((version) => version + 1)
   }, [])
@@ -62,5 +62,5 @@ export function useInventory(): InventoryResult {
     }
   }, [requestVersion])
 
-  return { ...state, reload, refreshAfterCreate }
+  return { ...state, reload, refreshAfterMutation }
 }

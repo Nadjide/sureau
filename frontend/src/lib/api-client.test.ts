@@ -215,4 +215,13 @@ describe('client HTTP commun', () => {
     expect(new Headers(fetcher.mock.calls[2]![1]?.headers).get('X-CSRF-TOKEN')).toBe('new-session')
     expect(fetcher).toHaveBeenCalledTimes(3)
   })
+
+  it.each(['__proto__', 'toString', 'constructor', 'hasOwnProperty'])('utilise un message français stable pour le code inconnu %s', async (code) => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ code }, 400))
+
+    await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
+      kind: 'http', status: 400, code,
+      message: 'La demande n’a pas pu être terminée. Réessayez dans un instant.',
+    })
+  })
 })

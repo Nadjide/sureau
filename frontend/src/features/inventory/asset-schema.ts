@@ -22,6 +22,7 @@ export const assetStatusSchema = z.enum([
 
 export const assetSchema = z.object({
   id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  revision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   assetTag: z.string(),
   serialNumber: z.string().nullable(),
   name: z.string(),
