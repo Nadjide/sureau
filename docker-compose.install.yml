@@ -1,0 +1,86 @@
+# Installation autonome de Sureau : l'application et sa base PostgreSQL.
+#
+# Ce fichier est distinct de docker-compose.yml, réservé au développement.
+# Tout ce qui est propre à l'instance (secrets, port, image) vient d'un fichier
+# d'environnement passé avec --env-file ; voir deploy/instance.env.example.
+#
+#   docker compose -f docker-compose.install.yml --env-file .env.instance up -d --build
+#
+# Plusieurs instances peuvent coexister sur un hôte : chacune utilise son propre
+# nom de projet (-p) et donc son propre volume de données et son propre réseau.
+name: sureau-instance
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sureau
+      POSTGRES_USER: sureau
+      POSTGRES_PASSWORD: ${SUREAU_DB_PASSWORD:?SUREAU_DB_PASSWORD est obligatoire (voir deploy/instance.env.example)}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    # Aucun port publié : seule l'application joint la base.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=sureau --dbname=sureau"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    shm_size: 128mb
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  app:
+    image: ${SUREAU_IMAGE:-sureau:local}
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/sureau
+      DB_USERNAME: sureau
+      DB_PASSWORD: ${SUREAU_DB_PASSWORD:?SUREAU_DB_PASSWORD est obligatoire (voir deploy/instance.env.example)}
+      SUREAU_SETUP_TOKEN: ${SUREAU_SETUP_TOKEN:?SUREAU_SETUP_TOKEN est obligatoire (voir deploy/instance.env.example)}
+      # À activer (true) dès que l'instance est servie en HTTPS.
+      SUREAU_COOKIE_SECURE: ${SUREAU_COOKIE_SECURE:-false}
+    ports:
+      # Écoute locale par défaut : placez un proxy HTTPS devant pour l'exposer.
+      - "${SUREAU_HTTP_BIND:-127.0.0.1}:${SUREAU_HTTP_PORT:-8080}:8080"
+    networks:
+      - database
+      - public
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *logging
+
+networks:
+  # Réseau interne : la base n'a aucun accès sortant ni entrant depuis l'hôte.
+  database:
+    internal: true
+  public:
+
+volumes:
+  postgres_data:
