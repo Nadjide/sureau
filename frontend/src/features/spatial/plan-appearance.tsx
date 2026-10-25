@@ -107,6 +107,6 @@ export function PlanAppearance({ plan, onChange }: Props) {
     </div>}
     {error && <p className="storage-warning" role="alert">{error}</p>}
     {collisions > 0 && <p className="storage-warning" role="status">{collisions} postes se chevauchent. Ajustez-les dans le plan ou dans l’onglet Poste.</p>}
-    <p className="location-help">Les couleurs propres à un poste restent prioritaires sur l’ambiance. Tous ces réglages sont locaux à ce navigateur.</p>
+    <p className="location-help">Les couleurs propres à un poste restent prioritaires sur l’ambiance. Appliquez vos réglages au brouillon, puis enregistrez l’espace pour les partager.</p>
   </div>
 }

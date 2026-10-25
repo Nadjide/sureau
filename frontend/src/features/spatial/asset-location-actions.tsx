@@ -8,6 +8,7 @@ import type { WorkspaceDocument } from './workspace-document'
 import { findWorkspaceStation } from './workspace-rooms'
 
 interface Props {
+  canEdit?: boolean
   plan?: SpatialPlan
   workspace?: WorkspaceDocument
   asset: Asset
@@ -15,7 +16,7 @@ interface Props {
   onShowInPlan: (id: number) => void
 }
 
-export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaultPlan, workspace }: Props) {
+export function AssetLocationActions({ asset, local, canEdit = true, onShowInPlan, plan = defaultPlan, workspace }: Props) {
   const stationId = local.locations[asset.id] || ''
   const station = workspace
     ? findWorkspaceStation(workspace, stationId)?.station
@@ -31,7 +32,8 @@ export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaul
       <select
         id={`location-${asset.id}`}
         value={stationId}
-        onChange={(event) => local.associate(asset.id, event.target.value || null)}
+        disabled={!canEdit}
+        onChange={(event) => { if (canEdit) local.associate(asset.id, event.target.value || null) }}
       >
         <option value="">Non localisé</option>
         {stationId && !station && <option value={stationId}>Poste absent du plan · lien conservé</option>}
@@ -59,10 +61,10 @@ export function AssetLocationActions({ asset, local, onShowInPlan, plan = defaul
       )}
       <p className="local-save-label" role="status">
         <HardDrive size={12} aria-hidden="true" />
-        {local.persisted ? 'Conservé dans ce navigateur' : 'Cette session uniquement'}
+        {local.persisted ? 'Localisation enregistrée sur le serveur' : 'Brouillon · enregistrer pour partager'}
       </p>
       <p className="location-help">
-        Cette localisation est propre à votre plan local. Le statut du matériel reste inchangé.
+        Cette localisation fait partie de l’espace partagé. Appliquez vos changements avec Enregistrer l’espace. Le statut du matériel reste inchangé.
       </p>
       {local.warning && (
         <p className="storage-warning" role="alert">

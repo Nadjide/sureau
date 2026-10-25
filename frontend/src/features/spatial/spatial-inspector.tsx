@@ -12,6 +12,7 @@ import type { WorkspaceDocument } from './workspace-document'
 import { findWorkspaceStation } from './workspace-rooms'
 
 interface Props {
+  canEdit?: boolean
   plan?: SpatialPlan
   workspace?: WorkspaceDocument
   selectedWorkstationId: string | null
@@ -25,6 +26,7 @@ interface Props {
 
 export function SpatialInspector({
   plan = defaultPlan,
+  canEdit = true,
   workspace,
   selectedWorkstationId,
   selectedAssetId,
@@ -60,6 +62,7 @@ export function SpatialInspector({
       >
         <AssetLocationActions
           asset={selectedAsset}
+          canEdit={canEdit}
           local={local}
           onShowInPlan={onShowInPlan}
           plan={plan}
@@ -73,13 +76,13 @@ export function SpatialInspector({
 
   return (
     <aside className="asset-inspector workstation-inspector" aria-label="Fiche du poste">
-      <p className="eyebrow">IMPLANTATION LOCALE</p>
+      <p className="eyebrow">IMPLANTATION DE L’ESPACE</p>
       <div className="inspector-hero">
         <Armchair size={34} strokeWidth={1.3} />
       </div>
       <p className="asset-tag">{station?.id.toUpperCase().replace('DESK', 'POSTE') || 'POSTE'}</p>
       <h2>{station?.label || 'Sélectionnez un poste'}</h2>
-      <Badge variant="secondary">Plan local</Badge>
+      <Badge variant="secondary">{local.persisted ? 'Version serveur' : 'Brouillon'}</Badge>
       <dl className="asset-specs mt-6">
         <div>
           <dt>Salle</dt>
@@ -137,24 +140,24 @@ export function SpatialInspector({
                   </small>
                 </span>
               )}
-              <Button
+              {canEdit && <Button
                 variant="ghost"
                 size="icon-xs"
-                onClick={() => local.associate(id, null)}
+                onClick={() => { if (canEdit) local.associate(id, null) }}
                 aria-label={`Retirer la localisation du matériel ${asset?.assetTag || id}`}
               >
                 <Trash2 size={12} />
-              </Button>
+              </Button>}
             </div>
           )
         })}
         <Button variant="outline" className="w-full mt-3" onClick={onOpenInventory}>
-          Choisir du matériel
+          {canEdit ? 'Choisir du matériel' : 'Voir le matériel'}
         </Button>
       </section>
       <p className="local-save-label">
         <HardDrive size={12} aria-hidden="true" />
-        {local.persisted ? 'Localisations dans ce navigateur' : 'Cette session uniquement'}
+        {local.persisted ? 'Localisations enregistrées sur le serveur' : 'Brouillon · enregistrer pour partager'}
       </p>
       {local.warning && (
         <p className="storage-warning" role="alert">

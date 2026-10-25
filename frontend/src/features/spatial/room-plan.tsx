@@ -7,6 +7,7 @@ type PlanItem = Workstation | FurnitureItem
 interface Props {
   plan: SpatialPlan
   editing: boolean
+  canEdit?: boolean
   snap: boolean
   onMove: (id: string, x: number, z: number) => void
   selectedWorkstationId: string | null
@@ -28,7 +29,8 @@ interface Drag {
   moved: boolean
 }
 
-export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, selectedIds, multipleMode, onSelect }: Props) {
+export function RoomPlan({ plan, editing, canEdit = true, snap, onMove, selectedWorkstationId, selectedIds, multipleMode, onSelect }: Props) {
+  const effectiveEditing = editing && canEdit
   const drag = useRef<Drag | null>(null)
   const clickIntent = useRef<{ id: string; additive: boolean; handled: boolean } | null>(null)
   const [preview, setPreview] = useState<SpatialPlan | null>(null)
@@ -61,7 +63,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
     window.addEventListener('keydown', escape)
     window.addEventListener('blur', cancelDrag)
     return () => { cancelDrag(); window.removeEventListener('keydown', escape); window.removeEventListener('blur', cancelDrag) }
-  }, [plan, editing, cancelDrag])
+  }, [plan, effectiveEditing, cancelDrag])
 
   function point(event: ReactPointerEvent<SVGElement>) {
     const svg = event.currentTarget.ownerSVGElement || event.currentTarget as SVGSVGElement
@@ -77,9 +79,9 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
 
   function beginDrag(event: ReactPointerEvent<SVGGElement>, item: PlanItem) {
     if (event.button !== 0 || drag.current) return
-    const additive = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+    const additive = effectiveEditing && (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
     clickIntent.current = { id: item.id, additive, handled: false }
-    if (!editing || additive) return
+    if (!effectiveEditing || additive) return
     const value = point(event)
     if (!value) return
     event.preventDefault()
@@ -97,7 +99,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
     const intent = clickIntent.current?.id === item.id && event.detail > 0 ? clickIntent.current : null
     clickIntent.current = null
     if (intent?.handled) return
-    const additive = intent?.additive ?? (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
+    const additive = effectiveEditing && (intent?.additive ?? (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey))
     onSelect(item.id, additive, !additive)
   }
 
@@ -105,11 +107,11 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (!event.repeat) {
-        const additive = multipleMode || event.shiftKey || event.ctrlKey || event.metaKey
+        const additive = effectiveEditing && (multipleMode || event.shiftKey || event.ctrlKey || event.metaKey)
         onSelect(item.id, additive, !additive)
       }
     }
-    if (!editing || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+    if (!effectiveEditing || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
     event.preventDefault()
     if (drag.current) cancelDrag()
     const step = (snap ? 0.25 : 0.1) * (event.shiftKey ? 4 : 1)
@@ -126,8 +128,9 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
   }
 
   return (
-    <svg className={`room-plan${editing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={`Plan 2D de ${plan.name}. ${plan.workstations.length} postes et ${plan.furniture.length} meubles sélectionnables au clavier.`}
+    <svg className={`room-plan${effectiveEditing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={`Plan 2D de ${plan.name}. ${plan.workstations.length} postes et ${plan.furniture.length} meubles sélectionnables au clavier.`}
       onPointerMove={(event) => {
+        if (!effectiveEditing) { cancelDrag(); return }
         const current = drag.current
         if (!current || event.pointerId !== current.pointerId) return
         const value = point(event)
@@ -144,7 +147,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
         const current = drag.current
         if (!current || event.pointerId !== current.pointerId) return
         cancelDrag()
-        if (current.moved) onMove(current.original.id, current.candidate.position[0], current.candidate.position[2])
+        if (effectiveEditing && current.moved) onMove(current.original.id, current.candidate.position[0], current.candidate.position[2])
       }}
       onPointerCancel={cancelDrag} onLostPointerCapture={cancelDrag}>
       <defs><pattern id="room-grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="var(--border)" strokeWidth=".65" /></pattern></defs>
@@ -188,7 +191,7 @@ export function RoomPlan({ plan, editing, snap, onMove, selectedWorkstationId, s
           <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== station.id ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
-      <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation locale · mobilier du plan</text>
+      <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation de l’espace · mobilier du plan</text>
     </svg>
   )
 }

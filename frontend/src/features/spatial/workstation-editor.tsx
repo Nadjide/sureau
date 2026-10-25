@@ -13,6 +13,7 @@ import { SelectionRoomTransfer } from './selection-room-transfer'
 
 interface Props {
   plan: SpatialPlan
+  canEdit?: boolean
   persisted: boolean
   selectedId: string | null
   selectedIds: readonly string[]
@@ -24,18 +25,21 @@ interface Props {
   onSelectionMoved: (roomId: string, ids: string[]) => void
 }
 
-export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, onChange, onSelect, onSelectionChange, workspace, onWorkspaceChange, onSelectionMoved }: Props) {
+export function WorkstationEditor({ plan, canEdit = true, persisted, selectedId, selectedIds, onChange, onSelect, onSelectionChange, workspace, onWorkspaceChange, onSelectionMoved }: Props) {
   const station = findWorkstation(selectedId, plan.workstations)
   const furniture = plan.furniture.find((item) => item.id === selectedId)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [section, setSection] = useState<'station' | 'catalog' | 'appearance' | 'files'>('station')
   const conflicts = station ? plan.workstations.filter((item) => item.id !== station.id && overlaps(item, station)) : []
+  const changePlan = (next: SpatialPlan) => canEdit && onChange(next)
+  const changeWorkspace = (next: WorkspaceDocument) => canEdit && onWorkspaceChange(next)
 
   function update(candidate: Workstation) {
+    if (!canEdit) return
     try {
       const bounded = clampWorkstation(plan, candidate)
-      onChange({ ...plan, workstations: plan.workstations.map((item) => item.id === bounded.id ? bounded : item) })
+      if (!changePlan({ ...plan, workstations: plan.workstations.map((item) => item.id === bounded.id ? bounded : item) })) return
       setError(null)
     } catch {
       setError('Ce poste ne rentre pas dans le plateau. Vérifiez ses dimensions.')
@@ -43,6 +47,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
   }
 
   function add(source?: Workstation) {
+    if (!canEdit) return
     if (plan.workstations.length >= 64) {
       setError('Ce plateau peut contenir jusqu’à 64 postes. Exportez un autre plateau pour organiser un nouvel espace.')
       return
@@ -57,7 +62,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
       setError('Aucune place libre pour ce poste. Déplacez le mobilier ou agrandissez le plateau.')
       return
     }
-    onChange({ ...plan, workstations: [...plan.workstations, placed] })
+    if (!changePlan({ ...plan, workstations: [...plan.workstations, placed] })) return
     onSelect(placed.id)
     setDeleting(null)
     setError(null)
@@ -65,7 +70,7 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!station) return
+    if (!canEdit || !station) return
     const data = new FormData(event.currentTarget)
     const label = String(data.get('label') || '').trim()
     if (!label || label.length > 60) { setError('Donnez un nom de 1 à 60 caractères au poste.'); return }
@@ -92,11 +97,13 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
         <button type="button" aria-pressed={section === 'appearance'} onClick={() => setSection('appearance')}>Plateau & couleurs</button>
         <button type="button" aria-pressed={section === 'files'} onClick={() => setSection('files')}>Fichiers</button>
       </div>
-      {section === 'catalog' ? <FurnitureCatalogPanel plan={plan} onChange={onChange} onSelect={(id) => { onSelect(id); setSection('station') }} /> : section === 'files' ? <PlanTransferPanel plan={plan} persisted={persisted} onChange={onChange} /> : section === 'appearance' ? <PlanAppearance plan={plan} onChange={onChange} /> : <>
-      <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'Chaque changement est conservé dans ce navigateur.' : 'Vos changements restent dans cette session. Exportez pour garder une copie.'}</p>
+      {!canEdit && <p className="location-help" role="status">L’atelier est en lecture seule. Vos saisies restent affichées.</p>}
+      {section === 'files' ? <PlanTransferPanel plan={plan} canEdit={canEdit} persisted={persisted} onChange={changePlan} /> : <fieldset disabled={!canEdit} className="spatial-edit-fields">
+      {section === 'catalog' ? <FurnitureCatalogPanel plan={plan} onChange={changePlan} onSelect={(id) => { onSelect(id); setSection('station') }} /> : section === 'appearance' ? <PlanAppearance plan={plan} onChange={changePlan} /> : <>
+      <p className="location-help">Créez votre implantation, poste par poste. {persisted ? 'La version affichée est enregistrée sur le serveur.' : 'Vos changements sont dans le brouillon. Enregistrez l’espace pour les partager.'} Les saisies doivent d’abord être appliquées au plan.</p>
       <Button className="w-full" onClick={() => add()} disabled={plan.workstations.length >= 64}><Plus />Ajouter un poste</Button>
       {error && <p className="storage-warning" role="alert">{error}</p>}
-      {selectedIds.length > 1 ? <SelectionPanel key={selectedIds.join('|')} plan={plan} ids={selectedIds} onChange={onChange} onSelectionChange={onSelectionChange} /> : furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={onChange} onSelect={onSelect} /> : station ? <>
+      {selectedIds.length > 1 ? <SelectionPanel key={selectedIds.join('|')} plan={plan} ids={selectedIds} onChange={changePlan} onSelectionChange={onSelectionChange} /> : furniture ? <FurnitureEditor key={furniture.id} item={furniture} plan={plan} onChange={changePlan} onSelect={onSelect} /> : station ? <>
         <div className="editor-section-title"><h3>{station.label}</h3><span>{plan.workstations.indexOf(station) + 1} / {plan.workstations.length}</span></div>
         <form key={JSON.stringify(station)} className="editor-form" onSubmit={apply}>
           <label>Nom du poste<input name="label" defaultValue={station.label} maxLength={60} required /></label>
@@ -125,14 +132,17 @@ export function WorkstationEditor({ plan, persisted, selectedId, selectedIds, on
         {deleting === station.id ? <div className="editor-delete-confirm">
           <p>Supprimer ce poste ? Ses localisations de matériel restent récupérables.</p>
           <Button variant="destructive" onClick={() => {
+            if (!canEdit) return
             const next = plan.workstations.filter((item) => item.id !== station.id)
-            onChange({ ...plan, workstations: next }); onSelect(next[0]?.id || null); setDeleting(null)
+            if (!changePlan({ ...plan, workstations: next })) return
+            onSelect(next[0]?.id || null); setDeleting(null)
           }}>Confirmer la suppression</Button>
           <Button variant="ghost" onClick={() => setDeleting(null)}>Conserver le poste</Button>
         </div> : <Button variant="ghost" className="editor-delete" onClick={() => setDeleting(station.id)}><Trash2 />Supprimer ce poste</Button>}
       </> : <div className="editor-empty"><p>Sélectionnez un poste dans le plan pour modifier ses propriétés, ou ajoutez le premier poste de votre espace.</p></div>}
-      <SelectionRoomTransfer key={selectedIds.join('|')} workspace={workspace} sourceRoomId={plan.id} ids={selectedIds} onChange={onWorkspaceChange} onMoved={onSelectionMoved} />
+      <SelectionRoomTransfer key={selectedIds.join('|')} workspace={workspace} sourceRoomId={plan.id} ids={selectedIds} onChange={changeWorkspace} onMoved={onSelectionMoved} />
       </>}
+      </fieldset>}
     </aside>
   )
 }

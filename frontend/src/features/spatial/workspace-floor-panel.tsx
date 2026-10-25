@@ -69,7 +69,7 @@ export function WorkspaceFloorPanel({ workspace, onChange, onSelectRoom, onCreat
     <form key={workspace.name} className="editor-form" onSubmit={(event) => {
       event.preventDefault()
       const name = String(new FormData(event.currentTarget).get('name') || '')
-      apply(() => ({ workspace: renameWorkspace(workspace, name) }), 'Le nom de l’espace est enregistré.')
+      apply(() => ({ workspace: renameWorkspace(workspace, name) }), 'Le nom de l’espace est appliqué au brouillon.')
     }}>
       <label>Nom de l’espace<input name="name" defaultValue={workspace.name} maxLength={60} required /></label>
       <Button variant="outline" type="submit">Renommer l’espace</Button>
@@ -92,17 +92,17 @@ export function WorkspaceFloorPanel({ workspace, onChange, onSelectRoom, onCreat
     <form key={`${floor.id}/${floor.name}`} className="editor-form" onSubmit={(event) => {
       event.preventDefault()
       const name = String(new FormData(event.currentTarget).get('name') || '')
-      apply(() => ({ workspace: renameFloor(workspace, floor.id, name) }), 'Le nom de l’étage est enregistré.')
+      apply(() => ({ workspace: renameFloor(workspace, floor.id, name) }), 'Le nom de l’étage est appliqué au brouillon.')
     }}>
       <label>Nom de l’étage<input name="name" defaultValue={floor.name} maxLength={60} required /></label>
       <Button variant="outline" type="submit">Renommer l’étage</Button>
     </form>
     <div className="editor-actions" role="group" aria-label="Ordre des étages">
       <Button variant="outline" disabled={floorIndex === 0} onClick={() => apply(
-        () => ({ workspace: reorderFloor(workspace, floor.id, -1) }), 'L’ordre des étages est enregistré.',
+        () => ({ workspace: reorderFloor(workspace, floor.id, -1) }), 'L’ordre des étages est appliqué au brouillon.',
       )}><ArrowUp aria-hidden="true" />Monter l’étage</Button>
       <Button variant="outline" disabled={floorIndex === workspace.floors.length - 1} onClick={() => apply(
-        () => ({ workspace: reorderFloor(workspace, floor.id, 1) }), 'L’ordre des étages est enregistré.',
+        () => ({ workspace: reorderFloor(workspace, floor.id, 1) }), 'L’ordre des étages est appliqué au brouillon.',
       )}><ArrowDown aria-hidden="true" />Descendre l’étage</Button>
     </div>
 

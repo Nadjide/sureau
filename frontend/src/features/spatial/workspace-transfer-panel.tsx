@@ -5,6 +5,7 @@ import { parseWorkspace, workspaceFileSizeLimit, type WorkspaceDocument } from '
 import { getWorkspaceSummary, isSameWorkspace, serializeWorkspace } from './workspace-transfer'
 
 interface Props {
+  canEdit?: boolean
   workspace: WorkspaceDocument
   persisted: boolean
   onChange: (next: WorkspaceDocument) => boolean
@@ -16,7 +17,7 @@ interface Pending {
   workspace: WorkspaceDocument
 }
 
-export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImported }: Props) {
+export function WorkspaceTransferPanel({ workspace, canEdit = true, persisted, onChange, onImported }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const generation = useRef(0)
   const [reading, setReading] = useState(false)
@@ -45,6 +46,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
   }
 
   function chooseFile() {
+    if (!canEdit) return
     generation.current++
     setReading(false)
     setPending(null)
@@ -55,7 +57,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
   async function readFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
-    if (!file) return
+    if (!canEdit || !file) return
     const ticket = ++generation.current
     const source = workspace
     setPending(null)
@@ -79,7 +81,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
   }
 
   function confirm() {
-    if (!pending) return
+    if (!canEdit || !pending) return
     if (pending.source !== workspace) {
       setPending(null)
       setMessage({ error: true, text: 'L’espace a changé pendant cette préparation. Sélectionnez à nouveau le fichier pour conserver vos dernières modifications.' })
@@ -98,7 +100,7 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
       }
       onImported(pending.workspace.rooms[0]!.plan.id)
       setPending(null)
-      setMessage({ error: false, text: 'L’espace est importé. Annuler permet de retrouver l’espace précédent pendant cette session.' })
+      setMessage({ error: false, text: 'L’espace est importé dans le brouillon. Enregistrez pour le partager. Annuler permet de retrouver l’espace précédent.' })
     } catch (error) {
       setPending(null)
       setMessage({ error: true, text: error instanceof Error ? error.message : 'Cette sauvegarde ne peut pas être appliquée.' })
@@ -111,8 +113,8 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
     <p className="location-help">Conservez ensemble vos étages, vos salles et leurs implantations, avec les noms, les dimensions, le mobilier et les couleurs.</p>
     <div className="transfer-actions">
       <Button variant="outline" onClick={download}><Download aria-hidden="true" />Exporter l’espace (.json)</Button>
-      <Button variant="outline" onClick={chooseFile}><Upload aria-hidden="true" />{reading ? 'Choisir un autre fichier' : 'Importer un espace'}</Button>
-      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier d’espace Sureau" onChange={readFile} tabIndex={-1} />
+      <Button variant="outline" disabled={!canEdit} onClick={chooseFile}><Upload aria-hidden="true" />{reading ? 'Choisir un autre fichier' : 'Importer un espace'}</Button>
+      <input ref={input} type="file" accept=".json,application/json" className="sr-only" aria-label="Fichier d’espace Sureau" disabled={!canEdit} onChange={readFile} tabIndex={-1} />
     </div>
     {reading && <p className="location-help" role="status">Lecture et vérification de la sauvegarde…</p>}
     <p className="location-help">L’inventaire et les localisations du matériel ne sont pas inclus dans le fichier et restent dans leur environnement actuel. Les identifiants des postes et des meubles sont conservés.</p>
@@ -126,10 +128,10 @@ export function WorkspaceTransferPanel({ workspace, persisted, onChange, onImpor
         <div><dt>Meubles</dt><dd>{summary.furnitureCount}</dd></div>
       </dl>
       <p>L’espace courant sera remplacé dans son ensemble. Les localisations existantes restent inchangées et retrouvent les postes portant le même identifiant. Les liens vers des postes absents restent récupérables dans l’inventaire.</p>
-      <Button onClick={confirm}>Importer cet espace</Button>
+      <Button disabled={!canEdit} onClick={confirm}>Importer cet espace</Button>
       <Button variant="ghost" onClick={() => setPending(null)}>Conserver l’espace courant</Button>
     </div>}
     {message && <p className={message.error ? 'storage-warning' : 'transfer-success'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
-    <p className="local-save-label"><HardDrive size={12} aria-hidden="true" />{persisted ? 'Espace conservé dans ce navigateur' : 'Session uniquement · exportez pour garder une copie'}</p>
+    <p className="local-save-label"><HardDrive size={12} aria-hidden="true" />{persisted ? 'Version enregistrée sur le serveur' : 'Brouillon à enregistrer · exportez pour garder une copie'}</p>
   </section>
 }
