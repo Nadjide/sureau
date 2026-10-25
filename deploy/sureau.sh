@@ -211,16 +211,15 @@ cmd_restore() {
   require_instance
   require_database
 
-  # Rien n'est modifié tant que l'archive n'a pas été lue et reconnue.
+  # Rien n'est modifié tant que l'archive n'a pas été lue en entier : la convertir
+  # en script SQL décompresse chacun de ses blocs, si bien qu'une archive
+  # tronquée ou corrompue est refusée ici, avant tout arrêt.
   in_db_stdin 'cat > /tmp/restore.dump' < "$file"
-  contents=$(in_db 'pg_restore --list /tmp/restore.dump 2>/dev/null') || contents=
-  case $contents in
-    *flyway_schema_history*) ;;
-    *)
-      in_db 'rm -f /tmp/restore.dump'
-      fail "$file n'est pas une sauvegarde Sureau lisible."
-      ;;
-  esac
+  if ! in_db 'pg_restore --list /tmp/restore.dump 2>/dev/null | grep -q flyway_schema_history &&
+      pg_restore --no-owner --no-privileges --file=/tmp/restore.sql /tmp/restore.dump 2>/dev/null'; then
+    in_db 'rm -f /tmp/restore.dump /tmp/restore.sql'
+    fail "$file n'est pas une sauvegarde Sureau complète et lisible. Rien n'a été modifié."
+  fi
 
   if [ "$assume_yes" != yes ]; then
     echo "Toutes les données de l'instance « $project » (comptes, inventaire, plans)"
@@ -230,28 +229,29 @@ cmd_restore() {
     answer=
     read -r answer || true
     if [ "$answer" != restaurer ]; then
-      in_db 'rm -f /tmp/restore.dump'
+      in_db 'rm -f /tmp/restore.dump /tmp/restore.sql'
       fail "Restauration annulée, rien n'a été modifié."
     fi
   fi
 
+  # L'application est arrêtée avant la sauvegarde de sécurité : rien ne peut
+  # plus s'écrire entre cette sauvegarde et le remplacement.
+  compose stop app
   make_backup "$backup_dir" "$project-avant-restauration"
   safety=$backup_file
   echo "Sauvegarde de sécurité : $safety"
 
-  # L'application est arrêtée pour qu'aucune connexion n'écrive pendant le
-  # remplacement. Les sessions de la sauvegarde sont purgées : tout le monde
-  # doit se reconnecter.
-  compose stop app
-  if ! { in_db 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 \
-      -c "SET client_min_messages TO warning; DROP SCHEMA public CASCADE; CREATE SCHEMA public;"' &&
-    in_db 'pg_restore --username=sureau --dbname=sureau --no-owner --no-privileges \
-      --single-transaction --exit-on-error /tmp/restore.dump' &&
-    in_db 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 \
-      -c "TRUNCATE spring_session, spring_session_attributes"'; }; then
-    fail "La restauration a échoué ; la base peut être vide. Pour revenir à l'état précédent : deploy/sureau.sh restore $safety --yes"
+  # Une seule transaction remplace le schéma, recharge les données et purge les
+  # sessions (tout le monde doit se reconnecter). Au moindre échec, PostgreSQL
+  # annule l'ensemble : la base reste exactement dans son état précédent.
+  if ! in_db 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 --single-transaction \
+      -c "SET client_min_messages TO warning" -c "DROP SCHEMA public CASCADE" -c "CREATE SCHEMA public" \
+      -f /tmp/restore.sql -c "TRUNCATE public.spring_session, public.spring_session_attributes"'; then
+    in_db 'rm -f /tmp/restore.dump /tmp/restore.sql'
+    compose up -d --wait --wait-timeout 300 || true
+    fail "La restauration a échoué et a été annulée : les données de l'instance n'ont pas changé."
   fi
-  in_db 'rm -f /tmp/restore.dump'
+  in_db 'rm -f /tmp/restore.dump /tmp/restore.sql'
   compose up -d --wait --wait-timeout 300 ||
     fail "L'application ne démarre pas après la restauration. Si la sauvegarde vient d'une version plus récente de Sureau, revenez d'abord à cette version. État précédent : deploy/sureau.sh restore $safety --yes"
   echo

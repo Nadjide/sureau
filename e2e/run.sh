@@ -6,6 +6,8 @@
 #   1. l'installation par l'interface et la création de données,
 #   2. un redémarrage de l'application,
 #   3. une sauvegarde complète puis sa restauration,
+#   4. deux restaurations qui doivent échouer sans rien modifier : une archive
+#      tronquée, puis une erreur SQL provoquée au milieu du remplacement,
 # en vérifiant à chaque étape que comptes, inventaire et plan sont conservés.
 # L'instance et ses données sont supprimées à la fin.
 #
@@ -68,4 +70,28 @@ echo "== Sauvegarde puis restauration complètes"
 sureau backup
 backup=$(ls -1 "$SUREAU_BACKUP_DIR"/*.dump | head -n 1)
 sureau restore "$backup" --yes
+e2e after-restore
+
+echo
+echo "== Restaurations refusées ou annulées, données intactes"
+size=$(wc -c < "$backup")
+head -c $((size * 2 / 3)) "$backup" > "$work/tronquee.dump"
+if sureau restore "$work/tronquee.dump" --yes; then
+  echo "Une archive tronquée a été restaurée." >&2
+  exit 1
+fi
+# Un déclencheur refuse toute création de table : la restauration échoue après
+# avoir supprimé le schéma, dans la même transaction, qui doit être annulée.
+psql_test() {
+  sureau compose exec -T postgres psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 -c "$1"
+}
+psql_test "CREATE SCHEMA e2e_guard;
+  CREATE FUNCTION e2e_guard.deny() RETURNS event_trigger LANGUAGE plpgsql
+    AS \$\$ BEGIN RAISE EXCEPTION 'restauration interrompue par le test'; END \$\$;
+  CREATE EVENT TRIGGER e2e_deny ON ddl_command_start WHEN TAG IN ('CREATE TABLE') EXECUTE FUNCTION e2e_guard.deny();"
+if sureau restore "$backup" --yes; then
+  echo "Une restauration interrompue a été présentée comme réussie." >&2
+  exit 1
+fi
+psql_test "DROP EVENT TRIGGER e2e_deny; DROP SCHEMA e2e_guard CASCADE;"
 e2e after-restore
