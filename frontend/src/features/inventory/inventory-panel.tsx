@@ -7,6 +7,8 @@ import {
   RefreshCw,
   Search,
   SearchX,
+  CheckCircle2,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AssetDetails, AssetIcon, AssetStatus } from './asset-details'
@@ -17,6 +19,8 @@ import {
   type AssetStatus as Status,
 } from './asset-schema'
 import type { useInventory } from './use-inventory'
+import { useSession } from '@/features/auth/use-session'
+import { CreateAssetSheet } from './create-asset-sheet'
 
 type Props = {
   inventory: ReturnType<typeof useInventory>
@@ -35,6 +39,8 @@ export function InventoryPanel({
 }: Props) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<Status | ''>('')
+  const [created, setCreated] = useState<Asset | null>(null)
+  const { canEdit } = useSession()
   const { assets, status: requestStatus, error, reload } = inventory
   const selected = assets?.find((asset) => asset.id === selectedAssetId)
   const normalized = query.trim().toLocaleLowerCase('fr')
@@ -87,7 +93,11 @@ export function InventoryPanel({
           >
             <RefreshCw className={requestStatus === 'loading' ? 'animate-spin' : ''} />
           </Button>
+          <CreateAssetSheet canEdit={canEdit} onCreated={(asset) => {
+            setCreated(asset); setQuery(''); setStatus(''); inventory.refreshAfterCreate(asset); onSelect(asset.id)
+          }} />
         </div>
+        {created && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{created.name}</strong> ({created.assetTag}) a été enregistré dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation d’ajout" onClick={() => setCreated(null)}><X aria-hidden="true" /></Button></div>}
         {error && (
           <div className="inventory-alert" role="alert">
             <AlertCircle size={17} aria-hidden="true" />
@@ -108,7 +118,7 @@ export function InventoryPanel({
             </Button>
           </div>
         )}
-        {assets && selectedAssetId !== null && !selected && (
+        {assets && requestStatus === 'ready' && selectedAssetId !== null && !selected && (
           <p className="selection-notice" role="status">
             Le matériel sélectionné n’est plus présent dans l’inventaire.{' '}
             <button onClick={() => onSelect(null)}>Effacer la sélection</button>
