@@ -77,6 +77,7 @@ Les réglages sont dans `.env.instance` (modèle : [`deploy/instance.env.example
 | `SUREAU_HTTP_BIND` | Adresse d’écoute de l’application | `127.0.0.1` |
 | `SUREAU_HTTP_PORT` | Port d’écoute de l’application | `8080` |
 | `SUREAU_COOKIE_SECURE` | `true` dès que l’instance est servie en HTTPS | `false` |
+| `SUREAU_COOKIE_NAME` | Nom du cookie de session : lettres, chiffres, `_` et `-` | `SUREAU_SESSION_<port>` |
 | `SUREAU_IMAGE` | Image de l’application : `sureau:local` (construite sur place) ou une image publiée | `sureau:local` |
 
 **Changer le mot de passe de la base** après l’installation ne se fait pas en modifiant seulement le fichier : PostgreSQL a enregistré l’ancien lors de la création du volume. Cette opération n’est pas couverte par ce guide.
@@ -97,6 +98,8 @@ SUREAU_ENV_FILE=.env.equipe-b SUREAU_PROJECT=sureau-equipe-b deploy/sureau.sh up
 ```
 
 Utilisez les mêmes variables pour toutes les commandes suivantes (`status`, `backup`, `update`…). Les données de deux instances ne se mélangent jamais.
+
+Les navigateurs ne distinguent pas les cookies par port. Chaque instance nomme donc son cookie de session d’après son port (`SUREAU_SESSION_8081` ici) : vous pouvez rester connecté à plusieurs instances dans le même navigateur. Si vous changez `SUREAU_HTTP_PORT` ou `SUREAU_COOKIE_NAME`, chacun doit se reconnecter une fois. C’est aussi le cas lors de la mise à jour vers la version qui a introduit ce nom ; les données ne sont pas touchées.
 
 ## Commandes courantes
 

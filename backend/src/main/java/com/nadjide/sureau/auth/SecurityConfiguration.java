@@ -32,9 +32,10 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration
 public class SecurityConfiguration {
     @Bean
-    CookieSerializer sessionCookieSerializer(@Value("${server.servlet.session.cookie.secure:false}") boolean secure) {
+    CookieSerializer sessionCookieSerializer(@Value("${server.servlet.session.cookie.secure:false}") boolean secure,
+                                             @Value("${sureau.session.cookie-name:SESSION}") String cookieName) {
         DefaultCookieSerializer serializer = new DefaultCookieSerializer();
-        serializer.setCookieName("SESSION");
+        serializer.setCookieName(sessionCookieName(cookieName));
         serializer.setCookiePath("/");
         serializer.setUseHttpOnlyCookie(true);
         serializer.setSameSite("Lax");
@@ -75,7 +76,8 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, UserRepository users) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, UserRepository users,
+                                            @Value("${sureau.session.cookie-name:SESSION}") String cookieName) throws Exception {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(new HttpSessionCsrfTokenRepository())
@@ -110,11 +112,20 @@ public class SecurityConfiguration {
                                         "Invalid username or password.")))
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
-                        .deleteCookies("SESSION")
+                        .deleteCookies(sessionCookieName(cookieName))
                         .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_NO_CONTENT))
                         .permitAll())
                 .addFilterBefore(new AccountSessionFilter(users, mapper), AuthorizationFilter.class);
         return http.build();
+    }
+
+    // Browsers do not separate cookies by port: instances on one host need distinct session cookie
+    // names, or signing in to one signs out of the other. The deployment files derive one.
+    static String sessionCookieName(String name) {
+        if (name == null || !name.matches("[A-Za-z0-9_-]{1,128}")) {
+            throw new IllegalStateException("sureau.session.cookie-name must contain 1 to 128 letters, digits, '_' or '-'.");
+        }
+        return name;
     }
 
     // The interface and the API share one origin and load nothing from elsewhere, so the policy

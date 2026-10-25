@@ -23,8 +23,8 @@ export interface Credentials {
 export interface E2eState {
   admin: Credentials;
   viewer: Credentials;
-  /** Valeur du cookie SESSION de l'administrateur ouvert pendant l'installation. */
-  session: string;
+  /** Cookie de session de l'administrateur ouvert pendant l'installation. */
+  session: { name: string; value: string };
   expected: { workspace: unknown; assets: unknown; users: unknown };
 }
 

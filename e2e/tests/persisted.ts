@@ -1,5 +1,5 @@
 import { expect, request, test, type BrowserContext, type Page } from '@playwright/test';
-import { getJson, loadState, login, newContext, origin, waitForWebGlScene, watchPage } from './support';
+import { getJson, loadState, login, newContext, origin, waitForWebGlScene, watchPage, type E2eState } from './support';
 
 // Contrôles communs aux projets exécutés après un redémarrage ou une
 // restauration : comptes, inventaire et plan lié doivent être strictement
@@ -44,11 +44,12 @@ export function registerPersistedInstanceTests(): void {
   });
 }
 
-export async function expectSessionRejected(session: string): Promise<void> {
-  const anonymous = await request.newContext({ baseURL: origin, extraHTTPHeaders: { Cookie: `SESSION=${session}` } });
+// Statut de /api/auth/me pour une requête qui ne présente que ce cookie.
+export async function expectSessionStatus(session: E2eState['session'], status: 200 | 401): Promise<void> {
+  const client = await request.newContext({ baseURL: origin, extraHTTPHeaders: { Cookie: `${session.name}=${session.value}` } });
   try {
-    expect((await anonymous.get('/api/auth/me')).status()).toBe(401);
+    expect((await client.get('/api/auth/me')).status()).toBe(status);
   } finally {
-    await anonymous.dispose();
+    await client.dispose();
   }
 }

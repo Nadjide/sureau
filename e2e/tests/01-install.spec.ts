@@ -98,11 +98,15 @@ test('the first-run page creates the administrator and opens the application', a
   expect(await getJson(context.request, '/api/assets')).toEqual([]);
   await getJson(context.request, '/api/workspace', 404);
 
-  const cookie = (await context.cookies()).find((candidate) => candidate.name === 'SESSION');
+  // Le nom par défaut est propre au port : deux instances d'une même machine
+  // ne se ferment pas mutuellement leurs sessions dans un navigateur.
+  const cookies = await context.cookies();
+  expect(cookies.map((candidate) => candidate.name)).not.toContain('SESSION');
+  const cookie = cookies.find((candidate) => candidate.name === `SUREAU_SESSION_${new URL(origin).port}`);
   expect(cookie, 'session cookie').toBeDefined();
   expect(cookie?.httpOnly).toBe(true);
   expect(cookie?.sameSite).toBe('Lax');
-  saveState({ admin, viewer, session: cookie?.value ?? '' });
+  saveState({ admin, viewer, session: { name: cookie?.name ?? '', value: cookie?.value ?? '' } });
 
   expect(await getJson(context.request, '/api/auth/status')).toMatchObject({ setupRequired: false });
 });
@@ -266,7 +270,7 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
       users: await getJson(context.request, '/api/users'),
     },
   });
-  expect(loadState().session).not.toBe('');
+  expect(loadState().session.value).not.toBe('');
   expect(watched.errors).toEqual([]);
 });
 
