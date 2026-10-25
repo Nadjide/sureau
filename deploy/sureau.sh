@@ -103,9 +103,22 @@ cmd_init() {
   echo "Étape suivante : deploy/sureau.sh up"
 }
 
+# Démarre ou met à jour l'application. L'image est construite à partir des
+# sources, sauf si SUREAU_IMAGE désigne une image publiée : elle est alors
+# téléchargée, ce qui évite d'avoir les sources sur la machine.
+deploy_app() {
+  image=${SUREAU_IMAGE:-$(env_value SUREAU_IMAGE)}
+  if [ -n "$image" ] && [ "$image" != sureau:local ]; then
+    compose pull app || return 1
+    compose up -d --wait --wait-timeout 300
+  else
+    compose up -d --build --wait --wait-timeout 300
+  fi
+}
+
 cmd_up() {
   require_instance
-  compose up -d --build --wait --wait-timeout 300
+  deploy_app
   bind=$(env_value SUREAU_HTTP_BIND)
   echo
   echo "Sureau est démarré : http://${bind:-127.0.0.1}:$(env_value SUREAU_HTTP_PORT)"
@@ -251,8 +264,8 @@ cmd_update() {
   require_database
   make_backup "$backup_dir" "$project-avant-mise-a-jour"
   echo "Sauvegarde avant mise à jour : $backup_file"
-  compose up -d --build --wait --wait-timeout 300 ||
-    fail "La mise à jour a échoué. Revenez aux sources précédentes puis restaurez : deploy/sureau.sh restore $backup_file --yes"
+  deploy_app ||
+    fail "La mise à jour a échoué. Revenez à la version précédente (sources ou SUREAU_IMAGE) puis restaurez : deploy/sureau.sh restore $backup_file --yes"
   echo
   echo "Mise à jour terminée."
 }
