@@ -54,6 +54,18 @@ public class UserAdministrationService {
         return saved.adminResponse();
     }
 
+    @Transactional
+    public void resetPassword(SessionPrincipal actor, long id, ResetPasswordRequest request) {
+        users.lockAccounts();
+        requireAdministrator(actor);
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive account identifier is required.");
+        UserAccount target = users.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "The requested account does not exist."));
+        AccountValidation.password(request.password());
+        UserAccount saved = users.updatePassword(target.id(), passwords.encode(request.password()));
+        users.revokeSessions(saved.username());
+    }
+
     private UserAccount requireAdministrator(SessionPrincipal actor) {
         if (actor == null) throw unauthenticated();
         UserAccount account = users.findById(actor.getId()).orElseThrow(UserAdministrationService::unauthenticated);

@@ -72,6 +72,15 @@ public class UserRepository {
                 """.formatted(COLUMNS), ROW_MAPPER, displayName, role.name(), enabled, securityChanged ? 1 : 0, id);
     }
 
+    UserAccount updatePassword(long id, String passwordHash) {
+        return jdbc.queryForObject("""
+                UPDATE app_users
+                SET password_hash = ?, auth_version = auth_version + 1
+                WHERE id = ?
+                RETURNING %s
+                """.formatted(COLUMNS), ROW_MAPPER, passwordHash, id);
+    }
+
     long countEnabledAdministrators() {
         return jdbc.queryForObject("SELECT COUNT(*) FROM app_users WHERE enabled = TRUE AND role = 'ADMIN'", Long.class);
     }
