@@ -81,12 +81,17 @@ kubectl -n sureau cp postgres-0:/tmp/sureau.dump ./sureau.dump
 kubectl -n sureau exec postgres-0 -- rm /tmp/sureau.dump
 ```
 
-La restauration **remplace toutes les données** de l'instance. Faites d'abord une sauvegarde de l'état actuel avec les commandes ci-dessus.
+La restauration **remplace toutes les données** de l'instance. Lisez d'abord l'archive en entier : la conversion en SQL refuse une archive tronquée ou corrompue avant toute modification. Arrêtez ensuite l'application et faites une sauvegarde de l'état actuel avec les commandes ci-dessus. Le remplacement se fait enfin en une seule transaction : au moindre échec, PostgreSQL annule tout et les données restent celles d'avant.
 
 ```sh
-kubectl -n sureau scale deployment/sureau --replicas=0
 kubectl -n sureau cp ./sureau.dump postgres-0:/tmp/restore.dump
-kubectl -n sureau exec postgres-0 -- sh -c 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 -c "SET client_min_messages TO warning; DROP SCHEMA public CASCADE; CREATE SCHEMA public;" && pg_restore --username=sureau --dbname=sureau --no-owner --no-privileges --single-transaction --exit-on-error /tmp/restore.dump && psql --quiet --username=sureau --dbname=sureau -c "TRUNCATE spring_session, spring_session_attributes" && rm /tmp/restore.dump'
+kubectl -n sureau exec postgres-0 -- pg_restore --no-owner --no-privileges --file=/tmp/restore.sql /tmp/restore.dump
+kubectl -n sureau scale deployment/sureau --replicas=0
+# … sauvegarde de l'état actuel (voir ci-dessus) …
+kubectl -n sureau exec postgres-0 -- psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 --single-transaction \
+  -c "SET client_min_messages TO warning" -c "DROP SCHEMA public CASCADE" -c "CREATE SCHEMA public" \
+  -f /tmp/restore.sql -c "TRUNCATE public.spring_session, public.spring_session_attributes"
+kubectl -n sureau exec postgres-0 -- rm -f /tmp/restore.dump /tmp/restore.sql
 kubectl -n sureau scale deployment/sureau --replicas=1
 ```
 
