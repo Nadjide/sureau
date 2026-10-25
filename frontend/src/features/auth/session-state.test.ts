@@ -51,6 +51,29 @@ describe('cycle de session et brouillon', () => {
     expect(expiredSession(initialSession)).toEqual(initialSession)
     expect(sessionPermissions(initialSession)).toEqual({ canEdit: false, canAdmin: false })
   })
+
+  it('conserve la raison de reconnexion et le brouillon après une réinitialisation du mot de passe', () => {
+    const connected = authenticatedSession({ ...initialSession, generation: 8 }, user)
+    const reason = 'Votre mot de passe a été réinitialisé. Reconnectez-vous avec le nouveau mot de passe.'
+    const suspended = expiredSession(connected, reason)
+
+    expect(suspended).toEqual({ ...connected, phase: 'expired', error: reason })
+    expect(sessionPermissions(suspended)).toEqual({ canEdit: false, canAdmin: false })
+    expect(updateSessionUser(suspended, { id: user.id, displayName: 'Nom confirmé' }))
+      .toMatchObject({ phase: 'expired', generation: 8, error: reason, user: { id: user.id, displayName: 'Nom confirmé' } })
+  })
+
+  it('efface la raison après la reconnexion sans changer la génération du même compte', () => {
+    const connected = authenticatedSession({ ...initialSession, generation: 6 }, user)
+    const suspended = expiredSession(connected, 'Vos sessions ont été révoquées.')
+
+    expect(authenticatedSession(suspended, user)).toMatchObject({ phase: 'authenticated', error: null, generation: 6 })
+    expect(signedOutSession(suspended)).toMatchObject({ phase: 'anonymous', user: null, error: null, generation: 7 })
+  })
+
+  it('n’attache aucune raison de reconnexion à une session sans utilisateur', () => {
+    expect(expiredSession(initialSession, 'Réinitialisation du mot de passe')).toBe(initialSession)
+  })
 })
 
 describe('actualisation du nom du compte courant', () => {

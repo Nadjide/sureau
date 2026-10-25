@@ -17,8 +17,8 @@ export function authenticatedSession(previous: SessionState, user: SessionUser):
   }
 }
 
-export function expiredSession(previous: SessionState): SessionState {
-  return previous.user ? { ...previous, phase: 'expired', error: null } : previous
+export function expiredSession(previous: SessionState, message: string | null = null): SessionState {
+  return previous.user ? { ...previous, phase: 'expired', error: message } : previous
 }
 
 export function updateSessionUser(previous: SessionState, input: Pick<SessionUser, 'id' | 'displayName'>): SessionState {

@@ -10,7 +10,7 @@ export interface SessionContextValue {
   login(input: LoginInput): Promise<void>
   setup(input: SetupInput): Promise<void>
   logout(): Promise<void>
-  expire(): void
+  expire(message?: string): void
   updateUser(input: Pick<SessionUser, 'id' | 'displayName'>): void
   refresh(): void
 }

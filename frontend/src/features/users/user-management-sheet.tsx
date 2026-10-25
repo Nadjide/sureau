@@ -5,8 +5,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { useSession } from '@/features/auth/use-session'
 import { roleLabels } from '@/features/auth/session-state'
 import { ApiError } from '@/lib/api-client'
-import { createUserInputSchema, updateUserInputSchema, type AdminUser, type CreateUserInput, type UpdateUserInput } from './user-schema'
+import { createUserInputSchema, resetPasswordInputSchema, updateUserInputSchema, type AdminUser, type CreateUserInput, type ResetPasswordInput, type UpdateUserInput } from './user-schema'
 import { usersApi } from './users-api'
+import { AdminPasswordResetPanel, type PasswordResetResult } from './admin-password-reset-panel'
 import './users.css'
 
 interface Props { open: boolean; onOpenChange: (open: boolean) => void }
@@ -14,13 +15,16 @@ type CreateValues = CreateUserInput & { confirmation: string }
 type UserForm = { kind: 'create'; values: CreateValues } | { kind: 'edit'; base: AdminUser; values: UpdateUserInput }
 type Destination = 'close' | 'list' | 'create' | AdminUser
 type SecurityConfirmation = { base: AdminUser; values: UpdateUserInput }
-type Request = { controller: AbortController; kind: 'list' | 'create' | 'update' }
+type Request = { controller: AbortController; kind: 'list' | 'create' | 'update' | 'reset' }
 const emptyCreate: CreateValues = { username: '', displayName: '', password: '', confirmation: '', role: 'VIEWER' }
 const editValues = (user: AdminUser): UpdateUserInput => ({ displayName: user.displayName, role: user.role, enabled: user.enabled })
 const sameAccount = (first: AdminUser, second: AdminUser) => first.id === second.id && first.username === second.username
   && first.displayName === second.displayName && first.role === second.role && first.enabled === second.enabled
 const sameValues = (first: UpdateUserInput, second: UpdateUserInput) => first.displayName === second.displayName && first.role === second.role && first.enabled === second.enabled
 const formIdentity = (form: UserForm | null) => form?.kind === 'create' ? 'create' : form?.kind === 'edit' ? `edit:${form.base.id}` : null
+const accountFormDirty = (form: UserForm | null) => form !== null && (form.kind === 'create'
+  ? JSON.stringify(form.values) !== JSON.stringify(emptyCreate)
+  : !sameValues(form.values, editValues(form.base)))
 const mergeAccount = (previous: AdminUser[] | null, account: AdminUser) => [...(previous ?? []).filter((user) => user.id !== account.id), account].sort((a, b) => a.username.localeCompare(b.username))
 
 export function UserManagementSheet({ open, onOpenChange }: Props) {
@@ -37,17 +41,19 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   const [blocked, setBlocked] = useState(false)
   const [discard, setDiscard] = useState<Destination | null>(null)
   const [securityConfirmation, setSecurityConfirmation] = useState<SecurityConfirmation | null>(null)
+  const [resetDirty, setResetDirty] = useState(false)
+  const [resetGeneration, setResetGeneration] = useState(0)
+  const [passwordUncertain, setPasswordUncertain] = useState<ReadonlySet<number>>(() => new Set())
   const request = useRef<Request | null>(null)
   const mounted = useRef(false)
   const focusRequested = useRef<string | null>(null)
-  const latest = useRef({ canAdmin, userId: state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session })
+  const latest = useRef({ canAdmin, userId: state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session, resetDirty, passwordUncertain })
   useLayoutEffect(() => {
-    latest.current = { canAdmin, userId: state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session }
-  }, [canAdmin, state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session])
+    latest.current = { canAdmin, userId: state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session, resetDirty, passwordUncertain }
+  }, [canAdmin, state.user?.id, accounts, form, listStatus, blocked, discard, securityConfirmation, session, resetDirty, passwordUncertain])
 
-  const dirty = form !== null && (form.kind === 'create'
-    ? JSON.stringify(form.values) !== JSON.stringify(emptyCreate)
-    : !sameValues(form.values, editValues(form.base)))
+  const accountDirty = accountFormDirty(form)
+  const dirty = accountDirty || resetDirty
   const currentTarget = form?.kind === 'edit' ? accounts?.find((account) => account.id === form.base.id) : undefined
   const targetChanged = form?.kind === 'edit' && (!currentTarget || !sameAccount(currentTarget, form.base))
   const lastAdministrator = form?.kind === 'edit' && form.base.enabled && form.base.role === 'ADMIN'
@@ -59,7 +65,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     if (formKey === null || focusRequested.current !== formKey) return
     focusRequested.current = null
     document.getElementById(formKey === 'create' ? 'user-create-username' : 'user-edit-displayName')?.focus()
-  }, [formKey])
+  }, [formKey, resetGeneration])
 
   const loadAccounts = useCallback(async () => {
     if (!mounted.current || !latest.current.canAdmin || request.current) return
@@ -92,6 +98,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
 
   function navigate(destination: Destination) {
     setDiscard(null); setSecurityConfirmation(null); setFields({}); setError(null); setNotice(null)
+    setResetDirty(false); setResetGeneration((previous) => previous + 1)
     if (destination === 'close' || destination === 'list') {
       focusRequested.current = null; setForm(null)
       if (destination === 'close') onOpenChange(false)
@@ -99,11 +106,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       const next: UserForm = destination === 'create'
         ? { kind: 'create', values: { ...emptyCreate } }
         : { kind: 'edit', base: destination, values: editValues(destination) }
-      const key = formIdentity(next)!
-      if (formIdentity(latest.current.form) === key) {
-        focusRequested.current = null
-        document.getElementById(next.kind === 'create' ? 'user-create-username' : 'user-edit-displayName')?.focus()
-      } else focusRequested.current = key
+      focusRequested.current = formIdentity(next)
       setForm(next)
     }
   }
@@ -129,7 +132,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   }
   function changeEdit(field: keyof UpdateUserInput, value: string | boolean) {
     const current = latest.current
-    if (!current.canAdmin || request.current || current.discard !== null || current.form?.kind !== 'edit') return
+    if (!current.canAdmin || request.current || current.discard !== null || current.resetDirty || current.form?.kind !== 'edit') return
     if (field === 'enabled' && value === false && current.form.base.id === current.userId) return
     setForm((previous) => previous?.kind === 'edit' ? { ...previous, values: { ...previous.values, [field]: value } } : previous)
     clearField(field)
@@ -150,7 +153,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   }
   function canSubmit() {
     const current = latest.current
-    return mounted.current && current.canAdmin && !request.current && !current.blocked && current.listStatus === 'ready' && current.discard === null
+    return mounted.current && current.canAdmin && !request.current && !current.blocked && !current.resetDirty && current.listStatus === 'ready' && current.discard === null
   }
   async function createAccount(input: CreateUserInput) {
     if (!canSubmit() || latest.current.form?.kind !== 'create') return
@@ -161,6 +164,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return
       setAccounts((previous) => mergeAccount(previous, account))
       setForm({ kind: 'edit', base: account, values: editValues(account) })
+      setResetDirty(false); setResetGeneration((previous) => previous + 1)
       setNotice(`Le compte @${account.username} est créé. Son mot de passe initial n’est pas conservé dans cette saisie.`)
     } catch (failure) {
       if (mounted.current && !operation.controller.signal.aborted && request.current === operation) fail(failure)
@@ -199,6 +203,53 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       if (request.current === operation) { request.current = null; if (mounted.current) setPending(null) }
     }
   }
+  async function resetPassword(base: AdminUser, input: ResetPasswordInput): Promise<PasswordResetResult> {
+    const current = latest.current
+    const rejected = (message: string): PasswordResetResult => ({ ok: false, message })
+    if (!mounted.current || !current.canAdmin || request.current || current.blocked || current.listStatus !== 'ready'
+      || current.discard !== null || current.securityConfirmation !== null || current.passwordUncertain.has(base.id)) {
+      return rejected('La réinitialisation est indisponible. Vérifiez votre session et les informations du compte avant de confirmer.')
+    }
+    const target = current.accounts?.find((account) => account.id === base.id)
+    if (current.form?.kind !== 'edit' || current.form.base.id !== base.id || accountFormDirty(current.form)
+      || !target || !sameAccount(target, base) || !sameAccount(current.form.base, base)) {
+      return rejected('Le compte ou votre saisie a changé. Reprenez sa fiche actualisée avant de réinitialiser son mot de passe.')
+    }
+    const parsed = resetPasswordInputSchema.safeParse(input)
+    if (!parsed.success) return rejected('Le nouveau mot de passe ne respecte pas les règles indiquées.')
+    const operation: Request = { controller: new AbortController(), kind: 'reset' }
+    request.current = operation; setPending('reset'); setError(null); setNotice(null)
+    try {
+      await usersApi.resetPassword(base.id, parsed.data, operation.controller.signal)
+      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected('La réinitialisation a été interrompue.')
+      setResetDirty(false); setResetGeneration((previous) => previous + 1)
+      setNotice(`Le mot de passe de @${base.username} est réinitialisé. Toutes ses sessions ont été fermées${base.enabled ? '.' : ' ; son compte reste désactivé.'}`)
+      if (base.id === current.userId) current.session.expire('Votre mot de passe a été réinitialisé. Reconnectez-vous avec le nouveau mot de passe pour reprendre votre travail.')
+      return { ok: true }
+    } catch (failure) {
+      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected('La réinitialisation a été interrompue.')
+      if (!(failure instanceof ApiError) || failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) {
+        setPasswordUncertain((previous) => new Set(previous).add(base.id))
+      }
+      return {
+        ok: false,
+        message: failure instanceof Error ? failure.message : 'La réinitialisation du mot de passe n’a pas pu être confirmée.',
+        ...(failure instanceof ApiError ? { fieldErrors: failure.fieldErrors } : {}),
+      }
+    } finally {
+      if (request.current === operation) { request.current = null; if (mounted.current) setPending(null) }
+    }
+  }
+  function acknowledgePassword(base: AdminUser) {
+    const current = latest.current
+    if (!mounted.current || !current.canAdmin || request.current || current.listStatus !== 'ready' || current.discard !== null || current.securityConfirmation !== null
+      || current.form?.kind !== 'edit' || !current.passwordUncertain.has(base.id) || !sameAccount(current.form.base, base)) return false
+    const target = current.accounts?.find((account) => account.id === base.id)
+    if (!target || !sameAccount(target, base)) return false
+    setPasswordUncertain((previous) => { const next = new Set(previous); next.delete(base.id); return next })
+    setNotice(`Vous avez confirmé la vérification de l’accès à @${base.username}. Une nouvelle réinitialisation peut être préparée si nécessaire.`)
+    return true
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canSubmit() || !form || latest.current.securityConfirmation) return
@@ -217,11 +268,16 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       else void updateAccount(form.base, parsed.data)
     }
   }
-  const inputDisabled = !canAdmin || Boolean(pending) || discard !== null || securityConfirmation !== null
-  const submitDisabled = inputDisabled || blocked || listStatus !== 'ready' || (form?.kind === 'edit' && (!dirty || targetChanged))
+  const inputDisabled = !canAdmin || Boolean(pending) || discard !== null || securityConfirmation !== null || resetDirty
+  const submitDisabled = inputDisabled || blocked || listStatus !== 'ready' || (form?.kind === 'edit' && (!accountDirty || targetChanged))
   const prefix = `user-${form?.kind ?? 'create'}`
   const restricted = state.phase === 'authenticated' && !canAdmin
-  const mutating = pending === 'create' || pending === 'update'
+  const mutating = pending === 'create' || pending === 'update' || pending === 'reset'
+  const resetUnavailableReason = discard !== null || securityConfirmation !== null ? 'Terminez la confirmation en cours avant de réinitialiser ce mot de passe.'
+    : accountDirty ? 'Enregistrez ou annulez d’abord les modifications des informations du compte.'
+      : targetChanged ? 'Reprenez les informations actualisées de ce compte avant de réinitialiser son mot de passe.'
+        : blocked ? 'Vérifiez d’abord le résultat de la modification du compte en actualisant la liste.'
+          : listStatus !== 'ready' ? 'Actualisez les comptes avant de réinitialiser ce mot de passe.' : null
   const fieldError = (name: string) => fields[name] ? <small className="user-field-error" id={`${prefix}-${name}-error`}>{fields[name]}</small> : null
   const described = (name: string) => fields[name] ? `${prefix}-${name}-error` : undefined
 
@@ -245,6 +301,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
         {form && <form className="user-entry-form" noValidate onSubmit={submit}>
           <div className="user-form-heading"><ShieldCheck size={20} strokeWidth={1.4} aria-hidden="true" /><div><h3>{form.kind === 'create' ? 'Un nouveau compte' : `Le compte @${form.base.username}`}</h3><p>{form.kind === 'create' ? 'Choisissez les accès de cette personne et son mot de passe initial.' : 'L’identifiant du compte reste le même.'}</p></div></div>
           {targetChanged && <div className="user-error" role="alert"><p>{currentTarget ? 'Ce compte a changé depuis l’ouverture de cette fiche. Votre saisie est conservée.' : 'Ce compte ne figure plus dans la liste actualisée. Votre saisie est conservée.'}</p>{currentTarget && <Button type="button" variant="outline" disabled={Boolean(pending) || !canAdmin} onClick={() => requestNavigate(currentTarget)}>Reprendre les informations actualisées</Button>}</div>}
+          {resetDirty && <p className="user-help">Une réinitialisation de mot de passe est en cours de saisie. Terminez-la ou annulez-la pour modifier les informations de ce compte.</p>}
           <fieldset disabled={inputDisabled}>
             {form.kind === 'create' ? <>
               <label htmlFor="user-create-username">Identifiant *<input id="user-create-username" name="username" value={form.values.username} maxLength={50} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.username)} aria-describedby={described('username')} onChange={(event) => changeCreate('username', event.target.value)} />{fieldError('username')}<small>3 à 50 caractères : lettres, chiffres, point, tiret ou tiret bas.</small></label>
@@ -265,7 +322,10 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
           {securityConfirmation && <div className="user-confirm" role="alert"><h3>Confirmer les nouveaux accès ?</h3><p>@{securityConfirmation.base.username} : {roleLabels[securityConfirmation.base.role]} → {roleLabels[securityConfirmation.values.role]} · {securityConfirmation.values.enabled ? 'Accès autorisé' : 'Accès désactivé'}.</p><p>Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter{securityConfirmation.values.enabled ? '.' : ' après la réactivation de son accès.'}</p>{securityConfirmation.base.id === state.user?.id && <p>Vous devrez vous reconnecter pour continuer avec vos nouveaux droits.</p>}<div><Button type="button" variant="outline" disabled={Boolean(pending)} onClick={() => setSecurityConfirmation(null)}>Revenir à la saisie</Button><Button type="button" disabled={Boolean(pending) || !canAdmin || blocked || listStatus !== 'ready'} onClick={() => { const captured = latest.current.securityConfirmation; if (captured) void updateAccount(captured.base, captured.values) }}>Confirmer la modification du compte</Button></div></div>}
           <div className="user-form-actions"><Button type="button" variant="outline" disabled={Boolean(pending) || discard !== null} onClick={() => requestNavigate('list')}>Annuler la saisie</Button><Button type="submit" disabled={Boolean(submitDisabled)}>{pending === 'create' || pending === 'update' ? <LoaderCircle className="animate-spin" /> : form.kind === 'create' ? <Plus /> : <Save />}{form.kind === 'create' ? 'Créer le compte' : 'Enregistrer le compte'}</Button></div>
         </form>}
-        {discard !== null && <div className="user-confirm" role="alert"><h3>Abandonner cette saisie ?</h3><p>Les champs non enregistrés seront effacés, y compris le mot de passe initial s’il est saisi.</p><div><Button variant="outline" disabled={Boolean(pending)} onClick={() => setDiscard(null)}>Conserver ma saisie</Button><Button variant="ghost" disabled={Boolean(pending)} onClick={() => { if (!request.current && latest.current.discard !== null) navigate(latest.current.discard) }}>Effacer et continuer</Button></div></div>}
+        {form?.kind === 'edit' && <AdminPasswordResetPanel key={`${form.base.id}:${resetGeneration}`} target={form.base} canAdmin={canAdmin}
+          pending={Boolean(pending)} resetting={pending === 'reset'} unavailableReason={resetUnavailableReason}
+          uncertain={passwordUncertain.has(form.base.id)} onDirtyChange={setResetDirty} onReset={resetPassword} onAcknowledgeUncertain={acknowledgePassword} />}
+        {discard !== null && <div className="user-confirm" role="alert"><h3>Abandonner cette saisie ?</h3><p>Les champs non enregistrés seront effacés, y compris les mots de passe saisis pour la création ou la réinitialisation d’un compte.</p><div><Button variant="outline" disabled={Boolean(pending)} onClick={() => setDiscard(null)}>Conserver ma saisie</Button><Button variant="ghost" disabled={Boolean(pending)} onClick={() => { if (!request.current && latest.current.discard !== null) navigate(latest.current.discard) }}>Effacer et continuer</Button></div></div>}
       </div>}
     </SheetContent>
   </Sheet>
