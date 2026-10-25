@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Appelé par le workflow de publication, qui exige les mêmes validations.
+  workflow_call:
 
 permissions:
   contents: read
