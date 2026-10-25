@@ -255,6 +255,12 @@
 .spatial-transfer-options { display: grid; gap: 12px; }
 .spatial-location-import { display: flex; align-items: flex-start; gap: 9px; color: var(--foreground); font-size: 11px; line-height: 1.65; }
 .spatial-location-import input { width: 15px; height: 15px; padding: 0; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
+.local-recovery-panel { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 22px; }
+.local-recovery-heading { display: flex; align-items: center; gap: 10px; color: var(--primary); }
+.local-recovery-heading h3 { font-size: 13px; font-weight: 550; color: var(--foreground); margin: 0; }
+.local-recovery-panel > button, .local-recovery-sources button { margin-top: 12px; font-size: 11px; white-space: normal; height: auto; min-height: 36px; }
+.local-recovery-sources { margin-top: 20px; }
+.local-recovery-sources ul { color: var(--muted-foreground); font-size: 11px; line-height: 1.8; padding-left: 18px; }
 .editor-heading { display: flex; align-items: center; gap: 12px; }
 .editor-heading > svg { color: var(--primary); flex-shrink: 0; }
 .editor-heading .eyebrow { margin: 0 0 5px; }

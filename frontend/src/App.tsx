@@ -20,6 +20,7 @@ import { selectIds, translateSelection } from '@/features/spatial/plan-selection
 import { FurnitureSummary } from '@/features/spatial/furniture-summary'
 import { findWorkspaceStation, prepareRoomReplacement } from '@/features/spatial/workspace-rooms'
 import '@/features/spatial/workspace-connection.css'
+import type { SpatialDraft } from '@/features/spatial/shared-workspace-model'
 
 const loadInventoryPanel = () => import('@/features/inventory/inventory-panel').then((module) => ({ default: module.InventoryPanel }))
 const loadWorkstationEditor = () => import('@/features/spatial/workstation-editor').then((module) => ({ default: module.WorkstationEditor }))
@@ -170,6 +171,13 @@ function App() {
     if (workspaceStore.initialize(draft)) { setActiveRoomId(draft.workspace.rooms[0]!.plan.id); setSelection([]); setRoomError(null) }
   }
 
+  function recoverInitialWorkspace(draft: SpatialDraft): boolean {
+    if (!canEdit || workspaceStore.loading || workspaceStore.phase !== 'missing') return false
+    if (!workspaceStore.initialize(draft)) return false
+    setActiveRoomId(draft.workspace.rooms[0]!.plan.id); setSelection([]); setRoomError(null)
+    return true
+  }
+
   async function reloadWorkspace(confirmed = false): Promise<boolean> {
     const loaded = await workspaceStore.reload(confirmed)
     if (loaded) {
@@ -242,7 +250,7 @@ function App() {
         plan={plan} workspace={workspace} selectedWorkstationId={selectedWorkstationId} selectedAssetId={selectedAssetId}
         onSelectAsset={selectAsset} onOpenInventory={() => navigate('inventory')} onShowInPlan={showInPlan} inventory={inventory} local={local} canEdit={editable}
       />}
-    /> : <WorkspaceStartPanel store={workspaceStore} canEdit={canEdit} onInitialize={initialize} onRetry={() => { void reloadWorkspace() }} onOpenInventory={() => navigate('inventory')} />}
+    /> : <WorkspaceStartPanel store={workspaceStore} canEdit={canEdit} onInitialize={initialize} onRecover={recoverInitialWorkspace} onRetry={() => { void reloadWorkspace() }} onOpenInventory={() => navigate('inventory')} />}
   </AppShell>
 }
 
