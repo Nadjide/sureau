@@ -61,7 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => apiClient.subscribeAuthFailure((error) => {
     // Auth requests manage their own failures. Other responses may belong to the preceding session.
-    if (!stateRef.current.user || action.current) return
+    if (stateRef.current.phase !== 'authenticated' || action.current) return
     if (error.status === 401) {
       expire()
       return
@@ -75,7 +75,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Probe the session and refresh CSRF; never replay the rejected mutation.
     void authApi.me().then(async (user) => {
       if (authEpoch.current !== epoch || stateRef.current.user?.id !== userId) return
-      setState((previous) => authEpoch.current === epoch && previous.user?.id === userId ? authenticatedSession(previous, user) : previous)
+      setState((previous) => authEpoch.current === epoch && previous.phase === 'authenticated' && previous.user.id === userId ? authenticatedSession(previous, user) : previous)
       await authApi.refreshCsrf()
     }).catch((failure: unknown) => {
       if (failure instanceof ApiError && failure.status === 401 && authEpoch.current === epoch) {
