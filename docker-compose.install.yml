@@ -61,6 +61,9 @@ services:
       SUREAU_SETUP_TOKEN: ${SUREAU_SETUP_TOKEN:?SUREAU_SETUP_TOKEN est obligatoire (voir deploy/instance.env.example)}
       # À activer (true) dès que l'instance est servie en HTTPS.
       SUREAU_COOKIE_SECURE: ${SUREAU_COOKIE_SECURE:-false}
+      # Les navigateurs ne distinguent pas les cookies par port : un nom propre au
+      # port évite qu'une connexion à une instance ferme celle d'une autre.
+      SUREAU_COOKIE_NAME: ${SUREAU_COOKIE_NAME:-SUREAU_SESSION_${SUREAU_HTTP_PORT:-8080}}
     ports:
       # Écoute locale par défaut : placez un proxy HTTPS devant pour l'exposer.
       - "${SUREAU_HTTP_BIND:-127.0.0.1}:${SUREAU_HTTP_PORT:-8080}:8080"

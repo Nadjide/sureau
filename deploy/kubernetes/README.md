@@ -64,6 +64,8 @@ Les commandes sont écrites pour un shell POSIX (Linux, macOS, WSL, Git Bash), d
 
 Le cookie de session est marqué `Secure` par défaut (`SUREAU_COOKIE_SECURE=true` dans la ConfigMap) : il n'est envoyé qu'en HTTPS, ce que les navigateurs acceptent aussi sur `localhost`. Si vous devez servir l'instance en HTTP clair ailleurs que sur `localhost`, ce qui est déconseillé, passez la valeur à `false` dans votre overlay.
 
+Le cookie s'appelle `SUREAU_SESSION_<namespace>`. Deux instances jointes sous le même nom d'hôte, par exemple deux `port-forward` vers `localhost`, ne ferment donc pas la session l'une de l'autre. Lors de la mise à jour vers la version qui a introduit ce nom, chacun doit se reconnecter une fois ; les données ne sont pas touchées.
+
 ## Sondes, ressources et réseau
 
 - La sonde de disponibilité de l'application vérifie PostgreSQL ; celle de vie, non : une panne de la base retire l'application du service sans la redémarrer en boucle.
