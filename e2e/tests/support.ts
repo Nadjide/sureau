@@ -80,10 +80,13 @@ export async function login(request: APIRequestContext, credentials: Credentials
   expect(response.status(), 'POST /api/auth/login').toBe(204);
 }
 
-/** Erreurs de page et requêtes hors origine observées pendant un parcours. */
+/** Erreurs de page, violations de la CSP et requêtes hors origine observées pendant un parcours. */
 export function watchPage(page: Page): { errors: string[]; external: string[]; failedAssets: string[] } {
   const watched = { errors: [] as string[], external: [] as string[], failedAssets: [] as string[] };
   page.on('pageerror', (error) => watched.errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && /Content Security Policy/i.test(message.text())) watched.errors.push(message.text());
+  });
   page.on('request', (request) => {
     if (new URL(request.url()).origin !== origin) watched.external.push(request.url());
   });

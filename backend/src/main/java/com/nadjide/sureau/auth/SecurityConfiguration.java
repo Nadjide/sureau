@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
@@ -80,6 +82,7 @@ public class SecurityConfiguration {
                         .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler()))
                 .requestCache(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                .headers(SecurityConfiguration::securityHeaders)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/error", "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").denyAll()
@@ -112,6 +115,24 @@ public class SecurityConfiguration {
                         .permitAll())
                 .addFilterBefore(new AccountSessionFilter(users, mapper), AuthorizationFilter.class);
         return http.build();
+    }
+
+    // The interface and the API share one origin and load nothing from elsewhere, so the policy
+    // can forbid inline and foreign scripts. Inline styles stay allowed: UI libraries inject them.
+    static final String CONTENT_SECURITY_POLICY = String.join("; ",
+            "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:", "font-src 'self' data:", "connect-src 'self'", "worker-src 'self' blob:",
+            "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'");
+    static final String PERMISSIONS_POLICY =
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()";
+
+    // HSTS keeps Spring Security's default: sent on HTTPS requests only, which includes requests a
+    // trusted reverse proxy forwards with X-Forwarded-Proto (server.forward-headers-strategy).
+    private static void securityHeaders(HeadersConfigurer<HttpSecurity> headers) {
+        headers
+                .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
+                .permissionsPolicyHeader(permissions -> permissions.policy(PERMISSIONS_POLICY));
     }
 
     static void writeProblem(ObjectMapper mapper, HttpServletRequest request, HttpServletResponse response,

@@ -130,8 +130,14 @@ describe('continuité des sauvegardes après le changement de nom', () => {
 
 describe('thème au premier affichage', () => {
   const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1]
-  if (!script) throw new Error('Script initial de thème absent')
+  const script = readFileSync(new URL('../../public/theme.js', import.meta.url), 'utf8')
+
+  it('charge le script de thème avant l’application, sans script en ligne interdit par la CSP', () => {
+    const head = html.slice(0, html.indexOf('</head>'))
+    expect(head).toContain('<script src="/theme.js"></script>')
+    expect(html).not.toMatch(/<script>/)
+    expect(html.indexOf('/theme.js')).toBeLessThan(html.indexOf('/src/main.tsx'))
+  })
 
   it.each([
     { current: null, legacy: 'dark', systemDark: false, expected: true },
