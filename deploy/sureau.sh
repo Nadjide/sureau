@@ -6,11 +6,16 @@
 #   deploy/sureau.sh up                   construit et démarre l'instance
 #   deploy/sureau.sh down                 arrête l'instance, données conservées
 #   deploy/sureau.sh status | logs [...]  état et journaux
+#   deploy/sureau.sh backup [--output D]  sauvegarde complète de la base
+#   deploy/sureau.sh restore FICHIER [--yes]
+#                                         remplace les données par une sauvegarde
+#   deploy/sureau.sh update               sauvegarde, reconstruit, redémarre
 #   deploy/sureau.sh compose [...]        toute autre commande « docker compose »
 #
 # Variables facultatives pour gérer plusieurs instances sur un même hôte :
-#   SUREAU_ENV_FILE  fichier de configuration (défaut : .env.instance à la racine)
-#   SUREAU_PROJECT   nom du projet Compose, qui détermine volume et réseaux
+#   SUREAU_ENV_FILE    fichier de configuration (défaut : .env.instance à la racine)
+#   SUREAU_PROJECT     nom du projet Compose, qui détermine volume et réseaux
+#   SUREAU_BACKUP_DIR  dossier des sauvegardes (défaut : backups à la racine)
 
 set -eu
 
@@ -19,6 +24,8 @@ root=$(dirname "$script_dir")
 compose_file="$root/docker-compose.install.yml"
 template="$script_dir/instance.env.example"
 env_file=${SUREAU_ENV_FILE:-$root/.env.instance}
+backup_dir=${SUREAU_BACKUP_DIR:-$root/backups}
+project=${SUREAU_PROJECT:-sureau-instance}
 
 fail() {
   echo "Erreur : $*" >&2
@@ -104,12 +111,161 @@ cmd_up() {
   echo "Sureau est démarré : http://${bind:-127.0.0.1}:$(env_value SUREAU_HTTP_PORT)"
 }
 
+# Exécute une commande shell dans le conteneur de la base. Les chemins du
+# conteneur restent dans la chaîne, à l'abri de la conversion de chemins de
+# certains shells Windows.
+in_db() {
+  compose exec -T postgres sh -c "$1" < /dev/null
+}
+
+# Même chose, mais l'entrée standard (le fichier de sauvegarde) est transmise.
+# Les autres appels la coupent : « compose exec » sinon avalerait la réponse
+# de l'utilisateur à la confirmation.
+in_db_stdin() {
+  compose exec -T postgres sh -c "$1"
+}
+
+require_database() {
+  [ -n "$(compose ps -q --status running postgres)" ] ||
+    fail "La base de données n'est pas démarrée. Lancez d'abord : deploy/sureau.sh up"
+}
+
+# Écrit une sauvegarde complète et vérifiée dans le dossier $1, avec le préfixe
+# $2. Son chemin est placé dans backup_file, sa taille dans backup_size.
+make_backup() {
+  mkdir -p "$1"
+  backup_file="$1/$2-$(date -u +%Y%m%d-%H%M%S).dump"
+  # Le contenu des sessions est exclu : une sauvegarde ne doit jamais permettre
+  # de réutiliser une connexion ouverte.
+  in_db 'pg_dump --username=sureau --dbname=sureau \
+      --format=custom --no-owner --no-privileges \
+      --exclude-table-data=spring_session --exclude-table-data=spring_session_attributes \
+      --file=/tmp/sureau.dump && pg_restore --list /tmp/sureau.dump > /dev/null' ||
+    fail "La sauvegarde de la base a échoué."
+  # Le fichier transite par la sortie standard du conteneur, sans réencodage.
+  if ! (umask 077; in_db 'cat /tmp/sureau.dump' > "$backup_file"); then
+    rm -f "$backup_file"
+    fail "La copie de la sauvegarde a échoué."
+  fi
+  expected=$(in_db 'wc -c < /tmp/sureau.dump' | tr -d ' \r\n')
+  backup_size=$(wc -c < "$backup_file" | tr -d ' ')
+  in_db 'rm -f /tmp/sureau.dump'
+  if [ "$expected" != "$backup_size" ]; then
+    rm -f "$backup_file"
+    fail "La sauvegarde copiée est incomplète ($backup_size sur $expected octets) ; elle a été supprimée."
+  fi
+}
+
+cmd_backup() {
+  dir=$backup_dir
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --output)
+        [ $# -ge 2 ] || fail "--output attend un dossier."
+        dir=$2
+        shift 2
+        ;;
+      *) fail "Option inconnue : $1" ;;
+    esac
+  done
+  require_instance
+  require_database
+  make_backup "$dir" "$project"
+  echo "Sauvegarde créée : $backup_file ($backup_size octets)"
+  echo "Elle contient tous les comptes, l'inventaire et les plans de l'instance : rangez-la hors de cette machine et protégez-la."
+  echo "Elle ne contient pas $env_file : conservez-le séparément."
+}
+
+cmd_restore() {
+  file=
+  assume_yes=no
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --yes)
+        assume_yes=yes
+        shift
+        ;;
+      -*) fail "Option inconnue : $1" ;;
+      *)
+        [ -z "$file" ] || fail "Un seul fichier de sauvegarde est attendu."
+        file=$1
+        shift
+        ;;
+    esac
+  done
+  [ -n "$file" ] || fail "Indiquez le fichier de sauvegarde à restaurer."
+  [ -f "$file" ] || fail "$file est introuvable."
+  require_instance
+  require_database
+
+  # Rien n'est modifié tant que l'archive n'a pas été lue et reconnue.
+  in_db_stdin 'cat > /tmp/restore.dump' < "$file"
+  contents=$(in_db 'pg_restore --list /tmp/restore.dump 2>/dev/null') || contents=
+  case $contents in
+    *flyway_schema_history*) ;;
+    *)
+      in_db 'rm -f /tmp/restore.dump'
+      fail "$file n'est pas une sauvegarde Sureau lisible."
+      ;;
+  esac
+
+  if [ "$assume_yes" != yes ]; then
+    echo "Toutes les données de l'instance « $project » (comptes, inventaire, plans)"
+    echo "seront remplacées par le contenu de $file."
+    echo "Une sauvegarde de sécurité de l'état actuel est créée avant."
+    printf 'Tapez « restaurer » pour continuer : '
+    answer=
+    read -r answer || true
+    if [ "$answer" != restaurer ]; then
+      in_db 'rm -f /tmp/restore.dump'
+      fail "Restauration annulée, rien n'a été modifié."
+    fi
+  fi
+
+  make_backup "$backup_dir" "$project-avant-restauration"
+  safety=$backup_file
+  echo "Sauvegarde de sécurité : $safety"
+
+  # L'application est arrêtée pour qu'aucune connexion n'écrive pendant le
+  # remplacement. Les sessions de la sauvegarde sont purgées : tout le monde
+  # doit se reconnecter.
+  compose stop app
+  if ! { in_db 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 \
+      -c "SET client_min_messages TO warning; DROP SCHEMA public CASCADE; CREATE SCHEMA public;"' &&
+    in_db 'pg_restore --username=sureau --dbname=sureau --no-owner --no-privileges \
+      --single-transaction --exit-on-error /tmp/restore.dump' &&
+    in_db 'psql --quiet --username=sureau --dbname=sureau -v ON_ERROR_STOP=1 \
+      -c "TRUNCATE spring_session, spring_session_attributes"'; }; then
+    fail "La restauration a échoué ; la base peut être vide. Pour revenir à l'état précédent : deploy/sureau.sh restore $safety --yes"
+  fi
+  in_db 'rm -f /tmp/restore.dump'
+  compose up -d --wait --wait-timeout 300 ||
+    fail "L'application ne démarre pas après la restauration. Si la sauvegarde vient d'une version plus récente de Sureau, revenez d'abord à cette version. État précédent : deploy/sureau.sh restore $safety --yes"
+  echo
+  echo "Restauration terminée. Toutes les sessions ont été fermées : reconnectez-vous."
+  echo "État précédent conservé dans $safety"
+}
+
+cmd_update() {
+  require_instance
+  require_database
+  make_backup "$backup_dir" "$project-avant-mise-a-jour"
+  echo "Sauvegarde avant mise à jour : $backup_file"
+  compose up -d --build --wait --wait-timeout 300 ||
+    fail "La mise à jour a échoué. Revenez aux sources précédentes puis restaurez : deploy/sureau.sh restore $backup_file --yes"
+  echo
+  echo "Mise à jour terminée."
+}
+
 [ $# -ge 1 ] || { usage >&2; exit 2; }
 command=$1
 shift
 
 case $command in
   init) cmd_init "$@" ;;
+  backup) cmd_backup "$@" ;;
+  restore) cmd_restore "$@" ;;
+  update) cmd_update ;;
   up) cmd_up ;;
   down) require_instance; compose down ;;
   status) require_instance; compose ps ;;
