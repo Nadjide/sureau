@@ -47,4 +47,22 @@
 .account-departure-dialog > .auth-error { color: var(--destructive); }
 .account-departure-actions { display: grid; gap: 10px; margin-top: 24px; }
 .account-departure-actions > button { min-height: 38px; height: auto; padding: 10px 12px; white-space: normal; text-align: center; }
+.change-password-sheet { width: min(100vw, 510px) !important; max-width: 510px !important; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.change-password-scroll { overflow-y: auto; min-height: 0; padding: 26px 28px 30px; }
+.change-password-intro { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 28px; }
+.change-password-intro > span { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--secondary); color: var(--primary); }
+.change-password-intro p, .change-password-note { color: var(--muted-foreground); font-size: 12px; line-height: 1.85; overflow-wrap: anywhere; }
+.change-password-note { margin-block: 16px; }
+.change-password-success { display: flex; align-items: flex-start; gap: 9px; margin-block: 18px; font-size: 12px; line-height: 1.85; color: var(--success); overflow-wrap: anywhere; }
+.change-password-success svg { flex-shrink: 0; margin-top: 3px; }
+.change-password-scroll .auth-error p { margin-block: 10px; }
+.change-password-scroll .auth-error button { min-height: 38px; height: auto; white-space: normal; font-size: 11px; }
+.change-password-impact { color: var(--muted-foreground); font-size: 11px; line-height: 1.85; margin-top: 24px; padding: 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--secondary); overflow-wrap: anywhere; }
+.change-password-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 24px; }
+.change-password-actions button, .change-password-discard button { font-size: 11px; min-height: 38px; height: auto; white-space: normal; }
+.change-password-discard { margin-top: 22px; padding: 16px; border: 1px solid var(--border); border-radius: 7px; background: var(--background); }
+.change-password-discard h3 { font-size: 13px; font-weight: 550; margin-bottom: 10px; }
+.change-password-discard p { color: var(--muted-foreground); font-size: 11px; line-height: 1.85; margin-bottom: 14px; }
+.change-password-discard > div { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) { .change-password-scroll { padding: 22px 20px 26px; } .change-password-actions > button, .change-password-discard button { flex-grow: 1; } .change-password-scroll .auth-error button { width: 100%; } }
 @media (max-width: 780px) { .auth-page { grid-template-columns: 1fr; } .auth-story { padding: 24px; border-right: 0; border-bottom: 1px solid var(--border); } .auth-story-copy { padding: 26px 0 0; } .auth-story h1 { font-size: 34px; margin: 14px 0; } .auth-story-copy > p:not(.eyebrow), .auth-plan, .auth-story-foot { display: none; } .auth-panel { padding: 36px 24px; } .auth-panel-content { max-width: 420px; } .auth-panel h2 { font-size: 26px; } .auth-session-dialog { padding: 25px; } }
