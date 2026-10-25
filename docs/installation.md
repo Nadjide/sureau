@@ -50,6 +50,10 @@ Par défaut, l’application n’écoute que sur la machine locale (`127.0.0.1`)
 1. Dans `.env.instance`, passez `SUREAU_COOKIE_SECURE=true`. Le cookie de session n’est alors plus jamais envoyé en clair. Les navigateurs l’acceptent aussi sur `localhost`.
 2. Appliquez le changement : `deploy/sureau.sh up`.
 
+Le proxy doit transmettre les en-têtes `X-Forwarded-Proto` et `X-Forwarded-For`. Caddy et Traefik le font par défaut ; avec nginx, ajoutez par exemple `proxy_set_header X-Forwarded-Proto $scheme;` et `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`. Sureau sait alors que la connexion est chiffrée : il envoie l’en-tête HSTS, qui impose HTTPS aux navigateurs. Il connaît aussi l’adresse réelle de chaque client, utilisée pour limiter les tentatives de connexion. Ces en-têtes ne sont pris en compte que s’ils viennent d’une adresse privée, comme celle d’un proxy sur la même machine ou le même réseau.
+
+L’application envoie aussi une politique de sécurité du contenu (CSP) stricte : aucun script en ligne ni externe, aucune intégration dans un cadre (`frame`) d’un autre site. Si votre proxy ajoute ses propres en-têtes de sécurité, évitez d’en envoyer une seconde version contradictoire.
+
 Sureau se sert à la **racine d’un domaine ou d’un sous-domaine** (`https://sureau.exemple.org/`), pas sous un sous-chemin. Exemple de configuration Caddy, à adapter à votre environnement :
 
 ```text

@@ -13,6 +13,7 @@
 !frontend/src/**
 !frontend/public/
 !frontend/public/sureau.svg
+!frontend/public/theme.js
 !backend/
 !backend/pom.xml
 !backend/mvnw
