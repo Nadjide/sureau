@@ -61,6 +61,19 @@ function validationMessage(value: unknown): string {
   return 'Vérifiez la valeur de ce champ.'
 }
 
+function tooManyAttempts(retryAfter: string | null): string {
+  const seconds = Number(retryAfter)
+  if (!retryAfter || !Number.isFinite(seconds) || seconds <= 0) {
+    return 'Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.'
+  }
+  if (seconds < 60) {
+    const rounded = Math.ceil(seconds)
+    return `Trop de tentatives échouées. Réessayez dans ${rounded} seconde${rounded > 1 ? 's' : ''}.`
+  }
+  const minutes = Math.ceil(seconds / 60)
+  return `Trop de tentatives échouées. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`
+}
+
 async function responseError(response: Response): Promise<ApiError> {
   let payload: unknown
   try { payload = await response.json() } catch { /* Proxies may return an HTML error page. */ }
@@ -71,6 +84,8 @@ async function responseError(response: Response): Promise<ApiError> {
       if (object(error) && typeof error.field === 'string') fields[error.field] = validationMessage(error.message)
     }
   }
+  // The server locks an account or address after repeated failures; Retry-After gives the wait.
+  if (response.status === 429) return new ApiError('http', tooManyAttempts(response.headers.get('Retry-After')), 429, code, fields)
   const fallback = response.status >= 500
     ? 'Le service est momentanément indisponible. Réessayez dans un instant.'
     : response.status === 401 ? messages.AUTHENTICATION_REQUIRED!

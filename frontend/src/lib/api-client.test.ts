@@ -84,6 +84,28 @@ describe('client HTTP commun', () => {
     expect(listener).not.toHaveBeenCalled()
   })
 
+  it('indique le délai d’attente après trop de tentatives de connexion', async () => {
+    const locked = (retryAfter: string | null) => {
+      const response = json({ code: 'TOO_MANY_ATTEMPTS' }, 429)
+      if (retryAfter !== null) response.headers.set('Retry-After', retryAfter)
+      return response
+    }
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf()).mockResolvedValueOnce(locked('90'))
+      .mockResolvedValueOnce(locked('1'))
+      .mockResolvedValueOnce(locked(null))
+    const client = createApiClient(fetcher)
+    const login = () => client.requestVoid('/api/auth/login', {
+      method: 'POST', body: new URLSearchParams({ username: 'admin', password: 'x' }), notifyAuthFailure: false,
+    })
+
+    await expect(login()).rejects.toMatchObject({ status: 429, code: 'TOO_MANY_ATTEMPTS',
+      message: 'Trop de tentatives échouées. Réessayez dans 2 minutes.' })
+    await expect(login()).rejects.toMatchObject({ message: 'Trop de tentatives échouées. Réessayez dans 1 seconde.' })
+    await expect(login()).rejects.toMatchObject({
+      message: 'Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.' })
+  })
+
   it('traduit les erreurs de champs sans exposer les messages techniques du serveur', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({
       code: 'VALIDATION_ERROR',

@@ -120,6 +120,8 @@ Au premier démarrage, l’interface demande la clé d’installation pour crée
 
 Chacun change son propre mot de passe depuis le menu du compte (12 à 64 caractères). Le menu **Gérer l’équipe** est réservé aux administrateurs. Désactiver un compte, changer un mot de passe ou un rôle ferme les sessions concernées. Le dernier administrateur actif ne peut pas être retiré : conservez toutefois au moins deux administrateurs. Une session expire après 8 heures d’inactivité ; une expiration ne fait pas perdre le brouillon en cours.
 
+Contre la recherche de mots de passe, un compte est bloqué 30 secondes après 5 échecs de connexion, puis deux fois plus longtemps à chaque nouvel échec, jusqu’à 15 minutes. Une connexion réussie remet son compteur à zéro. Une même adresse est aussi bloquée après 30 échecs, tous comptes confondus, y compris les essais de clé d’installation. L’écran de connexion indique le délai à attendre. Ces compteurs sont gardés en mémoire : un redémarrage de l’application les efface.
+
 ## Données et sauvegardes
 
 | Donnée | Où elle est conservée |
