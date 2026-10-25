@@ -29,3 +29,7 @@ Thumbs.db
 # Sauvegardes de base de données (données sensibles : jamais dans Git)
 backups/
 *.dump
+
+# Fichiers produits par docs/presentation/generate_music.py
+docs/presentation/*.wav
+docs/presentation/musique-originale-mesures.json
