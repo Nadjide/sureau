@@ -26,11 +26,11 @@ Sureau s’installe **sur votre propre infrastructure** : une instance regroupe 
 
 ## Présentation vidéo
 
-[![Ouvrir la présentation de Sureau : atelier 3D, personnalisation, mobilier, salles et étages](frontend/docs/images/sureau-presentation.jpg)](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4 "Ouvrir la présentation de Sureau sur GitHub")
+[![Ouvrir la présentation de Sureau : installation, inventaire, atelier 3D, personnalisation, étages et travail en équipe](frontend/docs/images/sureau-presentation.jpg)](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4 "Ouvrir la présentation de Sureau sur GitHub")
 
-**[▶ Ouvrir la vidéo](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4)** · 1 min 37 s · Full HD (1080p) · 30 images/s · MP4, 8,4 Mo
+**[▶ Ouvrir la vidéo](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4)** · 2 min 01 s · Full HD (1080p) · 30 images/s · MP4, 12,7 Mo
 
-Une démonstration enregistrée dans l’application : exploration et zoom 3D, ajout de mobilier, ambiances, sélection multiple en 2D, création de salles et d’étages. L’implantation présentée est locale et illustrative.
+Deux minutes sur une instance réelle, installée pour l’occasion : installation en deux commandes, premier compte administrateur, inventaire partagé, exploration et personnalisation en 3D, étages et salles, enregistrement en équipe, sauvegarde et mise à jour. Les données (« Studio Lumen ») sont fictives. La vidéo se refait automatiquement avec [`docs/presentation`](docs/presentation/README.md).
 
 ## Aperçu
 
@@ -222,7 +222,7 @@ sureau/
 │       ├── java/              # auth, asset, workspace, common
 │       └── resources/         # Configuration et migrations Flyway
 ├── deploy/                    # Scripts d’installation, Kubernetes
-├── docs/                      # Guides d’installation et d’exploitation
+├── docs/                      # Guides d’installation et d’exploitation, tournage de la vidéo
 ├── e2e/                       # Parcours de bout en bout (Playwright)
 ├── Dockerfile                 # Image unique : interface + API
 ├── docker-compose.install.yml # Installation d’une instance
