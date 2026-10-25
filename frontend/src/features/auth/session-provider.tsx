@@ -14,11 +14,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const authEpoch = useRef(0)
   useEffect(() => { stateRef.current = state }, [state])
 
-  const expire = useCallback(() => {
+  const expire = useCallback((message?: string) => {
     authEpoch.current += 1
     probing.current = null
     apiClient.clearCsrf()
-    setState((previous) => expiredSession(previous))
+    setState((previous) => expiredSession(previous,
+      message ?? (previous.phase === 'expired' ? previous.error : null)))
   }, [])
 
   const updateUser = useCallback((input: Pick<SessionUser, 'id' | 'displayName'>) => {

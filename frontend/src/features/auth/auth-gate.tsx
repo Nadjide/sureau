@@ -119,7 +119,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <Dialog.Content className="auth-session-dialog" onEscapeKeyDown={(event) => event.preventDefault()} onPointerDownOutside={(event) => event.preventDefault()}>
           <Brand />
           <Dialog.Title>Reprenons là où vous en étiez.</Dialog.Title>
-          <Dialog.Description>Votre session a expiré. Reconnectez-vous avec le même compte pour retrouver votre travail en cours. Un autre compte ouvrira une nouvelle session.</Dialog.Description>
+          <Dialog.Description>{state.error
+            ? <>{state.error} Utilisez le même compte pour conserver votre brouillon. Un autre compte ouvrira une nouvelle session.</>
+            : <>Votre session a expiré. Reconnectez-vous avec le même compte pour retrouver votre travail en cours. Un autre compte ouvrira une nouvelle session.</>}</Dialog.Description>
           <CredentialsForm expired />
         </Dialog.Content>
       </Dialog.Portal>

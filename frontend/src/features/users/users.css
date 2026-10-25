@@ -40,6 +40,15 @@
 .user-confirm p { font-size: 11px; line-height: 1.8; color: var(--muted-foreground); margin-bottom: 12px; overflow-wrap: anywhere; }
 .user-confirm > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .user-confirm button { font-size: 11px; }
+.user-password-panel { margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--border); }
+.user-password-panel > button { font-size: 11px; }
+.user-reset-form fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 17px; }
+.user-reset-form label { display: grid; gap: 8px; font-size: 11px; font-weight: 500; }
+.user-reset-form input { width: 100%; min-width: 0; height: 39px; padding: 0 11px; border: 1px solid var(--input); border-radius: 5px; background: var(--background); color: var(--foreground); font-size: 12px; font-weight: 400; }
+.user-reset-form input[aria-invalid=true] { border-color: var(--destructive); }
+.user-reset-form small { font-size: 10px; line-height: 1.7; font-weight: 400; color: var(--muted-foreground); }
+.user-reset-form .user-field-error { color: var(--destructive); }
+.user-password-panel .user-error p { margin: 8px 0; }
 @media (max-width: 640px) {
   .user-management-scroll { padding: 22px 20px 26px; }
   .user-list-toolbar { align-items: flex-start; flex-direction: column; }
@@ -47,4 +56,5 @@
   .user-account-icon { width: 23px; }
   .user-form-actions { flex-wrap: wrap; }
   .user-form-actions button, .user-confirm button { flex-grow: 1; white-space: normal; min-height: 36px; height: auto; }
+  .user-password-panel > button, .user-password-panel .user-error button { width: 100%; white-space: normal; min-height: 36px; height: auto; }
 }
