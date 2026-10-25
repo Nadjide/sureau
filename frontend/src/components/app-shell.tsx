@@ -30,6 +30,9 @@ import {
 } from '@/components/ui/tooltip'
 import { useTheme } from '@/hooks/use-theme'
 import type { WorkspaceDocument } from '@/features/spatial/workspace-document'
+import { AccountMenu } from '@/features/auth/account-menu'
+import { roleLabels } from '@/features/auth/session-state'
+import { useSession } from '@/features/auth/use-session'
 
 export type WorkspaceTab = 'spaces' | 'inventory'
 
@@ -113,6 +116,7 @@ function SpaceNavigation({
 export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, onRoomChange, onManageSpaces }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
+  const { state } = useSession()
   const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
 
   function navigate(nextTab: WorkspaceTab) {
@@ -198,7 +202,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
             ))}
           </nav>
           <div className="header-spacer" />
-          <span className="app-header-meta">ESPACE PERSONNEL</span>
+          <span className="app-header-meta">{state.user ? roleLabels[state.user.role].toLocaleUpperCase('fr') : 'VOTRE ESPACE'}</span>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={themeLabel}>
@@ -207,7 +211,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={8}>{themeLabel}</TooltipContent>
           </Tooltip>
-          <span className="user-avatar" role="img" aria-label="Nadjide Omar">NO</span>
+          <AccountMenu />
         </header>
 
         <div className="app-body">

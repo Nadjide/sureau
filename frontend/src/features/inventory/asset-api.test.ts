@@ -31,7 +31,9 @@ describe('getAssets', () => {
 
     expect(result).toEqual([asset])
     expect(fetcher).toHaveBeenCalledWith('/api/assets', {
-      headers: { Accept: 'application/json' },
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: new Headers({ Accept: 'application/json' }),
       signal,
     })
   })
