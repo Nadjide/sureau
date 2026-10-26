@@ -324,6 +324,44 @@ test('assigns an asset to a named person from its form, then finds it by that pe
   expect(watched.errors).toEqual([]);
 });
 
+test('imports a spreadsheet file all at once, only once every line is valid', async () => {
+  const file = (lines: string[]) => ({ name: 'parc.csv', mimeType: 'text/csv', buffer: Buffer.from(`﻿${lines.join('\r\n')}\r\n`) });
+  const header = 'Identifiant;Nom;Catégorie;État;Personne;E-mail';
+  const before = (await getJson<unknown[]>(context.request, '/api/assets')).length;
+  await page.goto('/#inventory');
+  await page.getByRole('button', { name: 'Importer', exact: true }).click();
+  const chooser = page.getByLabel(/Choisir un (autre )?fichier/);
+
+  // Une erreur visible dans le fichier bloque l'import avant tout envoi.
+  await chooser.setInputFiles(file([header, 'E2E-IMP-1;Casque de recette;Imprimante;;;']));
+  await expect(page.getByRole('list', { name: 'Lignes à corriger' })).toContainText('Ligne 2 · Catégorie : Catégorie inconnue : « Imprimante ».');
+  await expect(page.getByRole('button', { name: 'Importer', exact: true }).last()).toBeDisabled();
+
+  // Un identifiant déjà dans l'inventaire n'est connu que du serveur : il refuse tout.
+  await chooser.setInputFiles(file([header, 'E2E-IMP-1;Casque de recette;Casque;;Léa Recette;lea@exemple.fr', 'E2E-01;Doublon;Autre;;;']));
+  await page.getByRole('button', { name: 'Importer 2 matériels', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Lignes à corriger' })).toContainText('Ligne 3 · Identifiant : Déjà utilisé par un matériel de l’inventaire.');
+  await expect(page.getByText('Aucun matériel n’a été importé.', { exact: false })).toBeVisible();
+  expect(await getJson<unknown[]>(context.request, '/api/assets')).toHaveLength(before);
+
+  await chooser.setInputFiles(file([header, 'E2E-IMP-1;Casque de recette;Casque;;Léa Recette;lea@exemple.fr', 'E2E-IMP-2;Souris de recette;Souris;Disponible;;']));
+  await expect(page.getByText('2 matériels prêts à importer.', { exact: true })).toBeVisible();
+  expect(await accessibilityViolations(page), 'import preview').toEqual([]);
+  await page.getByRole('button', { name: 'Importer 2 matériels', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '2 matériels ont été importés' })).toBeVisible();
+
+  const assets = await getJson<{ assetTag: string; status: string; assignee: { name: string } | null }[]>(context.request, '/api/assets');
+  expect(assets).toHaveLength(before + 2);
+  expect(assets.find((item) => item.assetTag === 'E2E-IMP-1')).toMatchObject({ status: 'ASSIGNED', assignee: { name: 'Léa Recette' } });
+  await page.getByRole('button', { name: /Casque de recette/ }).click();
+  await page.getByRole('button', { name: 'Voir l’historique', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Historique de E2E-IMP-1' }).locator(':scope > li')).toContainText('Importé depuis un fichier');
+  await page.getByRole('button', { name: 'Fermer l’historique', exact: true }).click();
+
+  saveState({ expected: { ...loadState().expected, assets } });
+  expect(watched.errors).toEqual([]);
+});
+
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
   // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();
