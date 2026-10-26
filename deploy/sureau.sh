@@ -19,7 +19,7 @@
 
 set -eu
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$script_dir")
 compose_file="$root/docker-compose.install.yml"
 template="$script_dir/instance.env.example"

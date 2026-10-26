@@ -177,6 +177,7 @@ Les migrations de schéma sont gérées par Flyway à partir de [`db/migration`]
 | Frontend (dans `frontend/`) | `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` |
 | Backend (dans `backend/`) | `./mvnw test`, avec une base de test (voir ci-dessous) |
 | Parcours de bout en bout | `sh e2e/run.sh` |
+| Scripts shell | `shellcheck` sur tous les fichiers `.sh` (ShellCheck 0.11.0 en CI) |
 
 Les tests du backend visent par défaut `127.0.0.1:15432/sureau_test` (variables `TEST_DB_URL`, `TEST_DB_USERNAME`, `TEST_DB_PASSWORD`), jamais la base de développement. Une base dédiée se lance ainsi :
 
