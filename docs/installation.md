@@ -116,6 +116,6 @@ Les journaux n’affichent ni mot de passe ni clé d’installation. Sous Window
 
 - **« Docker n’est pas installé » ou « n’est pas démarré »** : lancez Docker Desktop (ou le service Docker) et attendez qu’il soit prêt avant `up`.
 - **Le port est déjà utilisé** : choisissez-en un autre avec `SUREAU_HTTP_PORT` dans `.env.instance`.
-- **`up` s’arrête sur une sonde de santé** : consultez `deploy/sureau.sh logs app` et `deploy/sureau.sh logs postgres`. Une base en panne rend l’application indisponible sans la faire redémarrer en boucle, et elle revient seule avec la base.
+- **`up` s’arrête sur une sonde de santé** : consultez `deploy/sureau.sh logs app` et `deploy/sureau.sh logs postgres`. Une base en panne rend l’application indisponible en quelques secondes (les requêtes échouent après 3 s d’attente au lieu de rester bloquées), sans la faire redémarrer en boucle, et elle revient seule avec la base.
 - **Une erreur mentionne `SUREAU_DB_PASSWORD` ou `SUREAU_SETUP_TOKEN`** : le fichier de configuration est introuvable ou incomplet. Lancez `init` ou vérifiez `SUREAU_ENV_FILE`.
 - **La connexion échoue en HTTPS mais pas en HTTP** (ou l’inverse) : `SUREAU_COOKIE_SECURE=true` impose HTTPS, sauf sur `localhost`.
