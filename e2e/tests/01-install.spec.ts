@@ -287,6 +287,43 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
   expect(watched.errors).toEqual([]);
 });
 
+test('assigns an asset to a named person from its form, then finds it by that person', async () => {
+  await page.goto('/#inventory');
+  await page.getByRole('button', { name: /Ordinateur de recette/ }).click();
+  await page.getByRole('button', { name: 'Modifier la fiche', exact: true }).click();
+  await page.locator('#asset-edit-status').selectOption('ASSIGNED');
+  await page.locator('#asset-edit-assigneeName').fill('Camille Recette');
+  await page.locator('#asset-edit-assigneeEmail').fill('camille.recette@exemple.fr');
+  await page.locator('#asset-edit-assigneeDepartment').fill('Accueil');
+  expect(await accessibilityViolations(page), 'holder fields').toEqual([]);
+  await page.getByRole('button', { name: 'Enregistrer les modifications', exact: true }).click();
+
+  const details = page.getByRole('complementary', { name: 'Fiche de Ordinateur de recette' });
+  await expect(details).toContainText('Affecté à');
+  await expect(details).toContainText('Camille Recette');
+  await expect(details.getByRole('link', { name: 'camille.recette@exemple.fr' })).toHaveAttribute('href', 'mailto:camille.recette@exemple.fr');
+  expect(await getJson(context.request, `/api/assets/${asset.id}`)).toMatchObject({
+    status: 'ASSIGNED', assignee: { name: 'Camille Recette', email: 'camille.recette@exemple.fr', department: 'Accueil' },
+  });
+
+  const search = page.getByRole('textbox', { name: 'Rechercher du matériel' });
+  await search.fill('camille');
+  await expect(page.locator('.inventory-table tbody tr')).toHaveCount(1);
+  await expect(page.locator('.inventory-table tbody tr')).toContainText('Camille Recette');
+  await search.fill('');
+
+  await page.getByRole('button', { name: 'Voir l’historique', exact: true }).click();
+  const latest = page.getByRole('list', { name: 'Historique de E2E-01' }).locator(':scope > li').first();
+  await expect(latest).toContainText('Fiche modifiée');
+  await expect(latest).toContainText('Personne équipée');
+  await expect(latest).toContainText('Camille Recette');
+  await page.getByRole('button', { name: 'Fermer l’historique', exact: true }).click();
+
+  // Les projets suivants vérifient que l'affectation survit au redémarrage et à la restauration.
+  saveState({ expected: { ...loadState().expected, assets: await getJson(context.request, '/api/assets') } });
+  expect(watched.errors).toEqual([]);
+});
+
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
   // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();

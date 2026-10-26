@@ -3,7 +3,7 @@ import { LoaderCircle, PackagePlus, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ApiError } from '@/lib/api-client'
-import { assetInputSchema } from './asset-input'
+import { formFieldErrors, parseAssetForm } from './asset-input'
 import { createAsset } from './asset-mutations'
 import type { Asset } from './asset-schema'
 import { AssetFormFields } from './asset-form-fields'
@@ -43,10 +43,9 @@ export function CreateAssetSheet({ onCreated, canEdit }: { onCreated: (asset: As
     event.preventDefault()
     if (controller.current || !canEdit || confirmClose) return
     setError(null); setFields({})
-    const parsed = assetInputSchema.safeParse(values)
+    const parsed = parseAssetForm(values)
     if (!parsed.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parsed.error.issues) if (typeof issue.path[0] === 'string') errors[issue.path[0]] = issue.message
+      const errors = parsed.errors
       setFields(errors); setError('Vérifiez les champs indiqués avant d’enregistrer le matériel.')
       const first = Object.keys(errors)[0]
       const input = first ? event.currentTarget.elements.namedItem(first) : null
@@ -66,7 +65,7 @@ export function CreateAssetSheet({ onCreated, canEdit }: { onCreated: (asset: As
       setError(failure instanceof ApiError && failure.status === 409
         ? 'Cet identifiant ou ce numéro de série est déjà utilisé. Votre saisie est conservée ; modifiez la valeur avant de réessayer.'
         : failure instanceof Error ? failure.message : 'Le matériel n’a pas pu être enregistré.')
-      if (failure instanceof ApiError) setFields(failure.fieldErrors)
+      if (failure instanceof ApiError) setFields(formFieldErrors(failure.fieldErrors))
     } finally {
       if (controller.current === request) { controller.current = null; setPending(false) }
     }

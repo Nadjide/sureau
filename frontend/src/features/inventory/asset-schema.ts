@@ -20,6 +20,12 @@ export const assetStatusSchema = z.enum([
   'LOST',
 ])
 
+export const assigneeSchema = z.object({
+  name: z.string(),
+  email: z.string().nullable(),
+  department: z.string().nullable(),
+})
+
 export const assetSchema = z.object({
   id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   revision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
@@ -33,6 +39,8 @@ export const assetSchema = z.object({
   purchaseDate: z.iso.date().nullable(),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
+  /** The person holding an assigned asset, when one is named. */
+  assignee: assigneeSchema.nullable().optional(),
 })
 
 export const assetsSchema = z.array(assetSchema).superRefine((assets, context) => {
@@ -54,6 +62,7 @@ export const assetsSchema = z.array(assetSchema).superRefine((assets, context) =
 export type Asset = z.infer<typeof assetSchema>
 export type AssetCategory = z.infer<typeof assetCategorySchema>
 export type AssetStatus = z.infer<typeof assetStatusSchema>
+export type Assignee = z.infer<typeof assigneeSchema>
 
 export const categoryLabels: Record<AssetCategory, string> = {
   COMPUTER: 'Ordinateur',

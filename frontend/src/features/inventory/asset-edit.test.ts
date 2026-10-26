@@ -6,7 +6,7 @@ import type { Asset } from './asset-schema'
 
 const input: AssetInput = {
   assetTag: 'SUR-0042', serialNumber: null, name: 'Poste accueil', brand: null, model: null,
-  category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: null,
+  category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: null, assignee: null,
 }
 const asset: Asset = {
   ...input, id: 42, revision: 7, createdAt: '2026-10-23T10:00:00Z', updatedAt: '2026-10-23T11:00:00Z',
