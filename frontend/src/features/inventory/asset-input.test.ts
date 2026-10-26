@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { assetInputSchema } from './asset-input'
+import { emptyAssetForm } from './asset-form-model'
+import { assetInputSchema, formFieldErrors, parseAssetForm } from './asset-input'
 
 const input = {
   assetTag: 'SUR-0042', serialNumber: null, name: 'Poste de travail', brand: null, model: null,
-  category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: null,
+  category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: null, assignee: null,
 }
 
 describe('saisie d’un matériel', () => {
@@ -13,7 +14,7 @@ describe('saisie d’un matériel', () => {
       serialNumber: '  SN-42  ', brand: '  Framework ', model: ' Laptop 13  ', purchaseDate: '2026-10-23',
     })).toEqual({
       assetTag: 'SUR-0042', serialNumber: 'SN-42', name: 'Poste de travail', brand: 'Framework', model: 'Laptop 13',
-      category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: '2026-10-23',
+      category: 'COMPUTER', status: 'AVAILABLE', purchaseDate: '2026-10-23', assignee: null,
     })
   })
 
@@ -63,5 +64,41 @@ describe('saisie d’un matériel', () => {
   it('n’accepte pas un identifiant serveur ou d’autres champs dans une saisie de création', () => {
     expect(assetInputSchema.safeParse({ ...input, id: 42 }).success).toBe(false)
     expect(assetInputSchema.safeParse({ ...input, createdAt: '2026-10-23T10:00:00Z' }).success).toBe(false)
+  })
+})
+
+describe('personne équipée', () => {
+  const form = { ...emptyAssetForm, assetTag: 'SUR-0042', name: 'Portable' }
+
+  it('nomme la personne d’un matériel affecté, avec e-mail et service facultatifs', () => {
+    expect(parseAssetForm({ ...form, status: 'ASSIGNED', assigneeName: '  Camille Bernard ', assigneeEmail: ' camille@exemple.fr ', assigneeDepartment: ' ' }))
+      .toEqual({ success: true, data: expect.objectContaining({
+        status: 'ASSIGNED', assignee: { name: 'Camille Bernard', email: 'camille@exemple.fr', department: null },
+      }) })
+  })
+
+  it('exige le nom de la personne quand le matériel est affecté', () => {
+    expect(parseAssetForm({ ...form, status: 'ASSIGNED' })).toEqual({
+      success: false, errors: { assigneeName: 'Nommez la personne à qui ce matériel est affecté.' },
+    })
+  })
+
+  it('signale une adresse e-mail invalide sur son propre champ', () => {
+    expect(parseAssetForm({ ...form, status: 'ASSIGNED', assigneeName: 'Camille', assigneeEmail: 'camille' }))
+      .toEqual({ success: false, errors: { assigneeEmail: 'Renseignez une adresse e-mail valide.' } })
+  })
+
+  it('rend le matériel en quittant l’état affecté, même si des champs de personne restent saisis', () => {
+    expect(parseAssetForm({ ...form, status: 'AVAILABLE', assigneeName: 'Camille Bernard' }))
+      .toEqual({ success: true, data: expect.objectContaining({ status: 'AVAILABLE', assignee: null }) })
+  })
+
+  it('refuse une personne sur un matériel qui n’est pas affecté', () => {
+    expect(assetInputSchema.safeParse({ ...input, assignee: { name: 'Camille', email: null, department: null } }).success).toBe(false)
+  })
+
+  it('rattache les erreurs du serveur aux champs du formulaire', () => {
+    expect(formFieldErrors({ 'assignee.email': 'Vérifiez ce champ.', assetTag: 'Ce champ est obligatoire.' }))
+      .toEqual({ assigneeEmail: 'Vérifiez ce champ.', assetTag: 'Ce champ est obligatoire.' })
   })
 })

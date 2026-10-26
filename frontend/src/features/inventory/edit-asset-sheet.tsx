@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ApiError } from '@/lib/api-client'
 import { AssetFormFields } from './asset-form-fields'
 import { assetToFormValues, type AssetFormField } from './asset-form-model'
-import { assetInputSchema } from './asset-input'
+import { formFieldErrors, parseAssetForm } from './asset-input'
 import { getAsset, updateAsset } from './asset-mutations'
 import type { Asset } from './asset-schema'
 import './asset-form.css'
@@ -62,10 +62,9 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
     event.preventDefault()
     if (controller.current || !canEdit || conflict || confirmation) return
     setError(null); setFields({})
-    const parsed = assetInputSchema.safeParse(values)
+    const parsed = parseAssetForm(values)
     if (!parsed.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parsed.error.issues) if (typeof issue.path[0] === 'string') errors[issue.path[0]] = issue.message
+      const errors = parsed.errors
       setFields(errors); setError('Vérifiez les champs indiqués avant d’enregistrer les modifications.')
       const first = Object.keys(errors)[0]
       const input = first ? event.currentTarget.elements.namedItem(first) : null
@@ -80,7 +79,7 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
     } catch (failure) {
       if (request.signal.aborted) return
       if (failure instanceof ApiError) {
-        setFields(failure.fieldErrors)
+        setFields(formFieldErrors(failure.fieldErrors))
         if (failure.status === 412 || failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) setConflict(true)
       }
       setError(failure instanceof ApiError && failure.status === 409 && failure.code !== 'ASSET_STATUS_CONFLICT'

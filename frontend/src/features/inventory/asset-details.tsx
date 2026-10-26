@@ -9,6 +9,7 @@ import {
   Keyboard,
   Mouse,
   Smartphone,
+  UserRound,
   X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -88,6 +89,18 @@ export function AssetDetails({
         <AssetStatus asset={asset} />
       </div>
       <dl className="asset-specs">
+        {asset.status === 'ASSIGNED' && (
+          <div className="asset-assignee">
+            <dt>
+              <UserRound size={12} aria-hidden="true" /> Affecté à
+            </dt>
+            <dd>
+              {asset.assignee ? asset.assignee.name : 'Personne non renseignée'}
+              {asset.assignee?.department && <small>{asset.assignee.department}</small>}
+              {asset.assignee?.email && <small><a href={`mailto:${asset.assignee.email}`}>{asset.assignee.email}</a></small>}
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Catégorie</dt>
           <dd>{categoryLabels[asset.category]}</dd>

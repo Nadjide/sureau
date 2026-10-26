@@ -39,6 +39,9 @@ const fieldLabels: Record<string, string> = {
   category: 'Catégorie',
   status: 'État',
   purchaseDate: 'Date d’achat',
+  assigneeName: 'Personne équipée',
+  assigneeEmail: 'E-mail de la personne',
+  assigneeDepartment: 'Service de la personne',
   location: 'Poste',
 }
 
