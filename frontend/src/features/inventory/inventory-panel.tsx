@@ -58,7 +58,8 @@ export function InventoryPanel({
       (asset) =>
         (!status || asset.status === status) &&
         (!normalized ||
-          [asset.name, asset.assetTag, asset.serialNumber, asset.brand, asset.model].some((value) =>
+          [asset.name, asset.assetTag, asset.serialNumber, asset.brand, asset.model, asset.assignee?.name,
+            asset.assignee?.email, asset.assignee?.department].some((value) =>
             value?.toLocaleLowerCase('fr').includes(normalized),
           )),
     ) ?? []
@@ -75,7 +76,7 @@ export function InventoryPanel({
             <Search size={15} aria-hidden="true" />
             <input
               aria-label="Rechercher du matériel"
-              placeholder="Rechercher un nom, un identifiant…"
+              placeholder="Rechercher un nom, un identifiant, une personne…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -217,6 +218,7 @@ export function InventoryPanel({
                               <strong>{asset.name}</strong>
                               <small>
                                 {asset.assetTag}
+                                {asset.assignee && <span className="asset-row-assignee"> · {asset.assignee.name}</span>}
                                 <span className="asset-row-location">
                                   {' '}
                                   · {locationLabel(asset.id)}

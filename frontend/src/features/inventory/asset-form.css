@@ -16,6 +16,8 @@
 .asset-entry-form .asset-field-error { color: var(--destructive); }
 .asset-field-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .asset-form-divider { height: 1px; background: var(--border); margin-block: 6px; }
+.asset-assignee-fields { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); }
+.asset-assignee-fields .asset-status-help { margin-top: -8px; }
 .asset-status-help, .asset-conflict-actions p { color: var(--muted-foreground); font-size: 11px; line-height: 1.8; }
 .asset-conflict-actions { margin-top: 18px; display: grid; gap: 12px; }
 .asset-conflict-actions button { white-space: normal; height: auto; min-height: 36px; padding-block: 9px; font-size: 11px; }

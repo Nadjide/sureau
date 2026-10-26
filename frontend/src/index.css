@@ -194,6 +194,9 @@
 .asset-specs > div { padding: 9px 0; display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
 .asset-specs dt { color: var(--muted-foreground); display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .asset-specs dd { text-align: right; overflow-wrap: anywhere; min-width: 0; margin: 0; }
+.asset-assignee dd { font-weight: 550; }
+.asset-assignee dd small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; color: var(--muted-foreground); }
+.asset-assignee dd a { color: var(--accent-foreground); }
 .mono { font-family: ui-monospace, monospace; }
 .empty-inspector { display: flex; flex-direction: column; justify-content: center; color: var(--muted-foreground); }
 .empty-inspector h2 { font-size: 19px; margin: 22px 0 12px; color: var(--foreground); }
