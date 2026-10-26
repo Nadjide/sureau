@@ -244,6 +244,16 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
   // Placer ou personnaliser ne change jamais le statut métier.
   expect(await getJson(context.request, `/api/assets/${secondAsset.id}`)).toMatchObject({ status: 'AVAILABLE' });
 
+  // L'historique du matériel retient sa création et son placement, avec leur auteur.
+  await page.getByRole('button', { name: 'Voir l’historique', exact: true }).click();
+  const events = page.getByRole('list', { name: 'Historique de E2E-02' }).locator(':scope > li');
+  await expect(events).toHaveCount(2);
+  await expect(events.first()).toContainText('Placé sur un poste');
+  await expect(events.first()).toContainText('Poste recette · Accueil recette');
+  await expect(events.first()).toContainText(`${admin.displayName} (@${admin.username})`);
+  await expect(events.last()).toContainText('Fiche créée');
+  await page.getByRole('button', { name: 'Fermer l’historique', exact: true }).click();
+
   await page.getByRole('button', { name: 'Espaces', exact: true }).click();
   await page.getByRole('button', { name: 'Gérer les espaces', exact: true }).click();
   await page.getByRole('button', { name: 'Étages', exact: true }).click();
@@ -278,7 +288,7 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
 });
 
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
-  // Douze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
+  // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();
   const audit = async (screen: string) => expect(await accessibilityViolations(page), screen).toEqual([]);
   for (const theme of ['light', 'dark']) {
@@ -295,6 +305,10 @@ test('meets the automatic WCAG A/AA checks on the main screens, in both themes',
     await page.getByRole('button', { name: 'Matériel', exact: true }).click();
     await page.getByRole('button', { name: /Portable de recette/ }).click();
     await audit(`${theme} inventory`);
+    await page.getByRole('button', { name: 'Voir l’historique', exact: true }).click();
+    await page.getByRole('list', { name: 'Historique de E2E-02' }).waitFor();
+    await audit(`${theme} history`);
+    await page.getByRole('button', { name: 'Fermer l’historique', exact: true }).click();
     await page.getByRole('button', { name: 'Ajouter du matériel', exact: true }).click();
     await audit(`${theme} new asset`);
     await page.getByRole('button', { name: 'Fermer l’ajout de matériel', exact: true }).click();
