@@ -1,5 +1,6 @@
 package com.nadjide.sureau.asset.controller;
 
+import com.nadjide.sureau.asset.dto.AssetEventResponse;
 import com.nadjide.sureau.asset.dto.AssetRequest;
 import com.nadjide.sureau.asset.dto.AssetResponse;
 import com.nadjide.sureau.asset.service.AssetService;
@@ -32,6 +33,11 @@ public class AssetController {
     @GetMapping("/{id}")
     public ResponseEntity<AssetResponse> getAssetById(@PathVariable Long id) {
         return response(HttpStatus.OK, assetService.getAssetById(id));
+    }
+
+    @GetMapping("/{id}/history")
+    public List<AssetEventResponse> getAssetHistory(@PathVariable Long id) {
+        return assetService.getAssetHistory(id);
     }
 
     @PostMapping
