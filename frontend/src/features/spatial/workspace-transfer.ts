@@ -1,4 +1,5 @@
 import { parseWorkspace, workspaceFileSizeLimit, type WorkspaceDocument } from './workspace-document'
+import { t } from '@/lib/i18n'
 
 export interface WorkspaceSummary {
   floorCount: number
@@ -19,7 +20,7 @@ export function serializeWorkspace(workspace: WorkspaceDocument): string {
 
   const compact = JSON.stringify(document)
   if (encoder.encode(compact).byteLength > workspaceFileSizeLimit) {
-    throw new Error('Cet espace de travail est trop volumineux. La limite est de 2 Mo.')
+    throw new Error(t('Cet espace de travail est trop volumineux. La limite est de 2 Mo.'))
   }
   return compact
 }

@@ -77,6 +77,8 @@ Les salles peuvent être créées, copiées, renommées et déplacées entre les
 
 Les vues 2D et 3D partagent le même plan. L’aimantation à une grille de 25 cm facilite les déplacements ; les limites du plateau prennent en compte les fauteuils et les dimensions du mobilier. Les animations respectent la préférence système de réduction des mouvements.
 
+L’interface existe en français et en anglais. Elle suit d’abord la langue du navigateur ; la page de connexion et le menu du compte permettent d’en changer, et ce choix reste dans le navigateur. Les noms saisis par l’équipe (salles, postes, matériel) ne sont jamais traduits.
+
 ## Installer Sureau
 
 Seul **Docker** (avec Compose v2) est nécessaire : ni Java ni Node ne sont à installer sur la machine. Depuis la racine du dépôt :

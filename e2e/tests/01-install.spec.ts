@@ -411,6 +411,34 @@ test('invites a first visit to the guide, walks through its steps, then stops in
   expect(watched.errors).toEqual([]);
 });
 
+test('follows an English browser, then switches language from the account menu and keeps the choice', async ({ browser }) => {
+  const english = await newContext(browser, undefined, 'en-GB');
+  const visitor = await english.newPage();
+  await visitor.goto('/');
+  await expect(visitor.getByRole('heading', { name: 'Good to see you again.' })).toBeVisible();
+  await expect(visitor.locator('html')).toHaveAttribute('lang', 'en');
+  await visitor.getByLabel('Interface language').selectOption('fr');
+  await expect(visitor.getByRole('heading', { name: 'Heureux de vous retrouver.' })).toBeVisible();
+  await english.close();
+
+  await page.getByRole('button', { name: /^Compte de / }).click();
+  await page.getByLabel('Langue de l’interface').selectOption('en');
+  await expect(page.getByRole('dialog', { name: 'Your account' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.reload();
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(navigation.getByRole('button', { name: 'Equipment' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(await accessibilityViolations(page), 'English interface').toEqual([]);
+
+  await page.getByRole('button', { name: /’s account$/ }).click();
+  await page.getByLabel('Interface language').selectOption('fr');
+  await expect(page.getByRole('dialog', { name: 'Votre compte' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
+  expect(watched.errors).toEqual([]);
+});
+
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
   // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();
@@ -466,6 +494,7 @@ test('keeps the 2D plan usable on a phone without page errors', async ({ browser
     storageState: await context.storageState(),
     viewport: { width: 390, height: 844 },
     reducedMotion: 'reduce',
+    locale: 'fr-FR',
   });
   try {
     const mobile = await mobileContext.newPage();

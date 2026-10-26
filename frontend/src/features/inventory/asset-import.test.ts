@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, apiClient } from '@/lib/api-client'
 import { parseCsv } from '@/lib/csv'
+import { setLanguage } from '@/lib/i18n'
 import { attachServerErrors, importAssets, importTemplate, planImport } from './asset-import'
 
 describe('préparation d’un import', () => {
@@ -51,10 +52,26 @@ describe('préparation d’un import', () => {
   })
 
   it('propose un modèle que l’import accepte tel quel', () => {
-    const plan = planImport(importTemplate)
-    expect(parseCsv(importTemplate)[0]).toContain('Identifiant')
+    const plan = planImport(importTemplate())
+    expect(parseCsv(importTemplate())[0]).toContain('Identifiant')
     expect(plan.problems).toEqual([])
     expect(plan.rows.every((row) => row.input !== null)).toBe(true)
+  })
+
+  it('accepte un fichier préparé en anglais, quelle que soit la langue choisie ensuite', () => {
+    setLanguage('en')
+    const template = importTemplate()
+    setLanguage('fr')
+
+    expect(parseCsv(template)[0]).toEqual(['Asset tag', 'Name', 'Category', 'Status', 'Serial number', 'Brand', 'Model',
+      'Purchase date', 'Person', 'Email', 'Department'])
+    const plan = planImport(template)
+    expect(plan.problems).toEqual([])
+    expect(plan.rows.map((row) => row.input)).toEqual([
+      expect.objectContaining({ assetTag: 'IT-0001', category: 'COMPUTER', status: 'ASSIGNED',
+        assignee: { name: 'Camille Bernard', email: 'camille.bernard@example.com', department: 'Front desk' } }),
+      expect.objectContaining({ assetTag: 'IT-0002', category: 'MONITOR', status: 'AVAILABLE', assignee: null }),
+    ])
   })
 
   it('rattache les refus du serveur aux lignes du fichier', () => {

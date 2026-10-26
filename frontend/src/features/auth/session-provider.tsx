@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ApiError, apiClient } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import { AccountCreatedError, authApi, type EnterpriseSignIn, type LoginInput, type SessionUser, type SetupInput } from './auth-api'
 import { SessionContext } from './session-context'
 import { authenticatedSession, expiredSession, initialSession, sessionPermissions, signedOutSession, updateSessionUser, type SessionState } from './session-state'
@@ -53,7 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (!controller.signal.aborted) setState((previous) => ({
           phase: 'error', user: null, generation: previous.generation,
-          error: error instanceof Error ? error.message : 'La connexion à Sureau n’a pas pu être vérifiée.',
+          error: error instanceof Error ? error.message : t('La connexion à Sureau n’a pas pu être vérifiée.'),
         }))
       }
     }

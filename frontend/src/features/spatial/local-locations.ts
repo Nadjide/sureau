@@ -1,4 +1,5 @@
 import { readStoredValue, storageKeys } from '@/lib/browser-storage'
+import { msg, t } from '@/lib/i18n'
 import { z } from 'zod'
 import { room } from './room-model'
 
@@ -24,9 +25,9 @@ export const locationStorageKey = storageKeys.locations
 const emptyLocations: LocalLocations = Object.freeze({})
 const validWorkstationId = /^desk-[a-z0-9-]{2,80}$/
 const invalidStorageWarning =
-  'Les localisations enregistrées sont illisibles ou incompatibles. Elles ont été conservées. Vos modifications restent limitées à cette session.'
+  msg('Les localisations enregistrées sont illisibles ou incompatibles. Elles ont été conservées. Vos modifications restent limitées à cette session.')
 const unavailableStorageWarning =
-  'Le stockage local est inaccessible. Les localisations restent disponibles uniquement pendant cette session.'
+  msg('Le stockage local est inaccessible. Les localisations restent disponibles uniquement pendant cette session.')
 
 function isAssetId(assetId: number): boolean {
   return Number.isSafeInteger(assetId) && assetId > 0
@@ -77,7 +78,7 @@ export function decodeLocations(raw: string | null): LoadedLocations {
 
   return {
     locations: emptyLocations,
-    warning: invalidStorageWarning,
+    warning: t(invalidStorageWarning),
     persisted: false,
     canPersist: false,
   }
@@ -92,7 +93,7 @@ export function loadLocations(storage: LocationStorage | null): LoadedLocations 
 
   return {
     locations: emptyLocations,
-    warning: unavailableStorageWarning,
+    warning: t(unavailableStorageWarning),
     persisted: false,
     canPersist: false,
   }
@@ -103,12 +104,12 @@ export function saveLocations(
   locations: LocalLocations,
 ): LocationPersistence {
   if (storage === null) {
-    return { warning: unavailableStorageWarning, persisted: false, canPersist: false }
+    return { warning: t(unavailableStorageWarning), persisted: false, canPersist: false }
   }
 
   if (!isLocalLocations(locations)) {
     return {
-      warning: 'Ces localisations sont invalides et n’ont pas été enregistrées.',
+      warning: t('Ces localisations sont invalides et n’ont pas été enregistrées.'),
       persisted: false,
       canPersist: false,
     }
@@ -127,7 +128,7 @@ export function saveLocations(
     return { warning: null, persisted: true, canPersist: true }
   } catch {
     return {
-      warning: 'L’enregistrement local a échoué. Vos modifications restent disponibles pendant cette session.',
+      warning: t('L’enregistrement local a échoué. Vos modifications restent disponibles pendant cette session.'),
       persisted: false,
       canPersist: true,
     }
@@ -140,11 +141,11 @@ export function updateLocation(
   workstationId: string | null,
 ): LocalLocations {
   if (!isAssetId(assetId) || !isLocalLocations(locations)) {
-    throw new RangeError('L’identifiant du matériel ou les localisations sont invalides.')
+    throw new RangeError(t('L’identifiant du matériel ou les localisations sont invalides.'))
   }
 
   if (workstationId !== null && !validWorkstationId.test(workstationId)) {
-    throw new RangeError('Cet identifiant de poste est invalide.')
+    throw new RangeError(t('Cet identifiant de poste est invalide.'))
   }
 
   if (workstationId === null && !Object.hasOwn(locations, assetId)) return locations

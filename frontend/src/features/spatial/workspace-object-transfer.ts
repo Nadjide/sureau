@@ -2,6 +2,7 @@ import { footprintBounds, mixedOverlaps } from './plan-geometry'
 import { resolveSelection, type PlanItem } from './plan-selection'
 import type { FurnitureItem, Workstation } from './room-model'
 import { parseWorkspace, type WorkspaceDocument } from './workspace-document'
+import { t } from '@/lib/i18n'
 
 function shifted<T extends PlanItem>(item: T, dx: number, dz: number): T {
   return { ...item, position: [item.position[0] + dx, 0, item.position[2] + dz] }
@@ -18,15 +19,15 @@ export function moveSelectionToRoom(
   if (!selectedIds.length) return { workspace, selectedIds }
   const source = workspace.rooms.find((room) => room.plan.id === sourceRoomId)
   const target = workspace.rooms.find((room) => room.plan.id === targetRoomId)
-  if (!source || !target) throw new RangeError('La salle de départ ou la salle d’arrivée n’existe plus.')
+  if (!source || !target) throw new RangeError(t('La salle de départ ou la salle d’arrivée n’existe plus.'))
   const items = resolveSelection(source.plan, selectedIds)
-  if (items.length !== selectedIds.length) throw new RangeError('La sélection a changé. Sélectionnez à nouveau les objets à déplacer.')
+  if (items.length !== selectedIds.length) throw new RangeError(t('La sélection a changé. Sélectionnez à nouveau les objets à déplacer.'))
   if (source === target) return { workspace, selectedIds }
-  if (![placement.x, placement.z].every(Number.isFinite)) throw new RangeError('La position d’arrivée doit contenir des coordonnées finies.')
+  if (![placement.x, placement.z].every(Number.isFinite)) throw new RangeError(t('La position d’arrivée doit contenir des coordonnées finies.'))
   const workstations = items.filter((item): item is Workstation => !('kind' in item))
   const furniture = items.filter((item): item is FurnitureItem => 'kind' in item)
   if (target.plan.workstations.length + workstations.length > 64 || target.plan.furniture.length + furniture.length > 64) {
-    throw new RangeError('La salle d’arrivée dépasserait la limite de 64 postes ou 64 meubles.')
+    throw new RangeError(t('La salle d’arrivée dépasserait la limite de 64 postes ou 64 meubles.'))
   }
 
   const origins = items.map((item) => ({ item, bounds: footprintBounds(item) }))
@@ -36,7 +37,7 @@ export function moveSelectionToRoom(
   if (![minX, maxX, minZ, maxZ, target.plan.width, target.plan.depth].every(Number.isFinite)
     || target.plan.width < 6 || target.plan.width > 50 || target.plan.depth < 6 || target.plan.depth > 50
     || width > target.plan.width + 1e-7 || depth > target.plan.depth + 1e-7) {
-    throw new RangeError('Toute la sélection ne tient pas dans la salle d’arrivée. Agrandissez la salle ou déplacez moins d’objets.')
+    throw new RangeError(t('Toute la sélection ne tient pas dans la salle d’arrivée. Agrandissez la salle ou déplacez moins d’objets.'))
   }
 
   const centerX = (minX + maxX) / 2, centerZ = (minZ + maxZ) / 2
@@ -63,7 +64,7 @@ export function moveSelectionToRoom(
         || bounds.maxZ + dz <= other.bounds.minZ + 1e-7 || bounds.minZ + dz >= other.bounds.maxZ - 1e-7 || !mixedOverlaps(moved, other.item))
     })
   })
-  if (!destination) throw new RangeError('Le placement automatique n’a pas trouvé de zone libre pour toute la sélection. Réorganisez la salle ou réduisez la sélection. Aucun objet n’a été déplacé.')
+  if (!destination) throw new RangeError(t('Le placement automatique n’a pas trouvé de zone libre pour toute la sélection. Réorganisez la salle ou réduisez la sélection. Aucun objet n’a été déplacé.'))
 
   const dx = destination.x - centerX, dz = destination.z - centerZ
   const removed = new Set(selectedIds)

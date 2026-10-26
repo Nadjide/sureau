@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArchiveRestore, Download, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { t } from '@/lib/i18n'
 import {
   inspectLocalWorkspace, serializeLocalRecovery, type LocalWorkspaceInspection,
 } from './local-workspace-recovery'
@@ -20,8 +21,8 @@ interface SearchResult {
 }
 
 function sourceLabel(key: string): string {
-  const kind = key.includes('workspace') ? 'Espace complet' : key.includes('locations') ? 'Localisations' : 'Plan de salle'
-  return `${kind} · ${key.startsWith('sentinel-') ? 'avant le renommage' : 'Sureau'}`
+  const kind = key.includes('workspace') ? t('Espace complet') : key.includes('locations') ? t('Localisations') : t('Plan de salle')
+  return `${kind} · ${key.startsWith('sentinel-') ? t('avant le renommage') : 'Sureau'}`
 }
 
 function sameSource(first: SpatialDraft | null, second: SpatialDraft | null): boolean {
@@ -59,21 +60,21 @@ export function LocalWorkspaceRecoveryPanel({ current, canEdit, onRecover, onRec
       link.href = url; link.download = 'sureau-copie-locale-brute.json'
       document.body.append(link); link.click(); link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setMessage({ error: false, text: 'Copie brute préparée avec les valeurs d’origine, y compris celles qui sont illisibles. Les données du navigateur sont conservées.' })
+      setMessage({ error: false, text: t('Copie brute préparée avec les valeurs d’origine, y compris celles qui sont illisibles. Les données du navigateur sont conservées.') })
     } catch {
-      setMessage({ error: true, text: 'La copie brute n’a pas pu être préparée. Les données d’origine restent dans ce navigateur.' })
+      setMessage({ error: true, text: t('La copie brute n’a pas pu être préparée. Les données d’origine restent dans ce navigateur.') })
     }
   }
 
   function confirm() {
     if (!canEdit || !result || result.inspection.phase !== 'ready' || applied) return
     if (!sameSource(result.source, current)) {
-      setMessage({ error: true, text: 'Le brouillon ou ses localisations ont changé depuis la recherche. Relancez la recherche avant de récupérer ce plan.' })
+      setMessage({ error: true, text: t('Le brouillon ou ses localisations ont changé depuis la recherche. Relancez la recherche avant de récupérer ce plan.') })
       return
     }
     const recovered = result.inspection
     if (includeLocations && (!recovered.hasLocations || !recovered.locationsValid)) {
-      setMessage({ error: true, text: 'Les localisations anciennes ne peuvent pas être récupérées. Vous pouvez conserver une copie brute et récupérer uniquement le plan.' })
+      setMessage({ error: true, text: t('Les localisations anciennes ne peuvent pas être récupérées. Vous pouvez conserver une copie brute et récupérer uniquement le plan.') })
       return
     }
     try {
@@ -82,44 +83,44 @@ export function LocalWorkspaceRecoveryPanel({ current, canEdit, onRecover, onRec
         locations: includeLocations ? recovered.draft.locations : current?.locations ?? {},
       })
       if (current && sameSpatialDraft(current, draft)) {
-        setMessage({ error: false, text: 'Ce contenu est déjà identique au brouillon courant. Aucun changement n’a été appliqué.' })
+        setMessage({ error: false, text: t('Ce contenu est déjà identique au brouillon courant. Aucun changement n’a été appliqué.') })
         return
       }
       if (!onRecover(draft)) {
-        setMessage({ error: true, text: 'Ce plan ne peut pas être appliqué dans l’état actuel. Votre travail et les données d’origine sont conservés.' })
+        setMessage({ error: true, text: t('Ce plan ne peut pas être appliqué dans l’état actuel. Votre travail et les données d’origine sont conservés.') })
         return
       }
       setApplied(true)
       onRecovered?.(draft.workspace.rooms[0]!.plan.id)
       setMessage({ error: false, text: includeLocations
-        ? 'Le plan et les localisations récupérées sont appliqués au brouillon. Enregistrez l’espace pour les partager avec votre équipe.'
-        : 'Le plan récupéré est appliqué au brouillon. Les localisations actuelles sont conservées. Enregistrez l’espace pour le partager avec votre équipe.' })
+        ? t('Le plan et les localisations récupérées sont appliqués au brouillon. Enregistrez l’espace pour les partager avec votre équipe.')
+        : t('Le plan récupéré est appliqué au brouillon. Les localisations actuelles sont conservées. Enregistrez l’espace pour le partager avec votre équipe.') })
     } catch (error) {
-      setMessage({ error: true, text: error instanceof Error ? error.message : 'Ce plan ne peut pas être récupéré. Les données d’origine sont conservées.' })
+      setMessage({ error: true, text: error instanceof Error ? error.message : t('Ce plan ne peut pas être récupéré. Les données d’origine sont conservées.') })
     }
   }
 
-  return <section className="local-recovery-panel" aria-label="Récupérer un ancien plan de ce navigateur">
-    <div className="local-recovery-heading"><ArchiveRestore size={20} strokeWidth={1.4} aria-hidden="true" /><h3>Retrouver vos anciens plans</h3></div>
-    <p className="location-help">Vous utilisiez déjà Sureau dans ce navigateur ? Lancez une recherche pour retrouver les espaces enregistrés à cette adresse, y compris avant le renommage.</p>
-    {canEdit && <Button variant="outline" onClick={search}><Search />{result ? 'Relancer la recherche des anciens plans' : 'Chercher mes anciens plans'}</Button>}
-    {!canEdit && result && <p className="location-help" role="status">L’aperçu est conservé. Vos droits actuels permettent uniquement de consulter et de copier les données trouvées.</p>}
-    {inspection?.phase === 'absent' && <p className="location-help" role="status">Aucun ancien espace, plan ou fichier de localisations n’a été trouvé à cette adresse dans ce navigateur.</p>}
-    {inspection?.phase === 'unavailable' && <p className="storage-warning" role="alert">Le stockage de ce navigateur n’a pas pu être lu complètement. Vous pouvez conserver une copie des valeurs déjà accessibles.</p>}
-    {inspection?.phase === 'invalid' && <p className="storage-warning" role="alert">Les données trouvées ne contiennent pas de plan récupérable. Conservez une copie brute pour examiner les valeurs d’origine.</p>}
+  return <section className="local-recovery-panel" aria-label={t('Récupérer un ancien plan de ce navigateur')}>
+    <div className="local-recovery-heading"><ArchiveRestore size={20} strokeWidth={1.4} aria-hidden="true" /><h3>{t('Retrouver vos anciens plans')}</h3></div>
+    <p className="location-help">{t('Vous utilisiez déjà Sureau dans ce navigateur ? Lancez une recherche pour retrouver les espaces enregistrés à cette adresse, y compris avant le renommage.')}</p>
+    {canEdit && <Button variant="outline" onClick={search}><Search />{result ? t('Relancer la recherche des anciens plans') : t('Chercher mes anciens plans')}</Button>}
+    {!canEdit && result && <p className="location-help" role="status">{t('L’aperçu est conservé. Vos droits actuels permettent uniquement de consulter et de copier les données trouvées.')}</p>}
+    {inspection?.phase === 'absent' && <p className="location-help" role="status">{t('Aucun ancien espace, plan ou fichier de localisations n’a été trouvé à cette adresse dans ce navigateur.')}</p>}
+    {inspection?.phase === 'unavailable' && <p className="storage-warning" role="alert">{t('Le stockage de ce navigateur n’a pas pu être lu complètement. Vous pouvez conserver une copie des valeurs déjà accessibles.')}</p>}
+    {inspection?.phase === 'invalid' && <p className="storage-warning" role="alert">{t('Les données trouvées ne contiennent pas de plan récupérable. Conservez une copie brute pour examiner les valeurs d’origine.')}</p>}
     {inspection?.warning && <p className="storage-warning" role="alert">{inspection.warning}</p>}
-    {rawKeys.length > 0 && <div className="local-recovery-sources"><p className="location-help">Données trouvées :</p><ul>{rawKeys.map((key) => <li key={key}>{sourceLabel(key)}</li>)}</ul><Button variant="outline" onClick={exportRaw}><Download />Exporter les données brutes d’origine</Button><p className="location-help">Cette copie brute garde les textes d’origine. Elle s’examine séparément et ne constitue pas un fichier d’espace à importer, ni une sauvegarde de l’inventaire ou des comptes.</p></div>}
+    {rawKeys.length > 0 && <div className="local-recovery-sources"><p className="location-help">{t('Données trouvées :')}</p><ul>{rawKeys.map((key) => <li key={key}>{sourceLabel(key)}</li>)}</ul><Button variant="outline" onClick={exportRaw}><Download />{t('Exporter les données brutes d’origine')}</Button><p className="location-help">{t('Cette copie brute garde les textes d’origine. Elle s’examine séparément et ne constitue pas un fichier d’espace à importer, ni une sauvegarde de l’inventaire ou des comptes.')}</p></div>}
     {inspection?.phase === 'ready' && summary && <div className="editor-delete-confirm">
-      <h3>Récupérer ce plan dans votre brouillon ?</h3>
+      <h3>{t('Récupérer ce plan dans votre brouillon ?')}</h3>
       <p><strong>{inspection.draft.workspace.name}</strong></p>
-      {inspection.sourceKey && <p>Plan retenu : {sourceLabel(inspection.sourceKey)}.</p>}
-      <dl className="asset-specs"><div><dt>Étages</dt><dd>{summary.floorCount}</dd></div><div><dt>Salles</dt><dd>{summary.roomCount}</dd></div><div><dt>Postes</dt><dd>{summary.workstationCount}</dd></div><div><dt>Meubles</dt><dd>{summary.furnitureCount}</dd></div><div><dt>Localisations anciennes</dt><dd>{!inspection.hasLocations ? 'Aucune donnée trouvée' : inspection.locationsValid ? Object.keys(inspection.draft.locations).length : 'Illisibles · copie brute conservée'}</dd></div></dl>
+      {inspection.sourceKey && <p>{t('Plan retenu : {source}.', { source: sourceLabel(inspection.sourceKey) })}</p>}
+      <dl className="asset-specs"><div><dt>{t('Étages')}</dt><dd>{summary.floorCount}</dd></div><div><dt>{t('Salles')}</dt><dd>{summary.roomCount}</dd></div><div><dt>{t('Postes')}</dt><dd>{summary.workstationCount}</dd></div><div><dt>{t('Meubles')}</dt><dd>{summary.furnitureCount}</dd></div><div><dt>{t('Localisations anciennes')}</dt><dd>{!inspection.hasLocations ? t('Aucune donnée trouvée') : inspection.locationsValid ? Object.keys(inspection.draft.locations).length : t('Illisibles · copie brute conservée')}</dd></div></dl>
       <fieldset disabled={!canEdit || applied} className="spatial-edit-fields spatial-transfer-options">
-        {inspection.hasLocations && inspection.locationsValid && <><label className="spatial-location-import"><input type="checkbox" checked={includeLocations} onChange={(event) => { if (canEdit && !applied) setIncludeLocations(event.target.checked) }} /><span>Récupérer aussi les localisations — données provenant de cette instance</span></label><p>Les identifiants de matériel sont propres à chaque instance. Les mêmes numéros peuvent désigner d’autres matériels ailleurs. Cochez cette option uniquement si ces données correspondent à cette instance.</p></>}
-        {inspection.hasLocations && !inspection.locationsValid && <p>Le plan reste récupérable seul. Les anciennes localisations illisibles sont conservées dans la copie brute pour une récupération séparée.</p>}
-        <p>{includeLocations ? 'Le plan et ses localisations anciennes remplaceront ensemble le brouillon actuel.' : current ? 'Le plan remplacera celui du brouillon. Vos localisations actuelles, y compris les liens vers des postes absents, resteront inchangées.' : 'Le plan préparera un premier brouillon, sans localisation ajoutée automatiquement.'}</p>
-        <p>Les données d’origine resteront dans ce navigateur. Enregistrez ensuite l’espace pour le partager.</p>
-        <Button disabled={!canEdit || applied} onClick={confirm}><ArchiveRestore />{applied ? 'Plan récupéré dans le brouillon' : 'Récupérer ce plan'}</Button>
+        {inspection.hasLocations && inspection.locationsValid && <><label className="spatial-location-import"><input type="checkbox" checked={includeLocations} onChange={(event) => { if (canEdit && !applied) setIncludeLocations(event.target.checked) }} /><span>{t('Récupérer aussi les localisations — données provenant de cette instance')}</span></label><p>{t('Les identifiants de matériel sont propres à chaque instance. Les mêmes numéros peuvent désigner d’autres matériels ailleurs. Cochez cette option uniquement si ces données correspondent à cette instance.')}</p></>}
+        {inspection.hasLocations && !inspection.locationsValid && <p>{t('Le plan reste récupérable seul. Les anciennes localisations illisibles sont conservées dans la copie brute pour une récupération séparée.')}</p>}
+        <p>{includeLocations ? t('Le plan et ses localisations anciennes remplaceront ensemble le brouillon actuel.') : current ? t('Le plan remplacera celui du brouillon. Vos localisations actuelles, y compris les liens vers des postes absents, resteront inchangées.') : t('Le plan préparera un premier brouillon, sans localisation ajoutée automatiquement.')}</p>
+        <p>{t('Les données d’origine resteront dans ce navigateur. Enregistrez ensuite l’espace pour le partager.')}</p>
+        <Button disabled={!canEdit || applied} onClick={confirm}><ArchiveRestore />{applied ? t('Plan récupéré dans le brouillon') : t('Récupérer ce plan')}</Button>
       </fieldset>
     </div>}
     {message && <p className={message.error ? 'storage-warning' : 'transfer-success'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}

@@ -1,6 +1,7 @@
 import type { SessionUser } from './auth-api'
+import { msg } from '@/lib/i18n'
 
-export const roleLabels = { ADMIN: 'Administrateur', EDITOR: 'Éditeur', VIEWER: 'Lecteur' } as const
+export const roleLabels = { ADMIN: msg('Administrateur'), EDITOR: msg('Éditeur'), VIEWER: msg('Lecteur') } as const
 
 export type SessionState =
   | { phase: 'checking' | 'setup-required'; user: null; error: null; generation: number }

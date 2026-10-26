@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { loadPlan, savePlan, type PlanPersistence, type PlanStorage, type SpatialPlan } from './plan-document'
 import { createPlanHistory, pushPlanChange, redoPlan, undoPlan, type PlanHistory } from './plan-history'
+import { t } from '@/lib/i18n'
 
 interface PlanState extends PlanPersistence {
   history: PlanHistory
@@ -47,7 +48,7 @@ export function usePlanDocument(): PlanDocumentResult {
     try {
       history = pushPlanChange(previous.history, candidate)
     } catch {
-      const next = { ...previous, warning: 'Ce plan est invalide. Aucun changement n’a été appliqué.' }
+      const next = { ...previous, warning: t('Ce plan est invalide. Aucun changement n’a été appliqué.') }
       current.current = next
       setState(next)
       return

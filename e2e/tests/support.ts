@@ -51,9 +51,10 @@ export function loadState(): E2eState {
   return JSON.parse(readFileSync(statePath, 'utf8')) as E2eState;
 }
 
-export function newContext(browser: Browser, viewport = { width: 1440, height: 1000 }): Promise<BrowserContext> {
-  // browser.newContext() n'hérite pas des options de la configuration.
-  return browser.newContext({ baseURL: origin, viewport, reducedMotion: 'reduce' });
+export function newContext(browser: Browser, viewport = { width: 1440, height: 1000 }, locale = 'fr-FR'): Promise<BrowserContext> {
+  // browser.newContext() n'hérite pas des options de la configuration. Sans choix enregistré,
+  // l'interface suit la langue du navigateur : les parcours la fixent.
+  return browser.newContext({ baseURL: origin, viewport, reducedMotion: 'reduce', locale });
 }
 
 export async function getJson<T = unknown>(request: APIRequestContext, path: string, status = 200): Promise<T> {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ApiError, apiClient } from '@/lib/api-client'
 import { parseCsv, toCsv } from '@/lib/csv'
+import { inEveryLanguage, msg, t } from '@/lib/i18n'
 import { emptyAssetForm, type AssetFormField, type AssetFormValues } from './asset-form-model'
 import { formFieldName, parseAssetForm, type AssetInput } from './asset-input'
 import {
@@ -14,7 +15,8 @@ export const importLimit = 1000
 const normalize = (value: string) =>
   value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
-// Column names are matched without accents, case, spaces or punctuation, in French or English.
+// Column names are matched without accents, case, spaces or punctuation, in French or English;
+// the column titles of the template, in either language, are accepted as well.
 const columnAliases: Record<AssetFormField, readonly string[]> = {
   assetTag: ['identifiant', 'identifiantdeparc', 'assettag', 'tag', 'reference', 'ref'],
   name: ['nom', 'name', 'nomdumateriel', 'designation', 'libelle'],
@@ -29,21 +31,32 @@ const columnAliases: Record<AssetFormField, readonly string[]> = {
   assigneeDepartment: ['service', 'departement', 'department', 'assigneedepartment'],
 }
 
+// Column titles are French keys: show them through t().
 export const importFieldLabels: Record<AssetFormField, string> = {
-  assetTag: 'Identifiant', name: 'Nom', category: 'Catégorie', status: 'État', serialNumber: 'Numéro de série',
-  brand: 'Marque', model: 'Modèle', purchaseDate: 'Date d’achat', assigneeName: 'Personne', assigneeEmail: 'E-mail',
-  assigneeDepartment: 'Service',
+  assetTag: msg('Identifiant|matériel'), name: msg('Nom'), category: msg('Catégorie'), status: msg('État'), serialNumber: msg('Numéro de série'),
+  brand: msg('Marque'), model: msg('Modèle'), purchaseDate: msg('Date d’achat'), assigneeName: msg('Personne'), assigneeEmail: msg('E-mail'),
+  assigneeDepartment: msg('Service'),
 }
 
-export const importTemplate = toCsv([
-  ['Identifiant', 'Nom', 'Catégorie', 'État', 'Numéro de série', 'Marque', 'Modèle', 'Date d’achat', 'Personne', 'E-mail', 'Service'],
-  ['IT-0001', 'Portable de l’accueil', 'Ordinateur', 'Affecté', 'SN-12345', 'Lenovo', 'ThinkPad T14', '15/03/2025', 'Camille Bernard', 'camille.bernard@exemple.fr', 'Accueil'],
-  ['IT-0002', 'Écran de la salle de réunion', 'Écran', 'Disponible', '', 'Dell', 'P2723D', '', '', '', ''],
-])
+/** An example file in the current language. */
+export function importTemplate(): string {
+  return toCsv([
+    (Object.keys(importFieldLabels) as AssetFormField[]).map((field) => t(importFieldLabels[field])),
+    ['IT-0001', t('Portable de l’accueil'), t(categoryLabels.COMPUTER), t(statusLabels.ASSIGNED), 'SN-12345', 'Lenovo', 'ThinkPad T14', '15/03/2025', 'Camille Bernard', t('camille.bernard@exemple.fr'), t('Accueil')],
+    ['IT-0002', t('Écran de la salle de réunion'), t(categoryLabels.MONITOR), t(statusLabels.AVAILABLE), '', 'Dell', 'P2723D', '', '', '', ''],
+  ])
+}
+
+function columnField(name: string): AssetFormField | null {
+  const wanted = normalize(name)
+  return (Object.keys(columnAliases) as AssetFormField[]).find((field) => columnAliases[field].includes(wanted)
+    || inEveryLanguage(importFieldLabels[field]).some((label) => normalize(label) === wanted)) ?? null
+}
 
 function enumValue<T extends string>(raw: string, options: readonly T[], labels: Record<T, string>): T | null {
   const wanted = normalize(raw)
-  return options.find((option) => normalize(option) === wanted || normalize(labels[option]) === wanted) ?? null
+  return options.find((option) => normalize(option) === wanted
+    || inEveryLanguage(labels[option]).some((label) => normalize(label) === wanted)) ?? null
 }
 
 function civilDate(raw: string): string {
@@ -69,17 +82,16 @@ export interface ImportPlan {
 /** Reads and checks a file the way the server will, so that every problem shows before anything is sent. */
 export function planImport(text: string): ImportPlan {
   const [header, ...records] = parseCsv(text)
-  if (!header) return { rows: [], problems: ['Le fichier est vide.'], ignoredColumns: [] }
-  const fields = header.map((name) => (Object.keys(columnAliases) as AssetFormField[])
-    .find((field) => columnAliases[field].includes(normalize(name))) ?? null)
+  if (!header) return { rows: [], problems: [t('Le fichier est vide.')], ignoredColumns: [] }
+  const fields = header.map(columnField)
   const problems: string[] = []
   for (const required of ['assetTag', 'name'] as const) {
-    if (!fields.includes(required)) problems.push(`Ajoutez une colonne « ${importFieldLabels[required]} » : elle est obligatoire.`)
+    if (!fields.includes(required)) problems.push(t('Ajoutez une colonne « {column} » : elle est obligatoire.', { column: t(importFieldLabels[required]) }))
   }
   const repeated = fields.filter((field, index) => field && fields.indexOf(field) !== index)
-  for (const field of new Set(repeated)) problems.push(`La colonne « ${importFieldLabels[field!]} » apparaît plusieurs fois.`)
-  if (records.length === 0) problems.push('Le fichier ne contient aucune ligne de matériel.')
-  if (records.length > importLimit) problems.push(`Le fichier contient ${records.length} lignes : importez-en ${importLimit} au plus à la fois.`)
+  for (const field of new Set(repeated)) problems.push(t('La colonne « {column} » apparaît plusieurs fois.', { column: t(importFieldLabels[field!]) }))
+  if (records.length === 0) problems.push(t('Le fichier ne contient aucune ligne de matériel.'))
+  if (records.length > importLimit) problems.push(t('Le fichier contient {count} lignes : importez-en {limit} au plus à la fois.', { count: records.length, limit: importLimit }))
 
   const seen = new Map<string, number>()
   const rows = records.map((cells, index): ImportRow => {
@@ -91,12 +103,12 @@ export function planImport(text: string): ImportPlan {
     const errors: Partial<Record<AssetFormField, string>> = {}
     const category: AssetCategory | null = text('category')
       ? enumValue(text('category'), assetCategorySchema.options, categoryLabels) : 'OTHER'
-    if (!category) errors.category = `Catégorie inconnue : « ${text('category')} ».`
+    if (!category) errors.category = t('Catégorie inconnue : « {value} ».', { value: text('category') })
     const status: AssetStatus | null = text('status')
       ? enumValue(text('status'), assetStatusSchema.options, statusLabels) : text('assigneeName') ? 'ASSIGNED' : 'AVAILABLE'
-    if (!status) errors.status = `État inconnu : « ${text('status')} ».`
+    if (!status) errors.status = t('État inconnu : « {value} ».', { value: text('status') })
     else if (status !== 'ASSIGNED' && text('assigneeName')) {
-      errors.assigneeName = 'Seul un matériel affecté peut nommer une personne : choisissez l’état « Affecté ».'
+      errors.assigneeName = t('Seul un matériel affecté peut nommer une personne : choisissez l’état « Affecté ».')
     }
     const values: AssetFormValues = {
       ...emptyAssetForm, assetTag: text('assetTag'), name: text('name'), serialNumber: text('serialNumber'),
@@ -108,7 +120,7 @@ export function planImport(text: string): ImportPlan {
     const parsed = parseAssetForm(values)
     if (!parsed.success) for (const [field, message] of Object.entries(parsed.errors)) errors[field as AssetFormField] ??= message
     const tag = values.assetTag.trim()
-    if (tag && seen.has(tag)) errors.assetTag ??= `Identifiant déjà présent ligne ${seen.get(tag)}.`
+    if (tag && seen.has(tag)) errors.assetTag ??= t('Identifiant déjà présent ligne {line}.', { line: seen.get(tag)! })
     else if (tag) seen.set(tag, line)
     const valid = parsed.success && Object.keys(errors).length === 0
     return { line, values, input: valid ? parsed.data : null, errors }
@@ -142,7 +154,7 @@ export async function importAssets(inputs: readonly AssetInput[], signal?: Abort
   } catch (error) {
     signal?.throwIfAborted()
     if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
-      throw new ApiError(error.kind, 'L’import n’a pas pu être confirmé. Actualisez l’inventaire pour vérifier si les matériels ont été créés avant de réessayer.', error.status, error.code, error.fieldErrors)
+      throw new ApiError(error.kind, t('L’import n’a pas pu être confirmé. Actualisez l’inventaire pour vérifier si les matériels ont été créés avant de réessayer.'), error.status, error.code, error.fieldErrors)
     }
     throw error
   }

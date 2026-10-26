@@ -23,6 +23,7 @@ import {
 } from './asset-schema'
 import type { useInventory } from './use-inventory'
 import { useSession } from '@/features/auth/use-session'
+import { plural, t } from '@/lib/i18n'
 import { CreateAssetSheet } from './create-asset-sheet'
 import { ImportAssetsSheet } from './import-assets-sheet'
 import { EditAssetSheet } from './edit-asset-sheet'
@@ -70,29 +71,29 @@ export function InventoryPanel({
     <div className="inventory-layout">
       <section
         className="inventory-content"
-        aria-label="Inventaire du matériel"
+        aria-label={t('Inventaire du matériel')}
         aria-busy={requestStatus === 'loading'}
       >
         <div className="inventory-toolbar">
           <label className="search-field">
             <Search size={15} aria-hidden="true" />
             <input
-              aria-label="Rechercher du matériel"
-              placeholder="Rechercher un nom, un identifiant, une personne…"
+              aria-label={t('Rechercher du matériel')}
+              placeholder={t('Rechercher un nom, un identifiant, une personne…')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
           <select
             className="status-filter"
-            aria-label="Filtrer par état"
+            aria-label={t('Filtrer par état')}
             value={status}
             onChange={(event) => setStatus(event.target.value as Status | '')}
           >
-            <option value="">Tous les états</option>
+            <option value="">{t('Tous les états')}</option>
             {Object.entries(statusLabels).map(([key, label]) => (
               <option key={key} value={key}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
@@ -101,7 +102,7 @@ export function InventoryPanel({
             size="icon"
             onClick={reload}
             disabled={requestStatus === 'loading'}
-            aria-label="Actualiser l’inventaire"
+            aria-label={t('Actualiser l’inventaire')}
           >
             <RefreshCw className={requestStatus === 'loading' ? 'animate-spin' : ''} />
           </Button>
@@ -112,16 +113,16 @@ export function InventoryPanel({
             setImported(null); setConfirmation({ asset, action: 'created' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id)
           }} />
         </div>
-        {imported !== null && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{imported} matériel{imported > 1 ? 's' : ''}</strong> {imported > 1 ? 'ont été importés' : 'a été importé'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation de l’import" onClick={() => setImported(null)}><X aria-hidden="true" /></Button></div>}
-        {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) a été {confirmation.action === 'created' ? 'enregistré' : confirmation.action === 'updated' ? 'mis à jour' : 'retiré du parc'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation" onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
+        {imported !== null && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p>{plural(imported, '{count} matériel a été importé dans l’inventaire partagé.', '{count} matériels ont été importés dans l’inventaire partagé.')}{requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}</p><Button variant="ghost" size="icon-sm" aria-label={t('Masquer la confirmation de l’import')} onClick={() => setImported(null)}><X aria-hidden="true" /></Button></div>}
+        {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) {confirmation.action === 'created' ? t('a été enregistré dans l’inventaire partagé.') : confirmation.action === 'updated' ? t('a été mis à jour dans l’inventaire partagé.') : t('a été retiré du parc dans l’inventaire partagé.')}{requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}</p><Button variant="ghost" size="icon-sm" aria-label={t('Masquer la confirmation')} onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
         {error && (
           <div className="inventory-alert" role="alert">
             <AlertCircle size={17} aria-hidden="true" />
             <div>
-              <strong>Inventaire indisponible</strong>
+              <strong>{t('Inventaire indisponible')}</strong>
               <p>
                 {error.message}
-                {assets ? ' Les dernières données reçues restent affichées.' : ''}
+                {assets ? ` ${t('Les dernières données reçues restent affichées.')}` : ''}
               </p>
             </div>
             <Button
@@ -130,58 +131,58 @@ export function InventoryPanel({
               onClick={reload}
               disabled={requestStatus === 'loading'}
             >
-              Réessayer
+              {t('Réessayer')}
             </Button>
           </div>
         )}
         {assets && requestStatus === 'ready' && selectedAssetId !== null && !selected && (
           <p className="selection-notice" role="status">
-            Le matériel sélectionné n’est plus présent dans l’inventaire.{' '}
-            <button onClick={() => onSelect(null)}>Effacer la sélection</button>
+            {t('Le matériel sélectionné n’est plus présent dans l’inventaire.')}{' '}
+            <button onClick={() => onSelect(null)}>{t('Effacer la sélection')}</button>
           </p>
         )}
         {requestStatus === 'loading' && !assets && (
           <div className="inventory-empty" role="status">
             <LoaderCircle className="animate-spin" size={25} />
-            <h2>Lecture de l’inventaire</h2>
-            <p>Récupération de votre matériel…</p>
+            <h2>{t('Lecture de l’inventaire')}</h2>
+            <p>{t('Récupération de votre matériel…')}</p>
           </div>
         )}
         {requestStatus === 'error' && !assets && (
           <div className="inventory-empty">
             <Boxes size={32} strokeWidth={1.2} />
-            <h2>Le matériel reste à portée.</h2>
+            <h2>{t('Le matériel reste à portée.')}</h2>
             <p>
-              La connexion à l’inventaire est momentanément indisponible. Vous pouvez continuer à
-              parcourir votre espace.
+              {t('La connexion à l’inventaire est momentanément indisponible. Vous pouvez continuer à parcourir votre espace.')}
             </p>
           </div>
         )}
         {assets && assets.length === 0 && (
           <div className="inventory-empty">
             <Boxes size={32} strokeWidth={1.2} />
-            <h2>Votre inventaire est vide.</h2>
-            <p>Les équipements enregistrés dans votre inventaire apparaîtront ici.</p>
+            <h2>{t('Votre inventaire est vide.')}</h2>
+            <p>{t('Les équipements enregistrés dans votre inventaire apparaîtront ici.')}</p>
           </div>
         )}
         {assets && assets.length > 0 && (
           <>
             <div className="inventory-count" role="status">
-              {filtered.length} équipement{filtered.length > 1 ? 's' : ''}
-              {query || status ? ` sur ${assets.length}` : ''}
+              {query || status
+                ? plural(filtered.length, '{count} équipement sur {total}', '{count} équipements sur {total}', { total: assets.length })
+                : plural(filtered.length, '{count} équipement', '{count} équipements')}
               <span>
                 {requestStatus === 'error'
-                  ? 'Dernières données reçues'
+                  ? t('Dernières données reçues')
                   : requestStatus === 'loading'
-                    ? 'Actualisation…'
-                    : 'Inventaire connecté'}
+                    ? t('Actualisation…')
+                    : t('Inventaire connecté')}
               </span>
             </div>
             {filtered.length === 0 ? (
               <div className="inventory-empty">
                 <SearchX size={30} strokeWidth={1.2} />
-                <h2>Aucun résultat</h2>
-                <p>Essayez un autre nom ou modifiez les filtres.</p>
+                <h2>{t('Aucun résultat')}</h2>
+                <p>{t('Essayez un autre nom ou modifiez les filtres.')}</p>
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -189,7 +190,7 @@ export function InventoryPanel({
                     setStatus('')
                   }}
                 >
-                  Effacer les filtres
+                  {t('Effacer les filtres')}
                 </Button>
               </div>
             ) : (
@@ -197,11 +198,11 @@ export function InventoryPanel({
                 <table className="inventory-table">
                   <thead>
                     <tr>
-                      <th>Matériel</th>
-                      <th>Catégorie</th>
-                      <th>État</th>
+                      <th>{t('Matériel')}</th>
+                      <th>{t('Catégorie')}</th>
+                      <th>{t('État')}</th>
                       <th>
-                        <span className="sr-only">Fiche</span>
+                        <span className="sr-only">{t('Fiche')}</span>
                       </th>
                     </tr>
                   </thead>
@@ -233,7 +234,7 @@ export function InventoryPanel({
                             </span>
                           </button>
                         </td>
-                        <td className="category-cell">{categoryLabels[asset.category]}</td>
+                        <td className="category-cell">{t(categoryLabels[asset.category])}</td>
                         <td>
                           <AssetStatus asset={asset} />
                         </td>
@@ -250,10 +251,10 @@ export function InventoryPanel({
         )}
       </section>
       <AssetDetails asset={selected} onClose={() => onSelect(null)}>
-        {selected && canEdit && <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}><Pencil aria-hidden="true" />Modifier la fiche</Button>}
-        {selected && <Button variant="outline" className="asset-history-button" onClick={() => setHistoryAsset(selected)}><History aria-hidden="true" />Voir l’historique</Button>}
+        {selected && canEdit && <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}><Pencil aria-hidden="true" />{t('Modifier la fiche')}</Button>}
+        {selected && <Button variant="outline" className="asset-history-button" onClick={() => setHistoryAsset(selected)}><History aria-hidden="true" />{t('Voir l’historique')}</Button>}
         {selected && renderAssetActions(selected)}
-        {selected && canEdit && selected.status !== 'RETIRED' && <div className="asset-retire-action"><Button variant="ghost" disabled={selected.status === 'ASSIGNED'} onClick={() => setRetiringAsset(selected)}><Archive aria-hidden="true" />Retirer du parc</Button>{selected.status === 'ASSIGNED' && <p>Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.</p>}</div>}
+        {selected && canEdit && selected.status !== 'RETIRED' && <div className="asset-retire-action"><Button variant="ghost" disabled={selected.status === 'ASSIGNED'} onClick={() => setRetiringAsset(selected)}><Archive aria-hidden="true" />{t('Retirer du parc')}</Button>{selected.status === 'ASSIGNED' && <p>{t('Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.')}</p>}</div>}
       </AssetDetails>
       {editingAsset && <EditAssetSheet key={editingAsset.id} asset={editingAsset} canEdit={canEdit} onClose={() => setEditingAsset(null)}
         onReloaded={inventory.refreshAfterMutation} onSaved={(asset) => { setConfirmation({ asset, action: 'updated' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}

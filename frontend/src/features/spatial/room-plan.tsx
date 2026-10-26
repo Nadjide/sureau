@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
 import { translateSelection } from './plan-selection'
+import { plural, t } from '@/lib/i18n'
 
 type PlanItem = Workstation | FurnitureItem
 
@@ -128,7 +129,7 @@ export function RoomPlan({ plan, editing, canEdit = true, snap, onMove, selected
   }
 
   return (
-    <svg className={`room-plan${effectiveEditing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={`Plan 2D de ${plan.name}. ${plan.workstations.length} postes et ${plan.furniture.length} meubles sélectionnables au clavier.`}
+    <svg className={`room-plan${effectiveEditing ? ' is-editing' : ''}`} viewBox="0 0 820 590" role="group" aria-label={t('Plan 2D de {name}. {workstations} et {furniture} sélectionnables au clavier.', { name: plan.name, workstations: plural(plan.workstations.length, '{count} poste', '{count} postes'), furniture: plural(plan.furniture.length, '{count} meuble', '{count} meubles') })}
       onPointerMove={(event) => {
         if (!effectiveEditing) { cancelDrag(); return }
         const current = drag.current
@@ -160,7 +161,7 @@ export function RoomPlan({ plan, editing, canEdit = true, snap, onMove, selected
         const selected = selectedIds.includes(item.id)
         const x = 410 + item.position[0] * scale, y = 290 + item.position[2] * scale
         const w = item.width * scale, d = item.depth * scale
-        return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner le meuble ${item.label} dans le plan 2D`} aria-pressed={selected}
+        return <g key={item.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={t('Sélectionner le meuble {name} dans le plan 2D', { name: item.label })} aria-pressed={selected}
           onPointerDown={(event) => beginDrag(event, item)} onClick={(event) => itemClick(event, item)} onKeyDown={(event) => itemKeyDown(event, item)}>
           <title>{item.label}</title>
           <g transform={`rotate(${-item.rotation * 180 / Math.PI})`}>
@@ -178,7 +179,7 @@ export function RoomPlan({ plan, editing, canEdit = true, snap, onMove, selected
         const x = 410 + station.position[0] * scale
         const y = 290 + station.position[2] * scale
         const selected = selectedIds.includes(station.id)
-        return <g key={station.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={`Sélectionner ${station.label} dans le plan 2D`} aria-pressed={selected}
+        return <g key={station.id} className={`plan-workstation${selected ? ' is-selected' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-label={t('Sélectionner {name} dans le plan 2D', { name: station.label })} aria-pressed={selected}
           onPointerDown={(event) => beginDrag(event, station)} onClick={(event) => itemClick(event, station)} onKeyDown={(event) => itemKeyDown(event, station)}>
           <title>{station.label}</title>
           <g transform={`rotate(${-station.rotation * 180 / Math.PI}) scale(${station.width / 2 * scale / 50},${station.depth * scale / 50})`}>
@@ -191,7 +192,7 @@ export function RoomPlan({ plan, editing, canEdit = true, snap, onMove, selected
           <text className="plan-label" x="0" y={(Math.cos(station.rotation) >= 0 ? -1 : 1) * (Math.abs(Math.cos(station.rotation)) * station.depth * scale / 2 + Math.abs(Math.sin(station.rotation)) * station.width * scale / 2 + 12)} textAnchor="middle" style={{ fill: ink, stroke: plan.colors.floor, strokeWidth: 3, paintOrder: 'stroke' }}>{plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== station.id ? String(index + 1).padStart(2, '0') : station.label.length > 22 ? `${station.label.slice(0, 21)}…` : station.label}</text>
         </g>
       })}
-      <text x="410" y="570" textAnchor="middle" className="plan-caption">Implantation de l’espace · mobilier du plan</text>
+      <text x="410" y="570" textAnchor="middle" className="plan-caption">{t('Implantation de l’espace · mobilier du plan')}</text>
     </svg>
   )
 }

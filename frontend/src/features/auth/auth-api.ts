@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { apiClient, type createApiClient } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 
 export const sessionUserSchema = z.object({
   id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
@@ -13,7 +14,7 @@ export interface SetupInput extends LoginInput { setupToken: string; displayName
 
 export class AccountCreatedError extends Error {
   constructor(cause: unknown) {
-    super('Votre compte administrateur a été créé. Connectez-vous avec votre identifiant et votre mot de passe pour continuer.', { cause })
+    super(t('Votre compte administrateur a été créé. Connectez-vous avec votre identifiant et votre mot de passe pour continuer.'), { cause })
     this.name = 'AccountCreatedError'
   }
 }

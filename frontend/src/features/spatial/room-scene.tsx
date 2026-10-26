@@ -6,6 +6,7 @@ import type { FurnitureItem, Workstation } from './room-model'
 import type { SpatialPlan } from './plan-document'
 import { translateSelection } from './plan-selection'
 import { FurnitureModel } from './furniture-model'
+import { t } from '@/lib/i18n'
 
 type RoomSceneProps = {
   plan: SpatialPlan
@@ -731,7 +732,7 @@ export default function RoomScene({ plan, selectedWorkstationId, selectedIds, mu
   return (
     <div
       role="group"
-      aria-label={`Maquette 3D de ${plan.name}. Sélectionnez un poste ou un meuble pour l’explorer.`}
+      aria-label={t('Maquette 3D de {name}. Sélectionnez un poste ou un meuble pour l’explorer.', { name: plan.name })}
       style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <Canvas
@@ -740,7 +741,7 @@ export default function RoomScene({ plan, selectedWorkstationId, selectedIds, mu
         shadows="percentage"
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         style={{ width: '100%', height: '100%', touchAction: 'none' }}
-        fallback={<div className="scene-fallback" role="status">La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.</div>}
+        fallback={<div className="scene-fallback" role="status">{t('La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.')}</div>}
       >
         <color attach="background" args={[dark ? '#141d2a' : '#eef2f7']} />
         <CameraRig plan={plan} objects={objects} resetToken={resetToken} focusToken={focusToken} selectedWorkstationId={selectedWorkstationId} controlsRef={controlsRef} dragRef={dragRef} reducedMotion={reducedMotion} />
@@ -819,7 +820,7 @@ export default function RoomScene({ plan, selectedWorkstationId, selectedIds, mu
             type="button"
             className={`scene-label${selectedIds.includes(object.id) ? ' is-selected' : ''}`}
             style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'auto', borderColor: selectedIds.includes(object.id) ? plan.colors.accent : undefined }}
-            aria-label={`Sélectionner ${object.label} dans la vue 3D`}
+            aria-label={t('Sélectionner {name} dans la vue 3D', { name: object.label })}
             title={object.label}
             aria-pressed={selectedIds.includes(object.id)}
             onPointerDown={(event) => {

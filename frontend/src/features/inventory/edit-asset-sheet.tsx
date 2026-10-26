@@ -3,6 +3,7 @@ import { FilePenLine, LoaderCircle, RefreshCw, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ApiError } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import { AssetFormFields } from './asset-form-fields'
 import { assetToFormValues, type AssetFormField } from './asset-form-model'
 import { formFieldErrors, parseAssetForm } from './asset-input'
@@ -53,7 +54,7 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
       setBase(current); setValues(assetToFormValues(current)); setFields({}); setConflict(false); setConfirmation(null)
       onReloaded(current)
     } catch (failure) {
-      if (!request.signal.aborted) setError(failure instanceof Error ? failure.message : 'La fiche du serveur n’a pas pu être rechargée. Votre saisie est conservée.')
+      if (!request.signal.aborted) setError(failure instanceof Error ? failure.message : t('La fiche du serveur n’a pas pu être rechargée. Votre saisie est conservée.'))
     } finally {
       if (controller.current === request) { controller.current = null; setPending(null) }
     }
@@ -65,7 +66,7 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
     const parsed = parseAssetForm(values)
     if (!parsed.success) {
       const errors = parsed.errors
-      setFields(errors); setError('Vérifiez les champs indiqués avant d’enregistrer les modifications.')
+      setFields(errors); setError(t('Vérifiez les champs indiqués avant d’enregistrer les modifications.'))
       const first = Object.keys(errors)[0]
       const input = first ? event.currentTarget.elements.namedItem(first) : null
       if (input instanceof HTMLElement) input.focus()
@@ -83,8 +84,8 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
         if (failure.status === 412 || failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) setConflict(true)
       }
       setError(failure instanceof ApiError && failure.status === 409 && failure.code !== 'ASSET_STATUS_CONFLICT'
-        ? 'Cet identifiant ou ce numéro de série est déjà utilisé. Votre saisie est conservée ; modifiez la valeur avant de réessayer.'
-        : failure instanceof Error ? failure.message : 'Les modifications n’ont pas pu être confirmées. Votre saisie est conservée.')
+        ? t('Cet identifiant ou ce numéro de série est déjà utilisé. Votre saisie est conservée ; modifiez la valeur avant de réessayer.')
+        : failure instanceof Error ? failure.message : t('Les modifications n’ont pas pu être confirmées. Votre saisie est conservée.'))
     } finally {
       if (controller.current === request) { controller.current = null; setPending(null) }
     }
@@ -95,18 +96,18 @@ export function EditAssetSheet({ asset, canEdit, onClose, onSaved, onReloaded }:
       onOpenAutoFocus={(event) => { event.preventDefault(); document.getElementById('asset-edit-name')?.focus() }}
       onEscapeKeyDown={(event) => { if (pending || confirmation) { event.preventDefault(); if (!pending) setConfirmation(null) } }}
       onInteractOutside={(event) => { if (pending) event.preventDefault() }}>
-      <SheetHeader><p className="eyebrow">LE PARC ÉVOLUE AVEC VOUS</p><SheetTitle>Modifier la fiche</SheetTitle><SheetDescription>Mettez à jour les informations de {base.assetTag}. Sa localisation dans vos espaces sera conservée.</SheetDescription></SheetHeader>
-      <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Fermer la modification du matériel" disabled={Boolean(pending)} onClick={requestClose}><X aria-hidden="true" /></Button>
+      <SheetHeader><p className="eyebrow">{t('LE PARC ÉVOLUE AVEC VOUS')}</p><SheetTitle>{t('Modifier la fiche')}</SheetTitle><SheetDescription>{t('Mettez à jour les informations de {tag}. Sa localisation dans vos espaces sera conservée.', { tag: base.assetTag })}</SheetDescription></SheetHeader>
+      <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label={t('Fermer la modification du matériel')} disabled={Boolean(pending)} onClick={requestClose}><X aria-hidden="true" /></Button>
       <form className="asset-entry-form" noValidate onSubmit={(event) => { void submit(event) }}>
         <div className="asset-entry-scroll">
-          <div className="asset-form-heading"><FilePenLine size={21} strokeWidth={1.5} aria-hidden="true" /><div><h3>La fiche du matériel</h3><p>Les champs marqués d’un astérisque sont obligatoires.</p></div></div>
-          {!canEdit && <p className="asset-form-error" role="status">Une session avec les droits d’édition est nécessaire pour enregistrer cette fiche. Votre saisie est conservée.</p>}
+          <div className="asset-form-heading"><FilePenLine size={21} strokeWidth={1.5} aria-hidden="true" /><div><h3>{t('La fiche du matériel')}</h3><p>{t('Les champs marqués d’un astérisque sont obligatoires.')}</p></div></div>
+          {!canEdit && <p className="asset-form-error" role="status">{t('Une session avec les droits d’édition est nécessaire pour enregistrer cette fiche. Votre saisie est conservée.')}</p>}
           <AssetFormFields prefix="asset-edit" values={values} fields={fields} disabled={Boolean(pending) || Boolean(confirmation) || !canEdit} onChange={change} retirementBlocked={base.status === 'ASSIGNED'} />
           {error && <p className="asset-form-error" role="alert">{error}</p>}
-          {conflict && !confirmation && <div className="asset-conflict-actions"><p>L’enregistrement est suspendu pour protéger les changements déjà effectués. Votre saisie reste affichée.</p><Button type="button" variant="outline" disabled={Boolean(pending) || !canEdit} onClick={() => setConfirmation('reload')}><RefreshCw aria-hidden="true" />Recharger la fiche du serveur</Button></div>}
-          {confirmation && <div className="asset-discard-confirm" role="alert"><h3>{confirmation === 'reload' ? 'Reprendre la version du serveur ?' : 'Quitter sans enregistrer ?'}</h3><p>{confirmation === 'reload' ? 'Votre saisie sera remplacée par les informations actuelles du serveur. Copiez les valeurs à conserver avant de continuer.' : 'Les modifications en cours de saisie seront effacées.'}</p><div><Button type="button" variant="outline" ref={continueButton} disabled={Boolean(pending)} onClick={() => setConfirmation(null)}>Conserver ma saisie</Button><Button type="button" variant="ghost" disabled={Boolean(pending) || (confirmation === 'reload' && !canEdit)} onClick={() => { if (confirmation === 'reload') void reload(); else onClose() }}>{pending === 'reload' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}{confirmation === 'reload' ? 'Remplacer par la version du serveur' : 'Effacer et fermer'}</Button></div></div>}
+          {conflict && !confirmation && <div className="asset-conflict-actions"><p>{t('L’enregistrement est suspendu pour protéger les changements déjà effectués. Votre saisie reste affichée.')}</p><Button type="button" variant="outline" disabled={Boolean(pending) || !canEdit} onClick={() => setConfirmation('reload')}><RefreshCw aria-hidden="true" />{t('Recharger la fiche du serveur')}</Button></div>}
+          {confirmation && <div className="asset-discard-confirm" role="alert"><h3>{confirmation === 'reload' ? t('Reprendre la version du serveur ?') : t('Quitter sans enregistrer ?')}</h3><p>{confirmation === 'reload' ? t('Votre saisie sera remplacée par les informations actuelles du serveur. Copiez les valeurs à conserver avant de continuer.') : t('Les modifications en cours de saisie seront effacées.')}</p><div><Button type="button" variant="outline" ref={continueButton} disabled={Boolean(pending)} onClick={() => setConfirmation(null)}>{t('Conserver ma saisie')}</Button><Button type="button" variant="ghost" disabled={Boolean(pending) || (confirmation === 'reload' && !canEdit)} onClick={() => { if (confirmation === 'reload') void reload(); else onClose() }}>{pending === 'reload' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}{confirmation === 'reload' ? t('Remplacer par la version du serveur') : t('Effacer et fermer')}</Button></div></div>}
         </div>
-        <div className="asset-form-footer"><Button type="button" variant="outline" disabled={Boolean(pending) || Boolean(confirmation)} onClick={requestClose}>Annuler</Button><Button type="submit" disabled={Boolean(pending) || Boolean(confirmation) || !canEdit || conflict}>{pending === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{pending === 'save' ? 'Enregistrement…' : 'Enregistrer les modifications'}</Button></div>
+        <div className="asset-form-footer"><Button type="button" variant="outline" disabled={Boolean(pending) || Boolean(confirmation)} onClick={requestClose}>{t('Annuler')}</Button><Button type="submit" disabled={Boolean(pending) || Boolean(confirmation) || !canEdit || conflict}>{pending === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{pending === 'save' ? 'Enregistrement…' : t('Enregistrer les modifications')}</Button></div>
       </form>
     </SheetContent>
   </Sheet>

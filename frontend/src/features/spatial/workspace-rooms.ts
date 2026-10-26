@@ -1,6 +1,7 @@
 import { defaultPlan, parsePlan } from './plan-document'
 import type { SpatialPlan, Workstation } from './room-model'
 import { parseWorkspace, workspaceRoomLimit, type WorkspaceDocument, type WorkspaceFloor, type WorkspaceRoom } from './workspace-document'
+import { t } from '@/lib/i18n'
 
 export type WorkspaceIdFactory = (type: 'room' | 'desk' | 'furniture') => string
 const defaultId: WorkspaceIdFactory = (type) => `${type}-${crypto.randomUUID()}`
@@ -13,13 +14,13 @@ export interface WorkspaceStation {
 
 function roomIn(workspace: WorkspaceDocument, roomId: string): WorkspaceRoom {
   const room = workspace.rooms.find((candidate) => candidate.plan.id === roomId)
-  if (!room) throw new RangeError('Cette salle n’existe plus dans l’espace de travail.')
+  if (!room) throw new RangeError(t('Cette salle n’existe plus dans l’espace de travail.'))
   return room
 }
 
 function roomName(name: string): string {
   const normalized = name.trim()
-  if (!normalized || normalized.length > 60) throw new RangeError('Donnez un nom de 1 à 60 caractères à la salle.')
+  if (!normalized || normalized.length > 60) throw new RangeError(t('Donnez un nom de 1 à 60 caractères à la salle.'))
   return normalized
 }
 
@@ -33,7 +34,7 @@ function usedIds(workspace: WorkspaceDocument): Set<string> {
 function nextId(type: 'room' | 'desk' | 'furniture', used: Set<string>, createId: WorkspaceIdFactory): string {
   const id = createId(type)
   if (!new RegExp(`^${type}-[a-z0-9-]{2,80}$`).test(id) || used.has(id)) {
-    throw new RangeError('Un identifiant de salle ou d’objet est invalide ou déjà utilisé. Aucun changement n’a été appliqué.')
+    throw new RangeError(t('Un identifiant de salle ou d’objet est invalide ou déjà utilisé. Aucun changement n’a été appliqué.'))
   }
   used.add(id)
   return id
@@ -46,8 +47,8 @@ function validated(workspace: WorkspaceDocument): WorkspaceDocument {
 }
 
 function canAddRoom(workspace: WorkspaceDocument, floorId: string) {
-  if (workspace.rooms.length >= workspaceRoomLimit) throw new RangeError(`Cet espace peut contenir jusqu’à ${workspaceRoomLimit} salles.`)
-  if (!workspace.floors.some((floor) => floor.id === floorId)) throw new RangeError('Cet étage n’existe pas dans l’espace de travail.')
+  if (workspace.rooms.length >= workspaceRoomLimit) throw new RangeError(t('Cet espace peut contenir jusqu’à {count} salles.', { count: workspaceRoomLimit }))
+  if (!workspace.floors.some((floor) => floor.id === floorId)) throw new RangeError(t('Cet étage n’existe pas dans l’espace de travail.'))
 }
 
 export function createRoom(
@@ -87,7 +88,7 @@ export function renameRoom(workspace: WorkspaceDocument, roomId: string, name: s
 
 export function deleteRoom(workspace: WorkspaceDocument, roomId: string): WorkspaceDocument {
   roomIn(workspace, roomId)
-  if (workspace.rooms.length <= 1) throw new RangeError('Conservez au moins une salle dans votre espace de travail.')
+  if (workspace.rooms.length <= 1) throw new RangeError(t('Conservez au moins une salle dans votre espace de travail.'))
   return validated({ ...workspace, rooms: workspace.rooms.filter((room) => room.plan.id !== roomId) })
 }
 

@@ -4,6 +4,7 @@ import {
   createWorkspaceHistory, loadWorkspace, pushWorkspaceChange, redoWorkspace, replaceWorkspaceRoom,
   saveWorkspace, undoWorkspace, type WorkspaceDocument, type WorkspaceHistory, type WorkspacePersistence, type WorkspaceStorage,
 } from './workspace-document'
+import { t } from '@/lib/i18n'
 
 interface WorkspaceState extends WorkspacePersistence {
   history: WorkspaceHistory
@@ -51,7 +52,7 @@ export function useWorkspaceDocument(): WorkspaceDocumentResult {
     try {
       history = pushWorkspaceChange(previous.history, candidate())
     } catch {
-      const next = { ...previous, warning: 'Cet espace de travail est invalide. Aucun changement n’a été appliqué.' }
+      const next = { ...previous, warning: t('Cet espace de travail est invalide. Aucun changement n’a été appliqué.') }
       current.current = next
       setState(next)
       return false

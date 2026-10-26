@@ -1,4 +1,5 @@
 import { readStoredValue, storageKeys } from '@/lib/browser-storage'
+import { msg, t } from '@/lib/i18n'
 import { z } from 'zod'
 import { room, workstations, type SpatialPlan } from './room-model'
 import { clampFurniture, clampWorkstation } from './plan-geometry'
@@ -78,7 +79,7 @@ const planSchema = z.strictObject({
   const ids = new Set<string>()
   for (const [index, station] of plan.workstations.entries()) {
     if (ids.has(station.id)) {
-      context.addIssue({ code: 'custom', path: ['workstations', index, 'id'], message: 'Identifiant de poste dupliqué.' })
+      context.addIssue({ code: 'custom', path: ['workstations', index, 'id'], message: t('Identifiant de poste dupliqué.') })
     }
     ids.add(station.id)
 
@@ -86,33 +87,33 @@ const planSchema = z.strictObject({
       const bounded = clampWorkstation(plan, station)
       if (Math.abs(bounded.position[0] - station.position[0]) > 1e-6
         || Math.abs(bounded.position[2] - station.position[2]) > 1e-6) {
-        context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Le poste ou son fauteuil dépasse les limites du plateau.' })
+        context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: t('Le poste ou son fauteuil dépasse les limites du plateau.') })
       }
     } catch {
-      context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: 'Les dimensions ou la position du poste sont invalides.' })
+      context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: t('Les dimensions ou la position du poste sont invalides.') })
     }
   }
   for (const [index, item] of plan.furniture.entries()) {
     if (ids.has(item.id)) {
-      context.addIssue({ code: 'custom', path: ['furniture', index, 'id'], message: 'Identifiant de mobilier dupliqué.' })
+      context.addIssue({ code: 'custom', path: ['furniture', index, 'id'], message: t('Identifiant de mobilier dupliqué.') })
     }
     ids.add(item.id)
     try {
       const bounded = clampFurniture(plan, item)
       if (Math.abs(bounded.position[0] - item.position[0]) > 1e-6
         || Math.abs(bounded.position[2] - item.position[2]) > 1e-6) {
-        context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: 'Le mobilier dépasse les limites du plateau.' })
+        context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: t('Le mobilier dépasse les limites du plateau.') })
       }
     } catch {
-      context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: 'Les dimensions ou la position du mobilier sont invalides.' })
+      context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: t('Les dimensions ou la position du mobilier sont invalides.') })
     }
   }
 })
 
 const invalidStorageWarning =
-  'Le plan enregistré est illisible ou incompatible. Il a été conservé. Vos modifications restent limitées à cette session.'
+  msg('Le plan enregistré est illisible ou incompatible. Il a été conservé. Vos modifications restent limitées à cette session.')
 const unavailableStorageWarning =
-  'Le stockage local est inaccessible. Le plan reste disponible uniquement pendant cette session.'
+  msg('Le stockage local est inaccessible. Le plan reste disponible uniquement pendant cette session.')
 
 function freshDefaultPlan(): SpatialPlan {
   return {
@@ -125,7 +126,7 @@ function freshDefaultPlan(): SpatialPlan {
 }
 
 export function parsePlan(raw: string): SpatialPlan {
-  if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit) throw new Error('Ce fichier de plan est trop volumineux.')
+  if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit) throw new Error(t('Ce fichier de plan est trop volumineux.'))
   try {
     let payload: unknown = JSON.parse(raw)
     if (typeof payload === 'object' && payload !== null && !Array.isArray(payload) && !Object.hasOwn(payload, 'furniture')) {
@@ -137,7 +138,7 @@ export function parsePlan(raw: string): SpatialPlan {
     }
     return planSchema.parse(payload)
   } catch {
-    throw new Error('Ce plan est invalide ou utilise un format incompatible. Aucun changement n’a été appliqué.')
+    throw new Error(t('Ce plan est invalide ou utilise un format incompatible. Aucun changement n’a été appliqué.'))
   }
 }
 
@@ -147,7 +148,7 @@ export function loadPlan(storage: PlanStorage | null): LoadedPlan {
     if (storage === null) throw new Error('Storage unavailable')
     raw = readStoredValue(storage, 'plan')
   } catch {
-    return { plan: freshDefaultPlan(), warning: unavailableStorageWarning, persisted: false, canPersist: false }
+    return { plan: freshDefaultPlan(), warning: t(unavailableStorageWarning), persisted: false, canPersist: false }
   }
 
   if (raw === null) {
@@ -156,20 +157,20 @@ export function loadPlan(storage: PlanStorage | null): LoadedPlan {
   try {
     return { plan: parsePlan(raw), warning: null, persisted: true, canPersist: true }
   } catch {
-    return { plan: freshDefaultPlan(), warning: invalidStorageWarning, persisted: false, canPersist: false }
+    return { plan: freshDefaultPlan(), warning: t(invalidStorageWarning), persisted: false, canPersist: false }
   }
 }
 
 export function savePlan(storage: PlanStorage | null, plan: SpatialPlan): PlanPersistence {
   if (storage === null) {
-    return { warning: unavailableStorageWarning, persisted: false, canPersist: false }
+    return { warning: t(unavailableStorageWarning), persisted: false, canPersist: false }
   }
 
   let serialized: string
   try {
     serialized = JSON.stringify(parsePlan(JSON.stringify(plan)))
   } catch {
-    return { warning: 'Ce plan est invalide et n’a pas été enregistré.', persisted: false, canPersist: false }
+    return { warning: t('Ce plan est invalide et n’a pas été enregistré.'), persisted: false, canPersist: false }
   }
 
   const current = loadPlan(storage)
@@ -180,7 +181,7 @@ export function savePlan(storage: PlanStorage | null, plan: SpatialPlan): PlanPe
     return { warning: null, persisted: true, canPersist: true }
   } catch {
     return {
-      warning: 'L’enregistrement local du plan a échoué. Vos modifications restent disponibles pendant cette session.',
+      warning: t('L’enregistrement local du plan a échoué. Vos modifications restent disponibles pendant cette session.'),
       persisted: false,
       canPersist: true,
     }

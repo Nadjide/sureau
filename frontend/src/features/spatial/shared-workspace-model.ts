@@ -1,5 +1,6 @@
 import type { LocalLocations } from './local-locations'
 import { parseWorkspace, workspaceHistoryLimit, type WorkspaceDocument } from './workspace-document'
+import { msg, t } from '@/lib/i18n'
 
 export interface SpatialDraft {
   readonly workspace: WorkspaceDocument
@@ -16,7 +17,7 @@ export const spatialLocationLimit = 20_000
 export const spatialHistoryLimit = workspaceHistoryLimit
 
 const workstationId = /^desk-[a-z0-9-]{2,80}$/
-const invalidDraftMessage = 'Cet espace de travail ou ses localisations sont invalides. Aucun changement n’a été appliqué.'
+const invalidDraftMessage = msg('Cet espace de travail ou ses localisations sont invalides. Aucun changement n’a été appliqué.')
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
@@ -25,19 +26,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseLocations(value: unknown): LocalLocations {
-  if (!isRecord(value)) throw new Error(invalidDraftMessage)
+  if (!isRecord(value)) throw new Error(t(invalidDraftMessage))
   const keys = Reflect.ownKeys(value)
-  if (keys.length > spatialLocationLimit) throw new Error('La limite de 20 000 localisations est dépassée.')
+  if (keys.length > spatialLocationLimit) throw new Error(t('La limite de 20 000 localisations est dépassée.'))
 
   const entries: [number, string][] = []
   for (const key of keys) {
-    if (typeof key !== 'string') throw new Error(invalidDraftMessage)
+    if (typeof key !== 'string') throw new Error(t(invalidDraftMessage))
     const assetId = Number(key)
     const descriptor = Object.getOwnPropertyDescriptor(value, key)
     if (!Number.isSafeInteger(assetId) || assetId <= 0 || String(assetId) !== key
       || !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')
       || typeof descriptor.value !== 'string' || !workstationId.test(descriptor.value)) {
-      throw new Error(invalidDraftMessage)
+      throw new Error(t(invalidDraftMessage))
     }
     entries.push([assetId, descriptor.value])
   }
@@ -66,14 +67,14 @@ function validateNames(workspace: WorkspaceDocument): void {
     names.push(room.plan.name, ...room.plan.workstations.map((station) => station.label),
       ...room.plan.furniture.map((item) => item.label))
   }
-  if (!names.every(isDatabaseText)) throw new Error('Un nom contient un caractère incompatible avec la base de données.')
+  if (!names.every(isDatabaseText)) throw new Error(t('Un nom contient un caractère incompatible avec la base de données.'))
 }
 
 /** Validate and detach a complete atomic snapshot, preserving unresolved associations. */
 export function parseSpatialDraft(value: unknown): SpatialDraft {
   if (!isRecord(value) || Reflect.ownKeys(value).length !== 2
     || !Object.hasOwn(value, 'workspace') || !Object.hasOwn(value, 'locations')) {
-    throw new Error(invalidDraftMessage)
+    throw new Error(t(invalidDraftMessage))
   }
   const workspace = parseWorkspace(JSON.stringify(value.workspace))
   validateNames(workspace)

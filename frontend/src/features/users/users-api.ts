@@ -1,4 +1,5 @@
 import { ApiError, apiClient, type createApiClient } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import {
   adminUserListSchema, adminUserSchema, changeOwnPasswordInputSchema, createUserInputSchema,
   resetPasswordInputSchema, updateUserInputSchema, userIdSchema,
@@ -34,7 +35,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
           return account
         }, { method: 'POST', json: validated, ...(signal ? { signal } : {}) })
       } catch (error) {
-        return mutationError(error, 'La création du compte n’a pas pu être confirmée. Actualisez la liste des comptes pour vérifier si cet identifiant existe avant de réessayer.', signal)
+        return mutationError(error, t('La création du compte n’a pas pu être confirmée. Actualisez la liste des comptes pour vérifier si cet identifiant existe avant de réessayer.'), signal)
       }
     },
 
@@ -52,7 +53,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
           return account
         }, { method: 'PUT', json: validated, ...(signal ? { signal } : {}) })
       } catch (error) {
-        return mutationError(error, 'La modification du compte n’a pas pu être confirmée. Rechargez la liste des comptes pour vérifier sa situation avant de réessayer.', signal)
+        return mutationError(error, t('La modification du compte n’a pas pu être confirmée. Rechargez la liste des comptes pour vérifier sa situation avant de réessayer.'), signal)
       }
     },
 
@@ -65,7 +66,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
           method: 'POST', json: validated, ...(signal ? { signal } : {}),
         })
       } catch (error) {
-        return mutationError(error, 'La réinitialisation du mot de passe n’a pas pu être confirmée. Vérifiez l’accès au compte avec le nouveau mot de passe avant de demander une autre réinitialisation.', signal)
+        return mutationError(error, t('La réinitialisation du mot de passe n’a pas pu être confirmée. Vérifiez l’accès au compte avec le nouveau mot de passe avant de demander une autre réinitialisation.'), signal)
       }
     },
 
@@ -78,7 +79,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
         })
         client.clearCsrf()
       } catch (error) {
-        return mutationError(error, 'Le changement du mot de passe n’a pas pu être confirmé. Vérifiez votre connexion avec le nouveau mot de passe avant de réessayer ; votre session peut avoir été révoquée.', signal)
+        return mutationError(error, t('Le changement du mot de passe n’a pas pu être confirmé. Vérifiez votre connexion avec le nouveau mot de passe avant de réessayer ; votre session peut avoir été révoquée.'), signal)
       }
     },
   }

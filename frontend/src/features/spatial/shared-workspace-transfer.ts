@@ -2,6 +2,7 @@ import { defaultPlan } from './plan-document'
 import { createEmptyPlan, createExamplePlan } from './plan-transfer'
 import { parseSpatialDraft, type SpatialDraft } from './shared-workspace-model'
 import { createWorkspaceFromPlan } from './workspace-document'
+import { msg, t } from '@/lib/i18n'
 
 export type InitialWorkspaceKind = 'empty' | 'example'
 
@@ -14,40 +15,40 @@ export interface SpatialTransferResult {
 export const spatialTransferFileSizeLimit = 8_000_000
 
 const encoder = new TextEncoder()
-const invalidTransferMessage = 'Ce fichier spatial est invalide ou utilise un format incompatible. Aucun changement n’a été appliqué.'
+const invalidTransferMessage = msg('Ce fichier spatial est invalide ou utilise un format incompatible. Aucun changement n’a été appliqué.')
 
 function checkFileSize(raw: string): void {
   if (encoder.encode(raw).byteLength > spatialTransferFileSizeLimit) {
-    throw new Error('Ce fichier spatial est trop volumineux. La limite est de 8 Mo.')
+    throw new Error(t('Ce fichier spatial est trop volumineux. La limite est de 8 Mo.'))
   }
 }
 
 function requireCompleteSnapshot(workspace: unknown): void {
   if (typeof workspace !== 'object' || workspace === null || !('rooms' in workspace) || !Array.isArray(workspace.rooms)) {
-    throw new Error(invalidTransferMessage)
+    throw new Error(t(invalidTransferMessage))
   }
   for (const room of workspace.rooms) {
     if (typeof room !== 'object' || room === null || !('plan' in room)
       || typeof room.plan !== 'object' || room.plan === null
       || !Object.hasOwn(room.plan, 'display') || !Object.hasOwn(room.plan, 'furniture')) {
-      throw new Error(invalidTransferMessage)
+      throw new Error(t(invalidTransferMessage))
     }
   }
 }
 
 /** Read an explicit user import; a legacy layout never fabricates inventory associations. */
 export function parseSpatialTransfer(raw: string): SpatialTransferResult {
-  if (typeof raw !== 'string') throw new Error(invalidTransferMessage)
+  if (typeof raw !== 'string') throw new Error(t(invalidTransferMessage))
   checkFileSize(raw)
   let payload: unknown
-  try { payload = JSON.parse(raw) } catch { throw new Error(invalidTransferMessage) }
-  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) throw new Error(invalidTransferMessage)
+  try { payload = JSON.parse(raw) } catch { throw new Error(t(invalidTransferMessage)) }
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) throw new Error(t(invalidTransferMessage))
 
   if (Object.hasOwn(payload, 'format')) {
     const snapshot = payload as Record<string, unknown>
     if (Object.keys(snapshot).length !== 4 || snapshot.format !== 'sureau-spatial' || !Object.hasOwn(snapshot, 'version') || snapshot.version !== 1
       || !Object.hasOwn(snapshot, 'workspace') || !Object.hasOwn(snapshot, 'locations')) {
-      throw new Error(invalidTransferMessage)
+      throw new Error(t(invalidTransferMessage))
     }
     requireCompleteSnapshot(snapshot.workspace)
     return {
@@ -65,10 +66,10 @@ export function applySpatialTransfer(current: SpatialDraft, incoming: SpatialTra
   if (typeof includeLocations !== 'boolean'
     || (incoming.kind !== 'snapshot' && incoming.kind !== 'workspace')
     || incoming.hasLocations !== (incoming.kind === 'snapshot')) {
-    throw new Error(invalidTransferMessage)
+    throw new Error(t(invalidTransferMessage))
   }
   if (includeLocations && !incoming.hasLocations) {
-    throw new Error('Cet ancien fichier d’espace ne contient aucune localisation à restaurer.')
+    throw new Error(t('Cet ancien fichier d’espace ne contient aucune localisation à restaurer.'))
   }
   const imported = parseSpatialDraft(incoming.draft)
   if (includeLocations) return imported
@@ -78,10 +79,10 @@ export function applySpatialTransfer(current: SpatialDraft, incoming: SpatialTra
 
 export function createInitialSpatialDraft(kind: InitialWorkspaceKind): SpatialDraft {
   const plan = kind === 'empty'
-    ? { ...createEmptyPlan(defaultPlan), id: 'room-01', name: 'Salle 01' }
+    ? { ...createEmptyPlan(defaultPlan), id: 'room-01', name: t('Salle 01') }
     : createExamplePlan()
   const workspace = createWorkspaceFromPlan(plan)
-  workspace.name = 'Notre espace'
+  workspace.name = t('Notre espace')
   return parseSpatialDraft({ workspace, locations: {} })
 }
 

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Box, Grid2X2, LoaderCircle, Magnet, MousePointer2, Pencil, Redo2, RotateCcw, Undo2, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { plural, t } from '@/lib/i18n'
 import type { SpatialView, SpatialPlan } from './room-model'
 import { RoomPlan } from './room-plan'
 import { SceneBoundary } from './scene-boundary'
@@ -75,16 +76,16 @@ export function SpatialViewer({
 
   return (
     <div className="spatial-layout">
-      <section className="spatial-workspace" aria-label={`Exploration de ${plan.name}`}>
+      <section className="spatial-workspace" aria-label={t('Exploration de {name}', { name: plan.name })}>
         <div className="spatial-toolbar">
-          <div className="view-switch" role="group" aria-label="Mode de représentation">
+          <div className="view-switch" role="group" aria-label={t('Mode de représentation')}>
             <button
               className={view === '3d' ? 'is-active' : ''}
               aria-pressed={view === '3d'}
               onClick={() => changeView('3d')}
             >
               <Box size={14} />
-              Vue 3D
+              {t('Vue 3D')}
             </button>
             <button
               className={view === '2d' ? 'is-active' : ''}
@@ -92,16 +93,16 @@ export function SpatialViewer({
               onClick={() => changeView('2d')}
             >
               <Grid2X2 size={14} />
-              Plan 2D
+              {t('Plan 2D')}
             </button>
           </div>
-          <span className="spatial-local-label">{persisted ? 'Version enregistrée sur le serveur' : 'Brouillon · enregistrer pour partager'}</span>
-          {(canEdit || editing) && <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => { if (editing || canEdit) onEditingChange(!editing) }}><Pencil />{editing ? 'Terminer' : 'Modifier'}</Button>}
-          {effectiveEditing && <Button variant={snap ? 'secondary' : 'outline'} size="icon" aria-label="Aimantation à la grille de 25 cm" aria-pressed={snap} onClick={() => setSnap(!snap)} title="Aimantation à la grille de 25 cm"><Magnet /></Button>}
-          {effectiveEditing && <Button variant={multipleMode ? 'secondary' : 'outline'} aria-pressed={multipleMode} onClick={() => setMultipleMode(!multipleMode)}><ListChecks />Sélection multiple</Button>}
-          {effectiveEditing && <div className="editor-history" role="group" aria-label="Historique du plan">
-            <Button variant="outline" size="icon" aria-label="Annuler la dernière modification" title="Annuler · Ctrl / ⌘ Z" disabled={!history.canUndo} onClick={() => { if (canEdit) history.undo() }}><Undo2 /></Button>
-            <Button variant="outline" size="icon" aria-label="Rétablir la modification" title="Rétablir · Ctrl / ⌘ Maj Z" disabled={!history.canRedo} onClick={() => { if (canEdit) history.redo() }}><Redo2 /></Button>
+          <span className="spatial-local-label">{persisted ? t('Version enregistrée sur le serveur') : t('Brouillon · enregistrer pour partager')}</span>
+          {(canEdit || editing) && <Button variant={editing ? 'default' : 'outline'} aria-pressed={editing} onClick={() => { if (editing || canEdit) onEditingChange(!editing) }}><Pencil />{editing ? t('Terminer') : t('Modifier')}</Button>}
+          {effectiveEditing && <Button variant={snap ? 'secondary' : 'outline'} size="icon" aria-label={t('Aimantation à la grille de 25 cm')} aria-pressed={snap} onClick={() => setSnap(!snap)} title={t('Aimantation à la grille de 25 cm')}><Magnet /></Button>}
+          {effectiveEditing && <Button variant={multipleMode ? 'secondary' : 'outline'} aria-pressed={multipleMode} onClick={() => setMultipleMode(!multipleMode)}><ListChecks />{t('Sélection multiple')}</Button>}
+          {effectiveEditing && <div className="editor-history" role="group" aria-label={t('Historique du plan')}>
+            <Button variant="outline" size="icon" aria-label={t('Annuler la dernière modification')} title={t('Annuler · Ctrl / ⌘ Z')} disabled={!history.canUndo} onClick={() => { if (canEdit) history.undo() }}><Undo2 /></Button>
+            <Button variant="outline" size="icon" aria-label={t('Rétablir la modification')} title={t('Rétablir · Ctrl / ⌘ Maj Z')} disabled={!history.canRedo} onClick={() => { if (canEdit) history.redo() }}><Redo2 /></Button>
           </div>}
           <Button
             variant="outline"
@@ -114,7 +115,7 @@ export function SpatialViewer({
               } else setResetToken((value) => value + 1)
             }}
             disabled={view === '2d'}
-            aria-label={sceneFailed ? 'Réessayer la vue 3D' : 'Recentrer la vue 3D'}
+            aria-label={sceneFailed ? t('Réessayer la vue 3D') : t('Recentrer la vue 3D')}
           >
             <RotateCcw />
           </Button>
@@ -132,7 +133,7 @@ export function SpatialViewer({
                 fallback={
                   <div className="scene-loading" role="status">
                     <LoaderCircle className="animate-spin" size={24} />
-                    <span>Préparation de votre espace…</span>
+                    <span>{t('Préparation de votre espace…')}</span>
                   </div>
                 }
               >
@@ -155,16 +156,16 @@ export function SpatialViewer({
           )}
           <div className="scene-instructions">
             <MousePointer2 size={12} aria-hidden="true" />
-            {effectiveEditing ? (view === '3d' ? 'Glisser un objet pour le déplacer · Échap pour annuler' : 'Glisser un objet · flèches au clavier · Échap pour annuler') : view === '3d'
-              ? 'Cliquer pour approcher · glisser pour tourner · molette pour zoomer'
-              : 'Sélectionner un objet · Tab puis Entrée au clavier'}
+            {effectiveEditing ? (view === '3d' ? t('Glisser un objet pour le déplacer · Échap pour annuler') : t('Glisser un objet · flèches au clavier · Échap pour annuler')) : view === '3d'
+              ? t('Cliquer pour approcher · glisser pour tourner · molette pour zoomer')
+              : t('Sélectionner un objet · Tab puis Entrée au clavier')}
           </div>
           <span className="scene-plan-mark" aria-hidden="true">
-            {plan.name.toLocaleUpperCase('fr')}
+            {plan.name.toLocaleUpperCase()}
           </span>
         </div>
-        {dense && <p className="dense-plan-note">Les repères numérotés correspondent aux listes des objets.</p>}
-        <div className={`workstation-strip${dense ? ' is-dense' : ''}`} role="group" aria-label="Sélectionner un poste">
+        {dense && <p className="dense-plan-note">{t('Les repères numérotés correspondent aux listes des objets.')}</p>}
+        <div className={`workstation-strip${dense ? ' is-dense' : ''}`} role="group" aria-label={t('Sélectionner un poste')}>
           {plan.workstations.map((item, index) => (
             <button
               key={item.id}
@@ -190,14 +191,14 @@ export function SpatialViewer({
             {plan.width} × {plan.depth} m
           </span>
         </div>
-        {plan.furniture.length > 0 && <div className="furniture-strip" role="group" aria-label="Sélectionner un meuble">
+        {plan.furniture.length > 0 && <div className="furniture-strip" role="group" aria-label={t('Sélectionner un meuble')}>
           {plan.furniture.map((item, index) => <button key={item.id} aria-pressed={selectedIds.includes(item.id)} title={item.label} onClick={(event) => selectWorkstation(item.id, event.shiftKey || event.ctrlKey || event.metaKey)}>{dense && <span aria-hidden="true">{String(plan.workstations.length + index + 1).padStart(2, '0')}. </span>}{item.label}</button>)}
         </div>}
-        {effectiveEditing && <div className="selection-bar" role="group" aria-label="Sélection des objets">
-          <span role="status">{selectedIds.length} objet{selectedIds.length > 1 ? 's' : ''} sélectionné{selectedIds.length > 1 ? 's' : ''}</span>
-          <button onClick={() => onSelectionChange([...plan.workstations, ...plan.furniture].map((item) => item.id))}>Tout sélectionner</button>
-          <button onClick={() => onSelectionChange([])} disabled={selectedIds.length === 0}>Désélectionner</button>
-          <small>Maj / Ctrl / ⌘ + clic pour ajouter ou retirer</small>
+        {effectiveEditing && <div className="selection-bar" role="group" aria-label={t('Sélection des objets')}>
+          <span role="status">{plural(selectedIds.length, '{count} objet sélectionné', '{count} objets sélectionnés')}</span>
+          <button onClick={() => onSelectionChange([...plan.workstations, ...plan.furniture].map((item) => item.id))}>{t('Tout sélectionner')}</button>
+          <button onClick={() => onSelectionChange([])} disabled={selectedIds.length === 0}>{t('Désélectionner')}</button>
+          <small>{t('Maj / Ctrl / ⌘ + clic pour ajouter ou retirer')}</small>
         </div>}
       </section>
       {inspector}

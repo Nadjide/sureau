@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AssetApiError, getAssets } from './asset-api'
 import type { Asset } from './asset-schema'
+import { t } from '@/lib/i18n'
 
 interface InventoryState {
   assets: Asset[] | null
@@ -50,7 +51,7 @@ export function useInventory(): InventoryResult {
         const apiError =
           error instanceof AssetApiError
             ? error
-            : new AssetApiError('network', 'L’inventaire est indisponible. Réessayez dans un instant.')
+            : new AssetApiError('network', t('L’inventaire est indisponible. Réessayez dans un instant.'))
 
         setState((previous) => ({ ...previous, status: 'error', error: apiError }))
       })

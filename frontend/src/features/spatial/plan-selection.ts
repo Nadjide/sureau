@@ -1,5 +1,6 @@
 import { footprintBounds, mixedOverlaps, normalizeRotation } from './plan-geometry'
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
+import { t } from '@/lib/i18n'
 
 export type PlanItem = Workstation | FurnitureItem
 
@@ -15,7 +16,7 @@ function allowedDeltas(plan: SpatialPlan, items: readonly PlanItem[]) {
   const { minX, maxX, minZ, maxZ } = selectionBounds(items)
   if (![plan.width, plan.depth, minX, maxX, minZ, maxZ].every(Number.isFinite) || plan.width <= 0 || plan.depth <= 0
     || maxX - minX > plan.width + 1e-7 || maxZ - minZ > plan.depth + 1e-7) {
-    throw new RangeError('Cette sélection ne tient pas dans la salle.')
+    throw new RangeError(t('Cette sélection ne tient pas dans la salle.'))
   }
   return {
     minX: -plan.width / 2 - minX, maxX: plan.width / 2 - maxX,
@@ -52,7 +53,7 @@ export function translateSelection(
   plan: SpatialPlan, ids: readonly string[], anchorId: string, x: number, z: number, snap: boolean,
 ): SpatialPlan {
   if (![x, z, plan.width, plan.depth].every(Number.isFinite) || plan.width <= 0 || plan.depth <= 0) {
-    throw new RangeError('Les coordonnées et les dimensions de la salle doivent être valides.')
+    throw new RangeError(t('Les coordonnées et les dimensions de la salle doivent être valides.'))
   }
   const items = resolveSelection(plan, ids)
   const anchor = items.find((item) => item.id === anchorId)
@@ -100,7 +101,7 @@ export function duplicateSelection(
   if (!items.length) return { plan, selectedIds: [] }
   const workstationCount = items.filter((item) => !('kind' in item)).length
   if (plan.workstations.length + workstationCount > 64 || plan.furniture.length + items.length - workstationCount > 64) {
-    throw new RangeError('Cette copie dépasse la limite de 64 postes ou 64 meubles par salle.')
+    throw new RangeError(t('Cette copie dépasse la limite de 64 postes ou 64 meubles par salle.'))
   }
   const limits = allowedDeltas(plan, items)
   const candidates = new Map<string, { dx: number; dz: number }>()
@@ -123,7 +124,7 @@ export function duplicateSelection(
     return occupants.every((other) => bounds.maxX + dx <= other.bounds.minX + 1e-7 || bounds.minX + dx >= other.bounds.maxX - 1e-7
       || bounds.maxZ + dz <= other.bounds.minZ + 1e-7 || bounds.minZ + dz >= other.bounds.maxZ - 1e-7 || !mixedOverlaps(moved, other.item))
   }))
-  if (!placement) throw new RangeError('Il manque une zone libre pour copier toute la sélection. Réorganisez ou agrandissez la salle.')
+  if (!placement) throw new RangeError(t('Il manque une zone libre pour copier toute la sélection. Réorganisez ou agrandissez la salle.'))
 
   const usedIds = new Set(occupants.map(({ item }) => item.id))
   const workstations: Workstation[] = [], furniture: FurnitureItem[] = [], selectedIds: string[] = []
@@ -131,7 +132,7 @@ export function duplicateSelection(
     const type = 'kind' in item ? 'furniture' : 'desk'
     const id = createId(type)
     if (!new RegExp(`^${type}-[a-z0-9-]{2,80}$`).test(id) || usedIds.has(id)) {
-      throw new RangeError('La copie a généré un identifiant invalide ou déjà utilisé. Aucun objet n’a été ajouté.')
+      throw new RangeError(t('La copie a généré un identifiant invalide ou déjà utilisé. Aucun objet n’a été ajouté.'))
     }
     usedIds.add(id)
     const copy = { ...movedItem(item, placement.dx, placement.dz), id, label: `${item.label.slice(0, 52)} (copie)` }

@@ -1,4 +1,5 @@
 import { ApiError, apiClient, type createApiClient } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import { assetInputSchema, type AssetInput } from './asset-input'
 import { assetSchema, type Asset } from './asset-schema'
 import { z } from 'zod'
@@ -31,7 +32,7 @@ export async function retireAsset(id: number, revision: number, signal?: AbortSi
   } catch (error) {
     signal?.throwIfAborted()
     if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
-      throw new ApiError(error.kind, 'Le retrait n’a pas pu être confirmé. Actualisez la fiche du serveur pour vérifier son état avant de réessayer.', error.status, error.code, error.fieldErrors)
+      throw new ApiError(error.kind, t('Le retrait n’a pas pu être confirmé. Actualisez la fiche du serveur pour vérifier son état avant de réessayer.'), error.status, error.code, error.fieldErrors)
     }
     throw error
   }
@@ -49,7 +50,7 @@ export async function updateAsset(id: number, revision: number, input: AssetInpu
   } catch (error) {
     signal?.throwIfAborted()
     if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
-      throw new ApiError(error.kind, 'La modification n’a pas pu être confirmée. Rechargez la fiche du serveur pour vérifier son état avant de réessayer.', error.status, error.code, error.fieldErrors)
+      throw new ApiError(error.kind, t('La modification n’a pas pu être confirmée. Rechargez la fiche du serveur pour vérifier son état avant de réessayer.'), error.status, error.code, error.fieldErrors)
     }
     throw error
   }
@@ -65,7 +66,7 @@ export async function createAsset(input: AssetInput, signal?: AbortSignal,
   } catch (error) {
     signal?.throwIfAborted()
     if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
-      throw new ApiError(error.kind, 'L’enregistrement n’a pas pu être confirmé. Actualisez l’inventaire avant de réessayer pour vérifier si le matériel a été créé.', error.status, error.code, error.fieldErrors)
+      throw new ApiError(error.kind, t('L’enregistrement n’a pas pu être confirmé. Actualisez l’inventaire avant de réessayer pour vérifier si le matériel a été créé.'), error.status, error.code, error.fieldErrors)
     }
     throw error
   }
