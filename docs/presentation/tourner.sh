@@ -13,14 +13,14 @@
 
 set -eu
 
-here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$(dirname "$here")")
 port=${VIDEO_PORT:-18130}
 work=${VIDEO_WORKDIR:-$(mktemp -d)}
 
 export VIDEO_WORKDIR="$work"
 export SUREAU_ENV_FILE="$work/instance.env"
-export SUREAU_PROJECT=${VIDEO_PROJECT:-sureau-presentation}
+export SUREAU_PROJECT="${VIDEO_PROJECT:-sureau-presentation}"
 
 sureau() {
   sh "$root/deploy/sureau.sh" "$@"

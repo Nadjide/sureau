@@ -18,14 +18,14 @@
 
 set -eu
 
-here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$here")
 port=${SUREAU_E2E_PORT:-18090}
 pnpm=${PNPM:-pnpm}
 work=$(mktemp -d)
 
 export SUREAU_ENV_FILE="$work/instance.env"
-export SUREAU_PROJECT=${SUREAU_E2E_PROJECT:-sureau-e2e}
+export SUREAU_PROJECT="${SUREAU_E2E_PROJECT:-sureau-e2e}"
 export SUREAU_BACKUP_DIR="$work/backups"
 
 sureau() {
@@ -48,7 +48,7 @@ token=$(sed -n 's/^SUREAU_SETUP_TOKEN=//p' "$SUREAU_ENV_FILE")
 sureau up
 
 export SUREAU_E2E_ORIGIN="http://127.0.0.1:$port"
-export SUREAU_E2E_SETUP_TOKEN=$token
+export SUREAU_E2E_SETUP_TOKEN="$token"
 export SUREAU_E2E_STATE="$work/state.json"
 
 e2e() {
@@ -68,7 +68,7 @@ e2e after-restart
 echo
 echo "== Sauvegarde puis restauration complètes"
 sureau backup
-backup=$(ls -1 "$SUREAU_BACKUP_DIR"/*.dump | head -n 1)
+for backup in "$SUREAU_BACKUP_DIR"/*.dump; do break; done
 sureau restore "$backup" --yes
 e2e after-restore
 
