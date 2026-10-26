@@ -18,6 +18,12 @@ updates:
     groups:
       javascript:
         update-types: [minor, patch]
+    # Les types de Node suivent la version de Node qui construit et exécute le
+    # projet (22), pas la dernière publiée : sinon des API absentes passeraient
+    # la vérification des types.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: build
       include: scope
