@@ -256,6 +256,8 @@ Toutes les routes `/api` demandent une session, sauf `status`, `csrf`, `setup` e
 
 La modification d’un matériel et l’enregistrement de l’espace portent le numéro de version connu : une version périmée est refusée. `GET /api/workspace` répond 404 tant qu’aucun espace n’a été enregistré.
 
+Un matériel à l’état `ASSIGNED` peut nommer la personne qui le détient (`assignee` : nom obligatoire, e-mail et service facultatifs), sans qu’elle ait de compte Sureau. Tout autre état refuse une personne ; un matériel affecté avant cette fonction peut rester sans personne nommée. Rendre un matériel revient à changer son état sans personne.
+
 L’historique d’un matériel retient, du plus récent au plus ancien (200 au plus), sa création, chaque champ modifié avec ses valeurs avant et après, son retrait et chaque changement de poste, avec l’auteur et la date. Il est écrit dans la même transaction que le changement : une modification refusée ne laisse aucune trace. Le matériel antérieur à cette fonction commence son historique à sa date de création, sans auteur connu.
 
 Pour les réglages et le comportement détaillé de l’atelier, consulter le [guide frontend](frontend/README.md).

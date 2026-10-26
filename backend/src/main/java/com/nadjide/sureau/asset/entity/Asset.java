@@ -51,6 +51,15 @@ public class Asset {
     @Column(name = "purchase_date")
     private LocalDate purchaseDate;
 
+    @Column(name = "assignee_name", length = 150)
+    private String assigneeName;
+
+    @Column(name = "assignee_email", length = 254)
+    private String assigneeEmail;
+
+    @Column(name = "assignee_department", length = 100)
+    private String assigneeDepartment;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

@@ -83,6 +83,9 @@ public class AssetHistoryService {
         fields.put("category", asset.getCategory() == null ? null : asset.getCategory().name());
         fields.put("status", asset.getStatus() == null ? null : asset.getStatus().name());
         fields.put("purchaseDate", asset.getPurchaseDate() == null ? null : asset.getPurchaseDate().toString());
+        fields.put("assigneeName", asset.getAssigneeName());
+        fields.put("assigneeEmail", asset.getAssigneeEmail());
+        fields.put("assigneeDepartment", asset.getAssigneeDepartment());
         return fields;
     }
 

@@ -19,5 +19,6 @@ public record AssetResponse(
     LocalDate purchaseDate,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt,
-    long revision
+    long revision,
+    Assignee assignee
 ) {}
