@@ -11,6 +11,7 @@ import {
   X,
   Pencil,
   Archive,
+  History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AssetDetails, AssetIcon, AssetStatus } from './asset-details'
@@ -24,6 +25,7 @@ import type { useInventory } from './use-inventory'
 import { useSession } from '@/features/auth/use-session'
 import { CreateAssetSheet } from './create-asset-sheet'
 import { EditAssetSheet } from './edit-asset-sheet'
+import { AssetHistorySheet } from './asset-history-sheet'
 import { RetireAssetDialog } from './retire-asset-dialog'
 
 type Props = {
@@ -46,6 +48,7 @@ export function InventoryPanel({
   const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' | 'retired' } | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   const [retiringAsset, setRetiringAsset] = useState<Asset | null>(null)
+  const [historyAsset, setHistoryAsset] = useState<Asset | null>(null)
   const { canEdit } = useSession()
   const { assets, status: requestStatus, error, reload } = inventory
   const selected = assets?.find((asset) => asset.id === selectedAssetId)
@@ -240,11 +243,13 @@ export function InventoryPanel({
       </section>
       <AssetDetails asset={selected} onClose={() => onSelect(null)}>
         {selected && canEdit && <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}><Pencil aria-hidden="true" />Modifier la fiche</Button>}
+        {selected && <Button variant="outline" className="asset-history-button" onClick={() => setHistoryAsset(selected)}><History aria-hidden="true" />Voir l’historique</Button>}
         {selected && renderAssetActions(selected)}
         {selected && canEdit && selected.status !== 'RETIRED' && <div className="asset-retire-action"><Button variant="ghost" disabled={selected.status === 'ASSIGNED'} onClick={() => setRetiringAsset(selected)}><Archive aria-hidden="true" />Retirer du parc</Button>{selected.status === 'ASSIGNED' && <p>Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.</p>}</div>}
       </AssetDetails>
       {editingAsset && <EditAssetSheet key={editingAsset.id} asset={editingAsset} canEdit={canEdit} onClose={() => setEditingAsset(null)}
         onReloaded={inventory.refreshAfterMutation} onSaved={(asset) => { setConfirmation({ asset, action: 'updated' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
+      {historyAsset && <AssetHistorySheet key={historyAsset.id} asset={historyAsset} onClose={() => setHistoryAsset(null)} />}
       {retiringAsset && <RetireAssetDialog key={retiringAsset.id} asset={retiringAsset} canEdit={canEdit} onClose={() => setRetiringAsset(null)} onReloaded={inventory.refreshAfterMutation}
         onRetired={(asset) => { setConfirmation({ asset, action: 'retired' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
     </div>
