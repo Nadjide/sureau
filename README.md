@@ -240,7 +240,8 @@ Toutes les routes `/api` demandent une session, sauf `status`, `csrf`, `setup` e
 
 | Méthode | Route | Rôle requis | Opération |
 | --- | --- | --- | --- |
-| `GET` | `/api/auth/status` | public | Savoir si l’installation initiale est à faire |
+| `GET` | `/api/auth/status` | public | Savoir si l’installation initiale est à faire, et si la connexion d’entreprise est proposée (`sso`) |
+| `GET` | `/oauth2/authorization/oidc` | public | Se connecter par le fournisseur d’identité, s’il est configuré |
 | `GET` | `/api/auth/csrf` | public | Obtenir le jeton CSRF |
 | `POST` | `/api/auth/setup` | clé d’installation | Créer le premier administrateur |
 | `POST` | `/api/auth/login` · `/api/auth/logout` | public · session | Ouvrir et fermer la session |

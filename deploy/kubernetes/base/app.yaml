@@ -96,6 +96,20 @@ spec:
                   fieldPath: metadata.namespace
             - name: SUREAU_COOKIE_NAME
               value: SUREAU_SESSION_$(POD_NAMESPACE)
+            # Connexion d'entreprise (OpenID Connect), facultative : les clés
+            # sont ajoutées par l'overlay, le secret du client dans sureau-secrets.
+            - name: SUREAU_OIDC_ISSUER
+              valueFrom:
+                configMapKeyRef: {name: sureau-config, key: SUREAU_OIDC_ISSUER, optional: true}
+            - name: SUREAU_OIDC_CLIENT_ID
+              valueFrom:
+                configMapKeyRef: {name: sureau-config, key: SUREAU_OIDC_CLIENT_ID, optional: true}
+            - name: SUREAU_OIDC_NAME
+              valueFrom:
+                configMapKeyRef: {name: sureau-config, key: SUREAU_OIDC_NAME, optional: true}
+            - name: SUREAU_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: sureau-secrets, key: oidc-client-secret, optional: true}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

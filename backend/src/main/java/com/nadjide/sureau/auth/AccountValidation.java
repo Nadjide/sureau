@@ -8,6 +8,12 @@ import org.springframework.web.server.ResponseStatusException;
 final class AccountValidation {
     private AccountValidation() {}
 
+    /** An optional e-mail address: trimmed, and null when left empty. */
+    static String email(String email) {
+        String trimmed = email == null ? null : email.trim();
+        return trimmed == null || trimmed.isEmpty() ? null : trimmed;
+    }
+
     static void password(String password) {
         if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The password must not exceed 72 UTF-8 bytes.");

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
@@ -20,6 +21,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
@@ -76,8 +78,25 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, UserRepository users,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, UserRepository users, OidcLogin oidc,
                                             @Value("${sureau.session.cookie-name:SESSION}") String cookieName) throws Exception {
+        if (oidc.enabled()) {
+            http.oauth2Login(login -> login
+                    .loginPage("/")
+                    .clientRegistrationRepository(oidc.registrations())
+                    .authorizedClientRepository(OidcLogin.discardedTokens())
+                    .successHandler(oidc::signIn)
+                    .failureHandler((request, response, exception) -> OidcLogin.refuse(request, response, "failed"))
+                    // An unreachable provider sends the person back to the sign-in page instead of an error page.
+                    .withObjectPostProcessor(new ObjectPostProcessor<OAuth2AuthorizationRequestRedirectFilter>() {
+                        @Override
+                        public <O extends OAuth2AuthorizationRequestRedirectFilter> O postProcess(O filter) {
+                            filter.setAuthenticationFailureHandler((request, response, exception) ->
+                                    OidcLogin.refuse(request, response, "unavailable"));
+                            return filter;
+                        }
+                    }));
+        }
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(new HttpSessionCsrfTokenRepository())

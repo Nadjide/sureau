@@ -79,6 +79,7 @@ Les réglages sont dans `.env.instance` (modèle : [`deploy/instance.env.example
 | `SUREAU_COOKIE_SECURE` | `true` dès que l’instance est servie en HTTPS | `false` |
 | `SUREAU_COOKIE_NAME` | Nom du cookie de session : lettres, chiffres, `_` et `-` | `SUREAU_SESSION_<port>` |
 | `SUREAU_IMAGE` | Image de l’application : `sureau:local` (construite sur place) ou une image publiée | `sureau:local` |
+| `SUREAU_OIDC_ISSUER`, `SUREAU_OIDC_CLIENT_ID`, `SUREAU_OIDC_CLIENT_SECRET`, `SUREAU_OIDC_NAME` | Connexion d’entreprise, facultative (voir ci-dessous) | désactivée |
 
 **Changer le mot de passe de la base** après l’installation ne se fait pas en modifiant seulement le fichier : PostgreSQL a enregistré l’ancien lors de la création du volume. Cette opération n’est pas couverte par ce guide.
 
@@ -87,6 +88,27 @@ Les réglages sont dans `.env.instance` (modèle : [`deploy/instance.env.example
 Pour installer sans les sources, indiquez dans `.env.instance` une image publiée, de préférence avec sa version précise, par exemple `SUREAU_IMAGE=ghcr.io/<propriétaire>/sureau:<version>`, puis lancez `up`. L’image est alors téléchargée au lieu d’être construite. Un registre privé demande d’abord `docker login`. Seul le fichier [`docker-compose.install.yml`](../docker-compose.install.yml) et les scripts de [`deploy/`](../deploy) sont alors nécessaires.
 
 Le dépôt contient le workflow qui publie les images lors d’un tag de version, mais **aucune version publiée n’est annoncée** à ce stade : tant que ce n’est pas le cas, installez en construisant l’image.
+
+### Connexion d’entreprise (SSO)
+
+Sureau peut confier la connexion à votre fournisseur d’identité OpenID Connect : Microsoft Entra ID, Google Workspace, Keycloak, Authentik… La page de connexion propose alors « Se connecter avec … » en plus du mot de passe, qui reste disponible.
+
+**Le fournisseur ne fait que vérifier l’identité.** Il n’ouvre que le compte Sureau **actif** dont l’adresse e-mail, renseignée par un administrateur dans « Gérer l’équipe », correspond à celle de la personne (sans tenir compte des majuscules). Aucun compte n’est créé automatiquement. Une identité dont le fournisseur dit l’e-mail non vérifié est refusée. Choisissez un fournisseur où les adresses sont gérées par votre organisation.
+
+1. Chez le fournisseur, déclarez une application web avec l’adresse de retour `https://sureau.exemple.org/login/oauth2/code/oidc`, puis notez son identifiant et son secret.
+2. Dans `.env.instance` :
+
+   ```sh
+   SUREAU_OIDC_ISSUER=https://login.microsoftonline.com/<locataire>/v2.0
+   SUREAU_OIDC_CLIENT_ID=<identifiant de l’application>
+   SUREAU_OIDC_CLIENT_SECRET=<secret de l’application>
+   SUREAU_OIDC_NAME=Microsoft
+   ```
+
+   Autres émetteurs courants : `https://accounts.google.com`, `https://<serveur>/realms/<royaume>` (Keycloak).
+3. Relancez `up`, puis renseignez l’e-mail de chaque compte concerné.
+
+Le fournisseur est contacté à la première connexion par SSO : s’il est injoignable, l’application démarre quand même et la page de connexion l’indique. Derrière un proxy HTTPS, l’adresse de retour suit l’adresse publique transmise par le proxy (voir plus haut). Changer l’e-mail d’un compte ferme ses sessions ouvertes.
 
 ### Plusieurs instances sur une même machine
 

@@ -9,11 +9,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class UserRepository {
-    private static final String COLUMNS = "id, username, display_name, password_hash, role, enabled, auth_version";
+    private static final String COLUMNS = "id, username, display_name, password_hash, role, enabled, auth_version, email";
     private static final RowMapper<UserAccount> ROW_MAPPER = (row, rowNumber) -> new UserAccount(
             row.getLong("id"), row.getString("username"), row.getString("display_name"),
             row.getString("password_hash"), UserRole.valueOf(row.getString("role")), row.getBoolean("enabled"),
-            row.getLong("auth_version"));
+            row.getLong("auth_version"), row.getString("email"));
 
     private final JdbcTemplate jdbc;
 
@@ -30,6 +30,12 @@ public class UserRepository {
                 ROW_MAPPER, username).stream().findFirst();
     }
 
+    /** E-mail addresses are compared without case, as the unique index does. */
+    Optional<UserAccount> findByEmail(String email) {
+        return jdbc.query("SELECT " + COLUMNS + " FROM app_users WHERE lower(email) = lower(?)", ROW_MAPPER, email)
+                .stream().findFirst();
+    }
+
     Optional<UserAccount> findById(long id) {
         return jdbc.query("SELECT " + COLUMNS + " FROM app_users WHERE id = ?", ROW_MAPPER, id)
                 .stream().findFirst();
@@ -42,9 +48,10 @@ public class UserRepository {
     }
 
     List<AdminUserResponse> findAll() {
-        return jdbc.query("SELECT id, username, display_name, role, enabled FROM app_users ORDER BY username, id",
+        return jdbc.query("SELECT id, username, display_name, role, enabled, email FROM app_users ORDER BY username, id",
                 (row, rowNumber) -> new AdminUserResponse(row.getLong("id"), row.getString("username"),
-                        row.getString("display_name"), UserRole.valueOf(row.getString("role")), row.getBoolean("enabled")));
+                        row.getString("display_name"), UserRole.valueOf(row.getString("role")), row.getBoolean("enabled"),
+                        row.getString("email")));
     }
 
     UserAccount createAdministrator(String username, String displayName, String passwordHash) {
@@ -55,21 +62,21 @@ public class UserRepository {
                 """.formatted(COLUMNS), ROW_MAPPER, username, displayName, passwordHash);
     }
 
-    UserAccount create(String username, String displayName, String passwordHash, UserRole role) {
+    UserAccount create(String username, String displayName, String passwordHash, UserRole role, String email) {
         return jdbc.queryForObject("""
-                INSERT INTO app_users (username, display_name, password_hash, role)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO app_users (username, display_name, password_hash, role, email)
+                VALUES (?, ?, ?, ?, ?)
                 RETURNING %s
-                """.formatted(COLUMNS), ROW_MAPPER, username, displayName, passwordHash, role.name());
+                """.formatted(COLUMNS), ROW_MAPPER, username, displayName, passwordHash, role.name(), email);
     }
 
-    UserAccount update(long id, String displayName, UserRole role, boolean enabled, boolean securityChanged) {
+    UserAccount update(long id, String displayName, UserRole role, boolean enabled, String email, boolean securityChanged) {
         return jdbc.queryForObject("""
                 UPDATE app_users
-                SET display_name = ?, role = ?, enabled = ?, auth_version = auth_version + ?
+                SET display_name = ?, role = ?, enabled = ?, email = ?, auth_version = auth_version + ?
                 WHERE id = ?
                 RETURNING %s
-                """.formatted(COLUMNS), ROW_MAPPER, displayName, role.name(), enabled, securityChanged ? 1 : 0, id);
+                """.formatted(COLUMNS), ROW_MAPPER, displayName, role.name(), enabled, email, securityChanged ? 1 : 0, id);
     }
 
     UserAccount updatePassword(long id, String passwordHash) {
