@@ -2,7 +2,7 @@
 
 FROM ghcr.io/pnpm/pnpm:12.14.0@sha256:71202ae73719148f6b6e129ca1e9fa3ceabbc9a037dc34800715606f2b5290a1 AS pnpm
 
-FROM node:22-trixie-slim@sha256:8eb619e402eaede1748a3c8173bffab391592812e85136452f781741c7242ddf AS frontend-build
+FROM node:25-trixie-slim@sha256:aabbe39553d15ede8a97cc60c9e1a97034ff772afcf696ea42b94e7f5f2ec71b AS frontend-build
 COPY --from=pnpm /opt/pnpm /opt/pnpm
 ENV PATH="/opt/pnpm:${PATH}"
 WORKDIR /build/frontend
