@@ -187,7 +187,7 @@ docker run -d --name sureau-test-db -e POSTGRES_DB=sureau_test -e POSTGRES_USER=
 
 `e2e/run.sh` installe une instance jetable avec les scripts de déploiement, puis vérifie avec un vrai navigateur l’installation du premier administrateur, l’inventaire, les droits, l’enregistrement explicite du plan, sa personnalisation (poste, mobilier, couleurs, étage, salle, localisation d’un matériel), la 3D, le redémarrage, la sauvegarde et la restauration. Il demande Docker, pnpm et un navigateur Playwright (`cd e2e && pnpm install --frozen-lockfile && pnpm exec playwright install chromium`).
 
-L’intégration continue (GitHub Actions) exécute ces vérifications sur chaque pull request. Le workflow de publication d’images rejoue la même validation avant de construire.
+L’intégration continue (GitHub Actions) exécute ces vérifications sur chaque pull request. Le workflow de publication d’images rejoue la même validation avant de construire. Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml)) propose chaque lundi les mises à jour des dépendances JavaScript, Java, des actions et des images de base, avec 14 jours de recul sur chaque version ; elles passent par la même CI.
 
 ## Stack
 
