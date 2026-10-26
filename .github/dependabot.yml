@@ -59,7 +59,10 @@ updates:
 
   # Images de base du Dockerfile et des manifestes Kubernetes. pnpm reste mis à
   # jour à la main, en même temps que packageManager et la CI. L'image de
-  # l'application (sureau) est construite par le dépôt lui-même.
+  # l'application (sureau) est construite par le dépôt lui-même. Les versions
+  # majeures restent un choix : Node et Java suivent leurs versions LTS (22 et
+  # 21), et PostgreSQL ne change de version majeure qu'avec une migration de ses
+  # données.
   - package-ecosystem: docker
     directories:
       - /
@@ -70,8 +73,15 @@ updates:
     cooldown:
       default-days: 14
     ignore:
+      - dependency-name: pnpm/pnpm
       - dependency-name: ghcr.io/pnpm/pnpm
       - dependency-name: sureau
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eclipse-temurin
+        update-types: ["version-update:semver-major"]
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: build
 
@@ -84,5 +94,7 @@ updates:
       default-days: 14
     ignore:
       - dependency-name: sureau
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: build
