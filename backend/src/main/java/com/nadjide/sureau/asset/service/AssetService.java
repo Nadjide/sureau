@@ -1,6 +1,7 @@
 package com.nadjide.sureau.asset.service;
 
 import com.nadjide.sureau.asset.dto.AssetEventResponse;
+import com.nadjide.sureau.asset.dto.Assignee;
 import com.nadjide.sureau.asset.dto.AssetRequest;
 import com.nadjide.sureau.asset.dto.AssetResponse;
 import com.nadjide.sureau.asset.entity.Asset;
@@ -49,6 +50,8 @@ public class AssetService {
     @Transactional
     public AssetResponse createAsset(AssetRequest request) {
 
+        requireAssigneeAllowed(request);
+
         if (assetRepository.existsByAssetTag(request.assetTag())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -65,15 +68,7 @@ public class AssetService {
         }
 
         Asset asset = new Asset();
-
-        asset.setAssetTag(request.assetTag());
-        asset.setSerialNumber(request.serialNumber());
-        asset.setName(request.name());
-        asset.setBrand(request.brand());
-        asset.setModel(request.model());
-        asset.setCategory(request.category());
-        asset.setStatus(request.status());
-        asset.setPurchaseDate(request.purchaseDate());
+        apply(asset, request);
 
         Asset saved = assetRepository.saveAndFlush(asset);
         history.recordCreated(saved);
@@ -90,6 +85,7 @@ public class AssetService {
                 ));
 
         requireRevision(asset, expectedRevision);
+        requireAssigneeAllowed(request);
 
         if (asset.getStatus() == AssetStatus.ASSIGNED && request.status() == AssetStatus.RETIRED) {
             throw new AssetStatusConflictException("Assigned asset cannot be retired");
@@ -113,14 +109,7 @@ public class AssetService {
         }
 
         Map<String, String> before = AssetHistoryService.fields(asset);
-        asset.setAssetTag(request.assetTag());
-        asset.setSerialNumber(request.serialNumber());
-        asset.setName(request.name());
-        asset.setBrand(request.brand());
-        asset.setModel(request.model());
-        asset.setCategory(request.category());
-        asset.setStatus(request.status());
-        asset.setPurchaseDate(request.purchaseDate());
+        apply(asset, request);
 
         Asset saved = assetRepository.saveAndFlush(asset);
         history.recordUpdated(saved, before);
@@ -162,6 +151,27 @@ public class AssetService {
         return history.history(id);
     }
 
+    private static void apply(Asset asset, AssetRequest request) {
+        asset.setAssetTag(request.assetTag());
+        asset.setSerialNumber(request.serialNumber());
+        asset.setName(request.name());
+        asset.setBrand(request.brand());
+        asset.setModel(request.model());
+        asset.setCategory(request.category());
+        asset.setStatus(request.status());
+        asset.setPurchaseDate(request.purchaseDate());
+        Assignee assignee = request.assignee();
+        asset.setAssigneeName(assignee == null ? null : assignee.name());
+        asset.setAssigneeEmail(assignee == null ? null : assignee.email());
+        asset.setAssigneeDepartment(assignee == null ? null : assignee.department());
+    }
+
+    private static void requireAssigneeAllowed(AssetRequest request) {
+        if (request.assignee() != null && request.status() != AssetStatus.ASSIGNED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only an assigned asset can name its holder.");
+        }
+    }
+
     private static void requireRevision(Asset asset, Long expectedRevision) {
         if (expectedRevision != null && !expectedRevision.equals(asset.getRevision())) {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
@@ -182,7 +192,9 @@ public class AssetService {
                 asset.getPurchaseDate(),
                 asset.getCreatedAt(),
                 asset.getUpdatedAt(),
-                asset.getRevision()
+                asset.getRevision(),
+                asset.getAssigneeName() == null ? null
+                        : new Assignee(asset.getAssigneeName(), asset.getAssigneeEmail(), asset.getAssigneeDepartment())
         );
     }
 }

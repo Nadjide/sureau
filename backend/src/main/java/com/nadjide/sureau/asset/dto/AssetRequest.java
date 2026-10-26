@@ -3,6 +3,7 @@ package com.nadjide.sureau.asset.dto;
 
 import com.nadjide.sureau.asset.entity.AssetCategory;
 import com.nadjide.sureau.asset.entity.AssetStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -29,7 +30,11 @@ public record AssetRequest(
     @NotNull
     AssetStatus status,
 
-    LocalDate purchaseDate
+    LocalDate purchaseDate,
+
+    // Only an assigned asset names its holder; null leaves an assigned asset without a named holder.
+    @Valid
+    Assignee assignee
 ) {
     public AssetRequest {
         assetTag = trim(assetTag);
