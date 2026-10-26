@@ -38,6 +38,10 @@ public class AssetHistoryService {
         record(asset.getId(), "CREATED", diff(Map.of(), fields(asset)));
     }
 
+    void recordImported(Asset asset) {
+        record(asset.getId(), "IMPORTED", diff(Map.of(), fields(asset)));
+    }
+
     /** Records nothing when no field changed. */
     void recordUpdated(Asset asset, Map<String, String> before) {
         List<Change> changes = diff(before, fields(asset));

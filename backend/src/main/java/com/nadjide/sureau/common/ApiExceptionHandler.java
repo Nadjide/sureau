@@ -7,6 +7,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.nadjide.sureau.asset.service.AssetImportException;
 import com.nadjide.sureau.asset.service.AssetStatusConflictException;
 import com.nadjide.sureau.auth.UserAdministrationException;
 
@@ -37,6 +38,14 @@ public class ApiExceptionHandler {
                 .sorted(Comparator.comparing(FieldError::field).thenComparing(FieldError::message))
                 .toList();
         problem.setProperty("errors", errors);
+        return response(problem);
+    }
+
+    @ExceptionHandler(AssetImportException.class)
+    ResponseEntity<ProblemDetail> invalidImport(AssetImportException exception, HttpServletRequest request) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "The import contains invalid rows. Nothing was imported.", request);
+        problem.setProperty("errors", exception.errors());
         return response(problem);
     }
 

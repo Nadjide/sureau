@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
@@ -20,28 +21,30 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Bounds the complete snapshot before JSON parsing, including chunked requests. */
+/** Bounds the large documents (workspace snapshot, asset import) before JSON parsing, including chunked requests. */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 10)
-public class WorkspaceBodyLimitFilter extends OncePerRequestFilter {
+public class RequestBodyLimitFilter extends OncePerRequestFilter {
     public static final int MAX_BODY_BYTES = 2_100_000;
+    private static final Map<String, String> LIMITED = Map.of(
+            "PUT /api/workspace", "The complete workspace snapshot exceeds 2.1 MB.",
+            "POST /api/assets/import", "The complete import exceeds 2.1 MB.");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"PUT".equals(request.getMethod())
-                || !(request.getContextPath() + "/api/workspace").equals(request.getRequestURI());
+        return !LIMITED.containsKey(route(request));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-            tooLarge(response);
+            tooLarge(response, route(request));
             return;
         }
         byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
         if (body.length > MAX_BODY_BYTES) {
-            tooLarge(response);
+            tooLarge(response, route(request));
             return;
         }
         chain.doFilter(new HttpServletRequestWrapper(request) {
@@ -68,14 +71,18 @@ public class WorkspaceBodyLimitFilter extends OncePerRequestFilter {
         }, response);
     }
 
-    private static void tooLarge(HttpServletResponse response) throws IOException {
+    private static String route(HttpServletRequest request) {
+        return request.getMethod() + " " + request.getRequestURI().substring(request.getContextPath().length());
+    }
+
+    private static void tooLarge(HttpServletResponse response, String route) throws IOException {
         response.setStatus(413);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write("""
                 {"type":"about:blank","title":"Payload Too Large","status":413,
-                 "code":"PAYLOAD_TOO_LARGE","detail":"The complete workspace snapshot exceeds 2.1 MB.",
-                 "instance":"/api/workspace"}
-                """);
+                 "code":"PAYLOAD_TOO_LARGE","detail":"%s",
+                 "instance":"%s"}
+                """.formatted(LIMITED.get(route), route.substring(route.indexOf(' ') + 1)));
     }
 }

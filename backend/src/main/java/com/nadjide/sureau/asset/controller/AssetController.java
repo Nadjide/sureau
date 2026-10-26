@@ -1,6 +1,8 @@
 package com.nadjide.sureau.asset.controller;
 
 import com.nadjide.sureau.asset.dto.AssetEventResponse;
+import com.nadjide.sureau.asset.dto.AssetImportRequest;
+import com.nadjide.sureau.asset.dto.AssetImportResponse;
 import com.nadjide.sureau.asset.dto.AssetRequest;
 import com.nadjide.sureau.asset.dto.AssetResponse;
 import com.nadjide.sureau.asset.service.AssetService;
@@ -45,6 +47,12 @@ public class AssetController {
             @Valid @RequestBody AssetRequest request
     ) {
         return response(HttpStatus.CREATED, assetService.createAsset(request));
+    }
+
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AssetImportResponse importAssets(@Valid @RequestBody AssetImportRequest request) {
+        return assetService.importAssets(request.assets());
     }
 
     @PutMapping("/{id}")
