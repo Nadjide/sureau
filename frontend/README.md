@@ -29,6 +29,8 @@ Les versions exactes des dépendances résolues sont conservées dans `pnpm-lock
 
 Toute l’interface est derrière une session. Sur une instance neuve, la première page crée le compte administrateur avec la clé d’installation (`SUREAU_SETUP_TOKEN`) ; ensuite, elle propose la connexion. Le rôle du compte (administrateur, éditeur ou lecteur) active ou désactive les actions d’écriture : un lecteur consulte et exporte, un éditeur modifie l’inventaire et l’espace, un administrateur gère aussi l’équipe depuis le menu du compte. Chacun peut y changer son mot de passe.
 
+Le bouton « Guide » de l’en-tête ouvre une visite en sept étapes (espaces, matériel, placement, affectation, équipe, données), adaptée au rôle du compte : un lecteur y voit quelles actions demandent d’autres droits. À la première visite dans un navigateur, une invitation discrète la propose, jusqu’à ce qu’elle soit suivie ou masquée.
+
 Une session expirée ne fait pas perdre le travail : le brouillon de l’atelier, l’historique et les champs saisis restent à l’écran pendant la reconnexion, et aucune action n’est rejouée automatiquement. Un résultat incertain (réponse perdue, erreur réseau) est signalé et demande une vérification explicite avant toute nouvelle tentative.
 
 ## Inventaire

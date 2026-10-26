@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import {
   Building2,
+  CircleHelp,
   Layers,
   LayoutGrid,
   Menu,
@@ -33,6 +34,8 @@ import type { WorkspaceDocument } from '@/features/spatial/workspace-document'
 import { AccountMenu, type WorkspaceDepartureGuard } from '@/features/auth/account-menu'
 import { roleLabels } from '@/features/auth/session-state'
 import { useSession } from '@/features/auth/use-session'
+import { useGuideIntroduction } from '@/features/guide/use-guide-introduction'
+import { GuideIntroduction, UserGuide } from '@/features/guide/user-guide'
 
 export type WorkspaceTab = 'spaces' | 'inventory'
 
@@ -121,9 +124,16 @@ function SpaceNavigation({
 
 export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, onRoomChange, onManageSpaces, departureGuard }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+  const introduction = useGuideIntroduction()
   const { theme, toggleTheme } = useTheme()
   const { state, canEdit } = useSession()
   const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
+
+  function openGuide() {
+    introduction.dismiss()
+    setGuideOpen(true)
+  }
 
   function navigate(nextTab: WorkspaceTab) {
     onTabChange(nextTab)
@@ -211,6 +221,9 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
           </nav>
           <div className="header-spacer" />
           <span className="app-header-meta">{state.user ? roleLabels[state.user.role].toLocaleUpperCase('fr') : 'VOTRE ESPACE'}</span>
+          <Button variant="ghost" size="sm" className="guide-button" onClick={openGuide}>
+            <CircleHelp aria-hidden="true" /><span className="guide-button-label">Guide</span>
+          </Button>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={themeLabel}>
@@ -227,6 +240,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
             <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} canManage={canEdit} />
           </aside>
           <main id="workspace-main" className="workspace-main" tabIndex={-1}>
+            {introduction.visible && <GuideIntroduction onOpen={openGuide} onDismiss={introduction.dismiss} />}
             {children}
           </main>
         </div>
@@ -235,6 +249,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
           <span>SUREAU</span>
           <span>Le matériel, dans son espace.</span>
         </footer>
+        {guideOpen && state.user && <UserGuide role={state.user.role} onClose={() => setGuideOpen(false)} />}
       </div>
     </TooltipProvider>
   )
