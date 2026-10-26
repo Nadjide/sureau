@@ -1,9 +1,11 @@
 import { createContext } from 'react'
-import type { LoginInput, SessionUser, SetupInput } from './auth-api'
+import type { EnterpriseSignIn, LoginInput, SessionUser, SetupInput } from './auth-api'
 import type { SessionState } from './session-state'
 
 export interface SessionContextValue {
   state: SessionState
+  /** Enterprise sign-in offered by this instance, if any. */
+  enterpriseSignIn: EnterpriseSignIn | null
   canEdit: boolean
   canAdmin: boolean
   busy: boolean

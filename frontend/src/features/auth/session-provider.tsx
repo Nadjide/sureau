@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ApiError, apiClient } from '@/lib/api-client'
-import { AccountCreatedError, authApi, type LoginInput, type SessionUser, type SetupInput } from './auth-api'
+import { AccountCreatedError, authApi, type EnterpriseSignIn, type LoginInput, type SessionUser, type SetupInput } from './auth-api'
 import { SessionContext } from './session-context'
 import { authenticatedSession, expiredSession, initialSession, sessionPermissions, signedOutSession, updateSessionUser, type SessionState } from './session-state'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>(initialSession)
+  const [enterpriseSignIn, setEnterpriseSignIn] = useState<EnterpriseSignIn | null>(null)
   const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const stateRef = useRef(state)
@@ -35,6 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         const status = await authApi.status(controller.signal)
         if (controller.signal.aborted) return
+        setEnterpriseSignIn(status.sso)
         if (status.setupRequired) {
           setState((previous) => ({ phase: 'setup-required', user: null, error: null, generation: previous.generation }))
           return
@@ -137,7 +139,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <SessionContext value={{ state, ...sessionPermissions(state), busy,
+  return <SessionContext value={{ state, enterpriseSignIn, ...sessionPermissions(state), busy,
     login: (input) => authenticate(input, false), setup: (input) => authenticate(input, true), logout, expire, updateUser,
     refresh: () => { setState((previous) => ({ ...initialSession, generation: previous.generation })); setAttempt((value) => value + 1) },
   }}>{children}</SessionContext>

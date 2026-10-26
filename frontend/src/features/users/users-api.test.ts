@@ -3,9 +3,9 @@ import { createApiClient } from '@/lib/api-client'
 import { createUsersApi } from './users-api'
 import type { AdminUser, ChangeOwnPasswordInput, CreateUserInput, UpdateUserInput } from './user-schema'
 
-const creation: CreateUserInput = { username: 'member.test', displayName: 'Élise Omar', password: '  Initial-password-42!  ', role: 'EDITOR' }
-const account: AdminUser = { id: 42, username: 'member.test', displayName: 'Élise Omar', role: 'EDITOR', enabled: true }
-const change: UpdateUserInput = { displayName: 'Élise équipe', role: 'VIEWER', enabled: false }
+const creation: CreateUserInput = { username: 'member.test', displayName: 'Élise Omar', password: '  Initial-password-42!  ', role: 'EDITOR', email: null }
+const account: AdminUser = { id: 42, username: 'member.test', displayName: 'Élise Omar', role: 'EDITOR', enabled: true, email: null }
+const change: UpdateUserInput = { displayName: 'Élise équipe', role: 'VIEWER', enabled: false, email: null }
 const ownPassword: ChangeOwnPasswordInput = { currentPassword: 'Current-password-42!', newPassword: '  New-password-84!  ' }
 const resetPassword = { password: '  Reset-password-84!  ' }
 

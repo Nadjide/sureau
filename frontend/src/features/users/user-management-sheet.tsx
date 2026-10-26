@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { useSession } from '@/features/auth/use-session'
 import { roleLabels } from '@/features/auth/session-state'
 import { ApiError } from '@/lib/api-client'
-import { createUserInputSchema, resetPasswordInputSchema, updateUserInputSchema, type AdminUser, type CreateUserInput, type ResetPasswordInput, type UpdateUserInput } from './user-schema'
+import { createUserInputSchema, resetPasswordInputSchema, sameEmail, updateUserInputSchema, type AdminUser, type CreateUserInput, type ResetPasswordInput, type UpdateUserInput } from './user-schema'
 import { usersApi } from './users-api'
 import { AdminPasswordResetPanel, type PasswordResetResult } from './admin-password-reset-panel'
 import './users.css'
@@ -16,11 +16,13 @@ type UserForm = { kind: 'create'; values: CreateValues } | { kind: 'edit'; base:
 type Destination = 'close' | 'list' | 'create' | AdminUser
 type SecurityConfirmation = { base: AdminUser; values: UpdateUserInput }
 type Request = { controller: AbortController; kind: 'list' | 'create' | 'update' | 'reset' }
-const emptyCreate: CreateValues = { username: '', displayName: '', password: '', confirmation: '', role: 'VIEWER' }
-const editValues = (user: AdminUser): UpdateUserInput => ({ displayName: user.displayName, role: user.role, enabled: user.enabled })
+const emptyCreate: CreateValues = { username: '', displayName: '', password: '', confirmation: '', role: 'VIEWER', email: null }
+const editValues = (user: AdminUser): UpdateUserInput => ({ displayName: user.displayName, role: user.role, enabled: user.enabled, email: user.email })
 const sameAccount = (first: AdminUser, second: AdminUser) => first.id === second.id && first.username === second.username
   && first.displayName === second.displayName && first.role === second.role && first.enabled === second.enabled
+  && first.email === second.email
 const sameValues = (first: UpdateUserInput, second: UpdateUserInput) => first.displayName === second.displayName && first.role === second.role && first.enabled === second.enabled
+  && (first.email ?? '').trim() === (second.email ?? '').trim()
 const formIdentity = (form: UserForm | null) => form?.kind === 'create' ? 'create' : form?.kind === 'edit' ? `edit:${form.base.id}` : null
 const accountFormDirty = (form: UserForm | null) => form !== null && (form.kind === 'create'
   ? JSON.stringify(form.values) !== JSON.stringify(emptyCreate)
@@ -58,7 +60,9 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   const targetChanged = form?.kind === 'edit' && (!currentTarget || !sameAccount(currentTarget, form.base))
   const lastAdministrator = form?.kind === 'edit' && form.base.enabled && form.base.role === 'ADMIN'
     && accounts?.filter((account) => account.enabled && account.role === 'ADMIN').length === 1
-  const securityChange = form?.kind === 'edit' && (form.values.role !== form.base.role || form.values.enabled !== form.base.enabled)
+  // The address decides which enterprise identity opens the account: changing it closes its sessions too.
+  const securityChange = form?.kind === 'edit' && (form.values.role !== form.base.role || form.values.enabled !== form.base.enabled
+    || !sameEmail(form.values.email, form.base.email))
   const formKey = formIdentity(form)
 
   useEffect(() => {
@@ -127,14 +131,16 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   }
   function changeCreate(field: keyof CreateValues, value: string) {
     if (!latest.current.canAdmin || request.current || latest.current.discard !== null) return
-    setForm((previous) => previous?.kind === 'create' ? { ...previous, values: { ...previous.values, [field]: value } } : previous)
+    const next = field === 'email' && value === '' ? null : value
+    setForm((previous) => previous?.kind === 'create' ? { ...previous, values: { ...previous.values, [field]: next } } : previous)
     clearField(field)
   }
   function changeEdit(field: keyof UpdateUserInput, value: string | boolean) {
     const current = latest.current
     if (!current.canAdmin || request.current || current.discard !== null || current.resetDirty || current.form?.kind !== 'edit') return
     if (field === 'enabled' && value === false && current.form.base.id === current.userId) return
-    setForm((previous) => previous?.kind === 'edit' ? { ...previous, values: { ...previous.values, [field]: value } } : previous)
+    const next = field === 'email' && value === '' ? null : value
+    setForm((previous) => previous?.kind === 'edit' ? { ...previous, values: { ...previous.values, [field]: next } } : previous)
     clearField(field)
   }
   function invalid(issues: ReadonlyArray<{ path: readonly PropertyKey[]; message: string }>) {
@@ -148,6 +154,9 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     if (failure instanceof ApiError) {
       setFields(failure.fieldErrors)
       if (failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) setBlocked(true)
+    }
+    if (failure instanceof ApiError && failure.code === 'DUPLICATE_RESOURCE') {
+      setError('Cet identifiant ou cette adresse e-mail est déjà utilisé par un autre compte. Votre saisie est conservée.'); return
     }
     setError(failure instanceof Error ? failure.message : 'La modification du compte n’a pas pu être confirmée.')
   }
@@ -194,7 +203,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       setAccounts((previous) => mergeAccount(previous, account)); setForm({ kind: 'edit', base: account, values: editValues(account) }); setSecurityConfirmation(null)
       setNotice(`Les informations de @${account.username} sont enregistrées.`)
       if (account.id === current.userId) {
-        if (base.role !== account.role || base.enabled !== account.enabled) current.session.expire()
+        if (base.role !== account.role || base.enabled !== account.enabled || !sameEmail(base.email, account.email)) current.session.expire()
         else current.session.updateUser({ id: account.id, displayName: account.displayName })
       }
     } catch (failure) {
@@ -293,7 +302,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
         {listStatus === 'loading' && <p className="user-loading" role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" />Chargement des comptes…</p>}
         {listError && <div className="user-error" role="alert"><p>{listError}</p><Button variant="outline" size="sm" disabled={!canAdmin || Boolean(pending)} onClick={() => { void loadAccounts() }}>Réessayer le chargement des comptes</Button></div>}
         {listStatus === 'idle' && <p className="user-notice">Utilisez « Actualiser les comptes » pour charger la liste avec une session administrateur.</p>}
-        {accounts !== null && <ul className="user-account-list" aria-label="Comptes de l’instance">{accounts.map((account) => <li key={account.id}><button type="button" className={form?.kind === 'edit' && form.base.id === account.id ? 'is-current' : ''} disabled={!canAdmin || Boolean(pending)} aria-label={`Modifier le compte ${account.username}`} aria-pressed={form?.kind === 'edit' && form.base.id === account.id} onClick={() => requestNavigate(account)}><span className="user-account-icon"><UserRound size={18} aria-hidden="true" /></span><span className="user-account-copy"><strong>{account.displayName}{account.id === state.user?.id && <small>Vous</small>}</strong><span>@{account.username} · {roleLabels[account.role]}</span></span><span className={`user-access-badge${account.enabled ? '' : ' is-disabled'}`}>{account.enabled ? 'Actif' : 'Désactivé'}</span></button></li>)}</ul>}
+        {accounts !== null && <ul className="user-account-list" aria-label="Comptes de l’instance">{accounts.map((account) => <li key={account.id}><button type="button" className={form?.kind === 'edit' && form.base.id === account.id ? 'is-current' : ''} disabled={!canAdmin || Boolean(pending)} aria-label={`Modifier le compte ${account.username}`} aria-pressed={form?.kind === 'edit' && form.base.id === account.id} onClick={() => requestNavigate(account)}><span className="user-account-icon"><UserRound size={18} aria-hidden="true" /></span><span className="user-account-copy"><strong>{account.displayName}{account.id === state.user?.id && <small>Vous</small>}</strong><span>@{account.username} · {roleLabels[account.role]}{account.email && <> · {account.email}</>}</span></span><span className={`user-access-badge${account.enabled ? '' : ' is-disabled'}`}>{account.enabled ? 'Actif' : 'Désactivé'}</span></button></li>)}</ul>}
         {listStatus === 'ready' && accounts?.length === 0 && <p className="user-notice">Aucun compte n’a été renvoyé par cette instance.</p>}
         {canAdmin && <Button variant="outline" className="user-create-button" disabled={Boolean(pending) || accounts === null || listStatus !== 'ready'} onClick={() => requestNavigate('create')}><Plus />Créer un compte</Button>}
         {notice && <p className="user-success" role="status"><Check size={14} aria-hidden="true" />{notice}</p>}
@@ -306,11 +315,13 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
             {form.kind === 'create' ? <>
               <label htmlFor="user-create-username">Identifiant *<input id="user-create-username" name="username" value={form.values.username} maxLength={50} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.username)} aria-describedby={described('username')} onChange={(event) => changeCreate('username', event.target.value)} />{fieldError('username')}<small>3 à 50 caractères : lettres, chiffres, point, tiret ou tiret bas.</small></label>
               <label htmlFor="user-create-displayName">Nom affiché *<input id="user-create-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeCreate('displayName', event.target.value)} />{fieldError('displayName')}</label>
+              <label htmlFor="user-create-email">E-mail<input id="user-create-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeCreate('email', event.target.value)} />{fieldError('email')}<small>Facultatif. Il permet à cette personne d’utiliser la connexion d’entreprise, si elle est configurée.</small></label>
               <label htmlFor="user-create-password">Mot de passe initial *<input id="user-create-password" name="password" type="password" value={form.values.password} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.password)} aria-describedby={described('password')} onChange={(event) => changeCreate('password', event.target.value)} />{fieldError('password')}<small>12 à 64 caractères. Les espaces saisis font partie du mot de passe.</small></label>
               <label htmlFor="user-create-confirmation">Confirmer le mot de passe *<input id="user-create-confirmation" name="confirmation" type="password" value={form.values.confirmation} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.confirmation)} aria-describedby={described('confirmation')} onChange={(event) => changeCreate('confirmation', event.target.value)} />{fieldError('confirmation')}</label>
               <label htmlFor="user-create-role">Rôle<select id="user-create-role" name="role" value={form.values.role} onChange={(event) => changeCreate('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>{fieldError('role')}</label>
             </> : <>
               <label htmlFor="user-edit-displayName">Nom affiché *<input id="user-edit-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeEdit('displayName', event.target.value)} />{fieldError('displayName')}</label>
+              <label htmlFor="user-edit-email">E-mail<input id="user-edit-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeEdit('email', event.target.value)} />{fieldError('email')}<small>Facultatif. Il permet la connexion d’entreprise ; le changer ferme les sessions de ce compte.</small></label>
               <label htmlFor="user-edit-role">Rôle<select id="user-edit-role" name="role" value={form.values.role} onChange={(event) => changeEdit('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role} disabled={Boolean(lastAdministrator) && role !== 'ADMIN'}>{label}</option>)}</select>{fieldError('role')}</label>
               <label className="user-enabled-option" htmlFor="user-edit-enabled"><input id="user-edit-enabled" name="enabled" type="checkbox" checked={form.values.enabled} disabled={inputDisabled || form.base.id === state.user?.id || Boolean(lastAdministrator)} onChange={(event) => changeEdit('enabled', event.target.checked)} /><span>Autoriser l’accès à ce compte</span></label>{fieldError('enabled')}
               {form.base.id === state.user?.id && <p className="user-help">Pour désactiver votre propre compte, demandez à un autre administrateur.</p>}
@@ -319,7 +330,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
             <p className="user-role-help">Administrateur : comptes et parc · Éditeur : matériel et espaces · Lecteur : consultation.</p>
           </fieldset>
           {error && <p className="user-error" role="alert">{error}</p>}
-          {securityConfirmation && <div className="user-confirm" role="alert"><h3>Confirmer les nouveaux accès ?</h3><p>@{securityConfirmation.base.username} : {roleLabels[securityConfirmation.base.role]} → {roleLabels[securityConfirmation.values.role]} · {securityConfirmation.values.enabled ? 'Accès autorisé' : 'Accès désactivé'}.</p><p>Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter{securityConfirmation.values.enabled ? '.' : ' après la réactivation de son accès.'}</p>{securityConfirmation.base.id === state.user?.id && <p>Vous devrez vous reconnecter pour continuer avec vos nouveaux droits.</p>}<div><Button type="button" variant="outline" disabled={Boolean(pending)} onClick={() => setSecurityConfirmation(null)}>Revenir à la saisie</Button><Button type="button" disabled={Boolean(pending) || !canAdmin || blocked || listStatus !== 'ready'} onClick={() => { const captured = latest.current.securityConfirmation; if (captured) void updateAccount(captured.base, captured.values) }}>Confirmer la modification du compte</Button></div></div>}
+          {securityConfirmation && <div className="user-confirm" role="alert"><h3>Confirmer les nouveaux accès ?</h3><p>@{securityConfirmation.base.username} : {roleLabels[securityConfirmation.base.role]} → {roleLabels[securityConfirmation.values.role]} · {securityConfirmation.values.enabled ? 'Accès autorisé' : 'Accès désactivé'}.</p>{!sameEmail(securityConfirmation.base.email, securityConfirmation.values.email) && <p>E-mail de connexion : {securityConfirmation.base.email ?? 'aucun'} → {securityConfirmation.values.email ?? 'aucun'}.</p>}<p>Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter{securityConfirmation.values.enabled ? '.' : ' après la réactivation de son accès.'}</p>{securityConfirmation.base.id === state.user?.id && <p>Vous devrez vous reconnecter pour continuer avec vos nouveaux droits.</p>}<div><Button type="button" variant="outline" disabled={Boolean(pending)} onClick={() => setSecurityConfirmation(null)}>Revenir à la saisie</Button><Button type="button" disabled={Boolean(pending) || !canAdmin || blocked || listStatus !== 'ready'} onClick={() => { const captured = latest.current.securityConfirmation; if (captured) void updateAccount(captured.base, captured.values) }}>Confirmer la modification du compte</Button></div></div>}
           <div className="user-form-actions"><Button type="button" variant="outline" disabled={Boolean(pending) || discard !== null} onClick={() => requestNavigate('list')}>Annuler la saisie</Button><Button type="submit" disabled={Boolean(submitDisabled)}>{pending === 'create' || pending === 'update' ? <LoaderCircle className="animate-spin" /> : form.kind === 'create' ? <Plus /> : <Save />}{form.kind === 'create' ? 'Créer le compte' : 'Enregistrer le compte'}</Button></div>
         </form>}
         {form?.kind === 'edit' && <AdminPasswordResetPanel key={`${form.base.id}:${resetGeneration}`} target={form.base} canAdmin={canAdmin}

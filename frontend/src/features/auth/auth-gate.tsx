@@ -1,11 +1,36 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowRight, Layers3, LoaderCircle, ShieldCheck } from 'lucide-react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowRight, Building2, Layers3, LoaderCircle, ShieldCheck } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { Brand } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api-client'
+import { enterpriseSignInLabel, enterpriseSignInOutcome, enterpriseSignInPath, withoutOutcome } from './enterprise-sign-in'
 import { useSession } from './use-session'
 import './auth.css'
+
+/** Enterprise sign-in leaves the page; the provider sends the person back once identified. */
+function EnterpriseSignInLink({ expired = false }: { expired?: boolean }) {
+  const { enterpriseSignIn, busy } = useSession()
+  if (!enterpriseSignIn) return null
+  return <div className="auth-enterprise">
+    <p className="auth-separator"><span>ou</span></p>
+    <Button asChild variant="outline" className="auth-enterprise-link">
+      <a href={enterpriseSignInPath} aria-disabled={busy || undefined} onClick={(event) => { if (busy) event.preventDefault() }}>
+        <Building2 aria-hidden="true" />{enterpriseSignInLabel(enterpriseSignIn.name)}
+      </a>
+    </Button>
+    {expired && <small>Cette connexion quitte la page : les modifications non enregistrées seront perdues.</small>}
+  </div>
+}
+
+/** Reads once, then removes from the address, the reason an enterprise sign-in came back without a session. */
+function useEnterpriseSignInOutcome(): string | null {
+  const [outcome] = useState(() => enterpriseSignInOutcome(window.location.search))
+  useEffect(() => {
+    if (outcome) window.history.replaceState(window.history.state, '', withoutOutcome(window.location.href))
+  }, [outcome])
+  return outcome
+}
 
 function CredentialsForm({ setup = false, expired = false }: { setup?: boolean; expired?: boolean }) {
   const session = useSession()
@@ -81,6 +106,7 @@ function CredentialsForm({ setup = false, expired = false }: { setup?: boolean; 
 
 function AuthPage() {
   const { state, refresh } = useSession()
+  const outcome = useEnterpriseSignInOutcome()
   const setup = state.phase === 'setup-required'
   const waiting = state.phase === 'checking'
   return <main className="auth-page">
@@ -99,7 +125,7 @@ function AuthPage() {
         <h2>{waiting ? 'Un instant…' : state.phase === 'error' ? 'Connexion indisponible' : setup ? 'Bienvenue chez vous.' : 'Heureux de vous retrouver.'}</h2>
         {waiting ? <p className="auth-status" role="status"><LoaderCircle className="animate-spin" size={18} aria-hidden="true" /> Vérification de votre instance Sureau…</p>
           : state.phase === 'error' ? <><p className="auth-error" role="alert">{state.error}</p><Button onClick={refresh} variant="outline">Réessayer la connexion</Button></>
-            : <><p className="auth-intro">{setup ? 'Créez le premier compte administrateur pour ouvrir votre instance Sureau.' : 'Connectez-vous pour accéder au matériel de votre équipe et composer vos espaces.'}</p>{state.error && <p className="auth-status" role="status">{state.error}</p>}<CredentialsForm key={state.phase} setup={setup} /></>}
+            : <><p className="auth-intro">{setup ? 'Créez le premier compte administrateur pour ouvrir votre instance Sureau.' : 'Connectez-vous pour accéder au matériel de votre équipe et composer vos espaces.'}</p>{state.error && <p className="auth-status" role="status">{state.error}</p>}{outcome && !setup && <p className="auth-error" role="alert">{outcome}</p>}<CredentialsForm key={state.phase} setup={setup} />{!setup && <EnterpriseSignInLink />}</>}
         <p className="auth-footnote">SUREAU <span>·</span> Le matériel, dans son espace.</p>
       </div>
     </section>
@@ -123,6 +149,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             ? <>{state.error} Utilisez le même compte pour conserver votre brouillon. Un autre compte ouvrira une nouvelle session.</>
             : <>Votre session a expiré. Reconnectez-vous avec le même compte pour retrouver votre travail en cours. Un autre compte ouvrira une nouvelle session.</>}</Dialog.Description>
           <CredentialsForm expired />
+          <EnterpriseSignInLink expired />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -83,6 +83,18 @@ describe('API de connexion', () => {
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
 
+  it('annonce la connexion d’entreprise seulement quand l’instance la propose', async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ setupRequired: false, sso: { name: 'Microsoft' } }))
+      .mockResolvedValueOnce(json({ setupRequired: false, sso: { name: null } }))
+      .mockResolvedValueOnce(json({ setupRequired: false }))
+    const auth = createAuthApi(createApiClient(fetcher))
+
+    await expect(auth.status()).resolves.toEqual({ setupRequired: false, sso: { name: 'Microsoft' } })
+    await expect(auth.status()).resolves.toEqual({ setupRequired: false, sso: { name: null } })
+    await expect(auth.status()).resolves.toEqual({ setupRequired: false, sso: null })
+  })
+
   it('refuse un statut d’installation ambigu', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ setupRequired: 'false' }))
 
@@ -132,7 +144,7 @@ describe('API de connexion', () => {
 
     await expect(auth.setup({ ...input, setupToken: 'installer-generated-token', displayName: 'Nadjide' }))
       .rejects.toMatchObject({ name: 'AccountCreatedError', cause: { kind: 'network' } })
-    await expect(auth.status()).resolves.toEqual({ setupRequired: false })
+    await expect(auth.status()).resolves.toEqual({ setupRequired: false, sso: null })
     await expect(auth.login(input)).resolves.toEqual(administrator)
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/auth/setup')).toHaveLength(1)
   })

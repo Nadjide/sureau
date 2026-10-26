@@ -31,13 +31,23 @@ function passwordSchema(minimum: number) {
 
 const newPasswordSchema = passwordSchema(12)
 
+// Optional; it lets the person use the enterprise sign-in, matched without regard to case.
+const emailSchema = z.preprocess((value) => typeof value === 'string' ? value.trim() || null : value,
+  z.email('Renseignez une adresse e-mail valide.').max(254, 'Utilisez au plus 254 caractères.').nullable())
+
 export const adminUserSchema = z.object({
   id: userIdSchema,
   username: usernameSchema,
   displayName: displayNameSchema,
   role: userRoleSchema,
   enabled: z.boolean(),
+  email: z.string().nullable().default(null),
 })
+
+/** Two addresses that open the same account. */
+export function sameEmail(first: string | null | undefined, second: string | null | undefined): boolean {
+  return (first ?? '').trim().toLowerCase() === (second ?? '').trim().toLowerCase()
+}
 
 export const adminUserListSchema = z.array(adminUserSchema).superRefine((users, context) => {
   const ids = new Set<number>()
@@ -55,12 +65,14 @@ export const createUserInputSchema = z.strictObject({
   displayName: z.string().trim().pipe(displayNameSchema),
   password: newPasswordSchema,
   role: userRoleSchema,
+  email: emailSchema.default(null),
 })
 
 export const updateUserInputSchema = z.strictObject({
   displayName: z.string().trim().pipe(displayNameSchema),
   role: userRoleSchema,
   enabled: z.boolean(),
+  email: emailSchema.default(null),
 })
 
 export const resetPasswordInputSchema = z.strictObject({ password: newPasswordSchema })
