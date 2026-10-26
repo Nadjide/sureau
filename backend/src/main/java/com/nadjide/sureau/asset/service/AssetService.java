@@ -1,5 +1,6 @@
 package com.nadjide.sureau.asset.service;
 
+import com.nadjide.sureau.asset.dto.AssetEventResponse;
 import com.nadjide.sureau.asset.dto.AssetRequest;
 import com.nadjide.sureau.asset.dto.AssetResponse;
 import com.nadjide.sureau.asset.entity.Asset;
@@ -13,14 +14,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AssetService {
 
     private final AssetRepository assetRepository;
+    private final AssetHistoryService history;
 
-    public AssetService(AssetRepository assetRepository) {
+    public AssetService(AssetRepository assetRepository, AssetHistoryService history) {
         this.assetRepository = assetRepository;
+        this.history = history;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +75,9 @@ public class AssetService {
         asset.setStatus(request.status());
         asset.setPurchaseDate(request.purchaseDate());
 
-        return toResponse(assetRepository.saveAndFlush(asset));
+        Asset saved = assetRepository.saveAndFlush(asset);
+        history.recordCreated(saved);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -106,6 +112,7 @@ public class AssetService {
             );
         }
 
+        Map<String, String> before = AssetHistoryService.fields(asset);
         asset.setAssetTag(request.assetTag());
         asset.setSerialNumber(request.serialNumber());
         asset.setName(request.name());
@@ -115,7 +122,9 @@ public class AssetService {
         asset.setStatus(request.status());
         asset.setPurchaseDate(request.purchaseDate());
 
-        return toResponse(assetRepository.saveAndFlush(asset));
+        Asset saved = assetRepository.saveAndFlush(asset);
+        history.recordUpdated(saved, before);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -137,9 +146,20 @@ public class AssetService {
             throw new AssetStatusConflictException("Assigned asset cannot be retired");
         }
 
+        Map<String, String> before = AssetHistoryService.fields(asset);
         asset.setStatus(AssetStatus.RETIRED);
 
-        return toResponse(assetRepository.saveAndFlush(asset));
+        Asset saved = assetRepository.saveAndFlush(asset);
+        history.recordRetired(saved, before);
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssetEventResponse> getAssetHistory(Long id) {
+        if (!assetRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Asset not found: " + id);
+        }
+        return history.history(id);
     }
 
     private static void requireRevision(Asset asset, Long expectedRevision) {
