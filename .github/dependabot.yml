@@ -1,0 +1,82 @@
+# Mises à jour automatiques des dépendances, proposées en pull requests que la
+# CI vérifie avant toute fusion. Chaque semaine, les versions mineures et
+# correctives d'un écosystème arrivent groupées ; une version majeure arrive
+# seule, pour être relue. Une nouvelle version n'est proposée qu'après 14 jours
+# de recul. Les alertes de sécurité ne sont pas concernées par ce délai.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directories:
+      - /frontend
+      - /e2e
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      javascript:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: build
+      include: scope
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      java:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: build
+      include: scope
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: ci
+
+  # Images de base du Dockerfile et des manifestes Kubernetes. pnpm reste mis à
+  # jour à la main, en même temps que packageManager et la CI. L'image de
+  # l'application (sureau) est construite par le dépôt lui-même.
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /deploy/kubernetes/base
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: ghcr.io/pnpm/pnpm
+      - dependency-name: sureau
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: sureau
+    commit-message:
+      prefix: build
