@@ -64,6 +64,11 @@ services:
       # Les navigateurs ne distinguent pas les cookies par port : un nom propre au
       # port évite qu'une connexion à une instance ferme celle d'une autre.
       SUREAU_COOKIE_NAME: ${SUREAU_COOKIE_NAME:-SUREAU_SESSION_${SUREAU_HTTP_PORT:-8080}}
+      # Connexion d'entreprise (OpenID Connect), facultative : voir docs/installation.md.
+      SUREAU_OIDC_ISSUER: ${SUREAU_OIDC_ISSUER:-}
+      SUREAU_OIDC_CLIENT_ID: ${SUREAU_OIDC_CLIENT_ID:-}
+      SUREAU_OIDC_CLIENT_SECRET: ${SUREAU_OIDC_CLIENT_SECRET:-}
+      SUREAU_OIDC_NAME: ${SUREAU_OIDC_NAME:-}
     ports:
       # Écoute locale par défaut : placez un proxy HTTPS devant pour l'exposer.
       - "${SUREAU_HTTP_BIND:-127.0.0.1}:${SUREAU_HTTP_PORT:-8080}:8080"

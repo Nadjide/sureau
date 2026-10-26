@@ -81,12 +81,12 @@ class UserApiIntegrationTests {
                 .andExpect(jsonPath("$.displayName").value("Élise Omar"))
                 .andExpect(jsonPath("$.role").value("EDITOR"))
                 .andExpect(jsonPath("$.enabled").value(true)));
-        assertThat(created.propertyNames()).containsExactlyInAnyOrder("id", "username", "displayName", "role", "enabled");
+        assertThat(created.propertyNames()).containsExactlyInAnyOrder("id", "username", "displayName", "role", "enabled", "email");
         String hash = jdbc.queryForObject("SELECT password_hash FROM app_users WHERE username = 'elise.test'", String.class);
         assertThat(hash).isNotEqualTo(PASSWORD);
         assertThat(passwordEncoder.matches(PASSWORD, hash)).isTrue();
         for (JsonNode account : body(admin.perform(get("/api/users")).andExpect(status().isOk()))) {
-            assertThat(account.propertyNames()).containsExactlyInAnyOrder("id", "username", "displayName", "role", "enabled");
+            assertThat(account.propertyNames()).containsExactlyInAnyOrder("id", "username", "displayName", "role", "enabled", "email");
         }
         new Browser().login("elise.test", PASSWORD).andExpect(status().isNoContent());
     }

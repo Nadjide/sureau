@@ -17,14 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService auth;
+    private final OidcLogin oidc;
 
-    public AuthController(AuthService auth) {
+    public AuthController(AuthService auth, OidcLogin oidc) {
         this.auth = auth;
+        this.oidc = oidc;
     }
 
     @GetMapping("/status")
     public SetupStatus status() {
-        return new SetupStatus(auth.setupRequired());
+        return new SetupStatus(auth.setupRequired(), oidc.enabled() ? new EnterpriseSignIn(oidc.displayName()) : null);
     }
 
     @GetMapping("/csrf")
@@ -50,6 +52,8 @@ public class AuthController {
         auth.changeOwnPassword(principal, request);
     }
 
-    public record SetupStatus(boolean setupRequired) {}
+    /** {@code sso} is null unless enterprise sign-in is configured; its name may be null too. */
+    public record SetupStatus(boolean setupRequired, EnterpriseSignIn sso) {}
+    public record EnterpriseSignIn(String name) {}
     public record CsrfResponse(String token, String headerName) {}
 }

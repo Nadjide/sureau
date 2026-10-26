@@ -1,6 +1,8 @@
 package com.nadjide.sureau.auth;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,8 +32,8 @@ public class UserAdministrationService {
         requireAdministrator(actor);
         AccountValidation.password(request.password());
         AccountValidation.displayName(request.displayName());
-        return users.create(request.username(), request.displayName(), passwords.encode(request.password()), request.role())
-                .adminResponse();
+        return users.create(request.username(), request.displayName(), passwords.encode(request.password()), request.role(),
+                request.email()).adminResponse();
     }
 
     @Transactional
@@ -48,8 +50,11 @@ public class UserAdministrationService {
             throw new UserAdministrationException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED",
                     "At least one enabled administrator must remain.");
         }
-        boolean securityChanged = target.role() != request.role() || target.enabled() != request.enabled();
-        UserAccount saved = users.update(id, request.displayName(), request.role(), request.enabled(), securityChanged);
+        // The e-mail address decides which enterprise identity may open the account: changing it is a security change.
+        boolean emailChanged = !Objects.equals(lower(target.email()), lower(request.email()));
+        boolean securityChanged = target.role() != request.role() || target.enabled() != request.enabled() || emailChanged;
+        UserAccount saved = users.update(id, request.displayName(), request.role(), request.enabled(), request.email(),
+                securityChanged);
         if (securityChanged) users.revokeSessions(saved.username());
         return saved.adminResponse();
     }
@@ -75,6 +80,10 @@ public class UserAdministrationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Administrator access is required.");
         }
         return account;
+    }
+
+    private static String lower(String value) {
+        return value == null ? null : value.toLowerCase(Locale.ROOT);
     }
 
     private static ResponseStatusException unauthenticated() {

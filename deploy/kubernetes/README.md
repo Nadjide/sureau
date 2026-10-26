@@ -66,6 +66,16 @@ Le cookie de session est marqué `Secure` par défaut (`SUREAU_COOKIE_SECURE=tru
 
 Le cookie s'appelle `SUREAU_SESSION_<namespace>`. Deux instances jointes sous le même nom d'hôte, par exemple deux `port-forward` vers `localhost`, ne ferment donc pas la session l'une de l'autre. Lors de la mise à jour vers la version qui a introduit ce nom, chacun doit se reconnecter une fois ; les données ne sont pas touchées.
 
+## Connexion d'entreprise (SSO)
+
+La connexion par OpenID Connect est facultative ; son fonctionnement est décrit dans [le guide d'installation](../../docs/installation.md#connexion-dentreprise-sso). Pour l'activer, ajoutez à la ConfigMap de votre overlay `SUREAU_OIDC_ISSUER`, `SUREAU_OIDC_CLIENT_ID` et, si vous le souhaitez, `SUREAU_OIDC_NAME`, et au secret la clé `oidc-client-secret` :
+
+```sh
+kubectl -n sureau patch secret sureau-secrets --type merge -p '{"stringData":{"oidc-client-secret":"<secret>"}}'
+```
+
+L'adresse de retour à déclarer chez le fournisseur est `https://<votre domaine>/login/oauth2/code/oidc`. Redémarrez ensuite le Deployment (`kubectl -n sureau rollout restart deployment/sureau`).
+
 ## Sondes, ressources et réseau
 
 - La sonde de disponibilité de l'application vérifie PostgreSQL ; celle de vie, non : une panne de la base retire l'application du service sans la redémarrer en boucle. Sans base, la sonde répond 503 en 3 s au plus, dans son délai de 5 s.
