@@ -3,6 +3,7 @@ export const storageKeys = {
   locations: 'sureau-locations-v1',
   plan: 'sureau-plan-v1',
   workspace: 'sureau-workspace-v1',
+  guide: 'sureau-guide-v1',
 } as const
 
 // Historical keys remain readable so the product rename preserves local user data.
@@ -17,6 +18,6 @@ interface ReadableStorage {
   getItem: (key: string) => string | null
 }
 
-export function readStoredValue(storage: ReadableStorage, key: keyof typeof storageKeys): string | null {
+export function readStoredValue(storage: ReadableStorage, key: keyof typeof legacyStorageKeys): string | null {
   return storage.getItem(storageKeys[key]) ?? storage.getItem(legacyStorageKeys[key])
 }

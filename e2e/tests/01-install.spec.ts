@@ -384,6 +384,33 @@ test('records the e-mail address that enterprise sign-in will match, after a sec
   expect(watched.errors).toEqual([]);
 });
 
+test('invites a first visit to the guide, walks through its steps, then stops inviting', async () => {
+  await page.goto('/#spaces');
+  await page.reload();
+  const invitation = page.getByRole('complementary', { name: 'Découvrir Sureau' });
+  await expect(invitation).toContainText('Première visite ?');
+  await invitation.getByRole('button', { name: 'Suivre le guide', exact: true }).click();
+
+  const guide = page.getByRole('dialog', { name: 'Bienvenue dans Sureau' });
+  await expect(guide).toContainText('Vous êtes administrateur');
+  expect(await accessibilityViolations(page), 'guide').toEqual([]);
+  await guide.getByRole('button', { name: 'Suivant', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Composer vos espaces' })).toContainText('ÉTAPE 2 SUR 7');
+  await page.getByRole('navigation', { name: 'Étapes du guide' }).getByRole('button', { name: /Protéger vos données/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Protéger vos données' })).toContainText('Exporter le brouillon');
+  await page.getByRole('button', { name: 'Terminer', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // L'invitation ne revient plus ; le guide reste ouvert à tous par l'en-tête.
+  await page.reload();
+  await page.getByRole('button', { name: 'Guide', exact: true }).waitFor();
+  await expect(invitation).toHaveCount(0);
+  await page.getByRole('button', { name: 'Guide', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Bienvenue dans Sureau' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(watched.errors).toEqual([]);
+});
+
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
   // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();
