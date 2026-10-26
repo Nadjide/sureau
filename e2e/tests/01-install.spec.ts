@@ -278,6 +278,8 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
 });
 
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
+  // Douze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
+  test.slow();
   const audit = async (screen: string) => expect(await accessibilityViolations(page), screen).toEqual([]);
   for (const theme of ['light', 'dark']) {
     await page.evaluate((value) => localStorage.setItem('sureau-theme', value), theme);
