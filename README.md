@@ -185,7 +185,7 @@ docker run -d --name sureau-test-db -e POSTGRES_DB=sureau_test -e POSTGRES_USER=
   -e POSTGRES_PASSWORD=sureau_test_only -p 127.0.0.1:15432:5432 postgres:17-alpine
 ```
 
-`e2e/run.sh` installe une instance jetable avec les scripts de déploiement, puis vérifie avec un vrai navigateur l’installation du premier administrateur, l’inventaire, les droits, l’enregistrement explicite du plan, sa personnalisation (poste, mobilier, couleurs, étage, salle, localisation d’un matériel), la 3D, le redémarrage, la sauvegarde et la restauration. Il demande Docker, pnpm et un navigateur Playwright (`cd e2e && pnpm install --frozen-lockfile && pnpm exec playwright install chromium`).
+`e2e/run.sh` installe une instance jetable avec les scripts de déploiement, puis vérifie avec un vrai navigateur l’installation du premier administrateur, l’inventaire, les droits, l’enregistrement explicite du plan, sa personnalisation (poste, mobilier, couleurs, étage, salle, localisation d’un matériel), l’accessibilité des écrans principaux dans les deux thèmes (règles WCAG A et AA vérifiées par axe-core), la 3D, le redémarrage, la sauvegarde et la restauration. Il demande Docker, pnpm et un navigateur Playwright (`cd e2e && pnpm install --frozen-lockfile && pnpm exec playwright install chromium`).
 
 L’intégration continue (GitHub Actions) exécute ces vérifications sur chaque pull request. Le workflow de publication d’images rejoue la même validation avant de construire.
 
