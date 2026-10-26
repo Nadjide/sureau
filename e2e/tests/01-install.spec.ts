@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
+  accessibilityViolations,
   expectJsonError,
   getJson,
   login,
@@ -86,6 +87,8 @@ test('refuses anonymous API access and announces that setup is required', async 
 
 test('the first-run page creates the administrator and opens the application', async () => {
   await page.goto('/#spaces');
+  await page.locator('#auth-setup-token').waitFor();
+  expect(await accessibilityViolations(page), 'first-run page').toEqual([]);
   await page.locator('#auth-setup-token').fill(setupToken);
   await page.locator('#auth-display-name').fill(admin.displayName);
   await page.locator('#auth-username').fill(admin.username);
@@ -271,6 +274,39 @@ test('customizes the plan with a desk, furniture, colors, a floor and a room, th
     },
   });
   expect(loadState().session.value).not.toBe('');
+  expect(watched.errors).toEqual([]);
+});
+
+test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
+  // Douze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
+  test.slow();
+  const audit = async (screen: string) => expect(await accessibilityViolations(page), screen).toEqual([]);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => localStorage.setItem('sureau-theme', value), theme);
+    await page.goto('/#spaces');
+    await page.reload();
+    await page.getByRole('button', { name: 'Plan 2D', exact: true }).click();
+    await page.locator('.workstation-strip button').first().click();
+    await audit(`${theme} plan`);
+    await page.getByRole('button', { name: 'Modifier', exact: true }).click();
+    await audit(`${theme} workshop`);
+    await page.getByRole('button', { name: 'Terminer', exact: true }).click();
+
+    await page.getByRole('button', { name: 'Matériel', exact: true }).click();
+    await page.getByRole('button', { name: /Portable de recette/ }).click();
+    await audit(`${theme} inventory`);
+    await page.getByRole('button', { name: 'Ajouter du matériel', exact: true }).click();
+    await audit(`${theme} new asset`);
+    await page.getByRole('button', { name: 'Fermer l’ajout de matériel', exact: true }).click();
+
+    await page.getByRole('button', { name: `Compte de ${admin.displayName}`, exact: true }).click();
+    await audit(`${theme} account menu`);
+    await page.getByRole('button', { name: 'Gérer l’équipe', exact: true }).click();
+    await page.getByText(viewer.displayName, { exact: true }).first().waitFor();
+    await audit(`${theme} team`);
+    await page.keyboard.press('Escape');
+  }
+  await page.evaluate(() => localStorage.setItem('sureau-theme', 'light'));
   expect(watched.errors).toEqual([]);
 });
 

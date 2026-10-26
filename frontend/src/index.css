@@ -22,7 +22,8 @@
   --secondary: #eaf0f8;
   --secondary-foreground: #344562;
   --muted: #eaf0f5;
-  --muted-foreground: #63748b;
+  /* Small secondary text keeps a 4.5:1 contrast on every light surface, down to --accent. */
+  --muted-foreground: #586a80;
   --accent: #e7eefb;
   --accent-foreground: #275bad;
   --destructive: #b74446;
@@ -30,7 +31,7 @@
   --input: #d2dbe8;
   --ring: #447cde;
   --radius: .625rem;
-  --success: #277c67;
+  --success: #24735f;
   --warning: #99621b;
   --workspace: #eef2f7;
 }
@@ -218,7 +219,7 @@
 .workstation-strip button { display: flex; align-items: center; justify-content: center; }
 .workstation-strip.is-dense button { min-width: 100px; }
 .workstation-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.workstation-number { margin-right: 5px; font-variant-numeric: tabular-nums; opacity: .7; }
+.workstation-number { margin-right: 5px; font-variant-numeric: tabular-nums; font-weight: 400; }
 .dense-plan-note { font-size: 10px; color: var(--muted-foreground); padding: 8px 22px 0; margin: 0; }
 .spatial-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 22px 15px; font-size: 10px; color: var(--muted-foreground); }
 .spatial-caption > span:first-child { display: flex; align-items: center; gap: 6px; }
@@ -294,7 +295,7 @@
 .spatial-toolbar { flex-wrap: wrap; }
 .selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 14px; padding: 14px 22px; border-top: 1px solid var(--border); font-size: 10px; }
 .selection-bar > span { color: var(--foreground); font-weight: 550; }
-.selection-bar button { cursor: pointer; color: var(--primary); }
+.selection-bar button { cursor: pointer; color: var(--accent-foreground); }
 .selection-bar button:disabled { opacity: .4; cursor: default; }
 .selection-bar small { flex-basis: 100%; color: var(--muted-foreground); }
 .selection-members { margin: 18px 0; padding: 0; list-style: none; max-height: 180px; overflow: auto; }

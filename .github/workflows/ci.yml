@@ -84,6 +84,10 @@ jobs:
         run: |
           sh -n deploy/sureau.sh
           sh -n e2e/run.sh
+      - name: Shell scripts pass ShellCheck
+        run: |
+          git ls-files -z '*.sh' | xargs -0 docker run --rm -v "$PWD:/mnt:ro" -w /mnt \
+            koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
       - name: Compose files are valid
         env:
           SUREAU_DB_PASSWORD: ci-validation-only

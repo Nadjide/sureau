@@ -1,3 +1,4 @@
+import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type APIRequestContext, type APIResponse, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -103,6 +104,15 @@ export async function expectJsonError(response: APIResponse, status: number): Pr
   expect(response.headers()['content-type'] ?? '').toMatch(/json/);
   // Aucune page HTML ni détail interne de l'application dans une erreur d'API.
   expect(await response.text()).not.toMatch(/<!doctype|<html|java\.lang|org\.springframework|"trace"|"exception"/i);
+}
+
+/** Défauts WCAG 2.2 de niveau A et AA détectables automatiquement (contraste, noms, structure) sur la page affichée. */
+export async function accessibilityViolations(page: Page): Promise<string[]> {
+  // Un panneau encore en fondu d'ouverture fausserait la mesure des contrastes.
+  await page.waitForFunction(() => document.getAnimations().every((animation) =>
+    animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity));
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  return results.violations.flatMap((violation) => violation.nodes.map((node) => `${violation.id} ${node.target.join(' ')}`));
 }
 
 export async function waitForWebGlScene(page: Page): Promise<void> {
