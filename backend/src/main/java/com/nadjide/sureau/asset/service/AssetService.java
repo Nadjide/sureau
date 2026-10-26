@@ -1,12 +1,14 @@
 package com.nadjide.sureau.asset.service;
 
 import com.nadjide.sureau.asset.dto.AssetEventResponse;
+import com.nadjide.sureau.asset.dto.AssetImportResponse;
 import com.nadjide.sureau.asset.dto.Assignee;
 import com.nadjide.sureau.asset.dto.AssetRequest;
 import com.nadjide.sureau.asset.dto.AssetResponse;
 import com.nadjide.sureau.asset.entity.Asset;
 import com.nadjide.sureau.asset.entity.AssetStatus;
 import com.nadjide.sureau.asset.repository.AssetRepository;
+import com.nadjide.sureau.common.ApiExceptionHandler.FieldError;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Sort;
@@ -14,8 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class AssetService {
@@ -141,6 +147,59 @@ public class AssetService {
         Asset saved = assetRepository.saveAndFlush(asset);
         history.recordRetired(saved, before);
         return toResponse(saved);
+    }
+
+    /**
+     * Creates every asset or none. Each refused row is reported as {@code assets[index].field}, like the
+     * request validation, so that all problems of a file can be fixed at once.
+     */
+    @Transactional
+    public AssetImportResponse importAssets(List<AssetRequest> requests) {
+        List<FieldError> errors = new ArrayList<>();
+        Map<String, Integer> tags = new HashMap<>();
+        Map<String, Integer> serials = new HashMap<>();
+        for (int row = 0; row < requests.size(); row++) {
+            AssetRequest request = requests.get(row);
+            if (request.assignee() != null && request.status() != AssetStatus.ASSIGNED) {
+                errors.add(rowError(row, "assignee", "only an assigned asset can name its holder"));
+            }
+            Integer firstTag = tags.putIfAbsent(request.assetTag(), row);
+            if (firstTag != null) errors.add(rowError(row, "assetTag", "is repeated in this import (row " + (firstTag + 1) + ")"));
+            if (request.serialNumber() != null) {
+                Integer firstSerial = serials.putIfAbsent(request.serialNumber(), row);
+                if (firstSerial != null) {
+                    errors.add(rowError(row, "serialNumber", "is repeated in this import (row " + (firstSerial + 1) + ")"));
+                }
+            }
+        }
+        Set<String> existingTags = new HashSet<>(assetRepository.findExistingAssetTags(tags.keySet()));
+        Set<String> existingSerials = serials.isEmpty() ? Set.of()
+                : new HashSet<>(assetRepository.findExistingSerialNumbers(serials.keySet()));
+        for (int row = 0; row < requests.size(); row++) {
+            AssetRequest request = requests.get(row);
+            if (existingTags.contains(request.assetTag())) {
+                errors.add(rowError(row, "assetTag", "is already used by an existing asset"));
+            }
+            if (request.serialNumber() != null && existingSerials.contains(request.serialNumber())) {
+                errors.add(rowError(row, "serialNumber", "is already used by an existing asset"));
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new AssetImportException(errors);
+        }
+
+        List<Asset> assets = requests.stream().map(request -> {
+            Asset asset = new Asset();
+            apply(asset, request);
+            return asset;
+        }).toList();
+        List<Asset> saved = assetRepository.saveAllAndFlush(assets);
+        saved.forEach(history::recordImported);
+        return new AssetImportResponse(saved.size(), saved.stream().map(this::toResponse).toList());
+    }
+
+    private static FieldError rowError(int row, String field, String message) {
+        return new FieldError("assets[" + row + "]." + field, message);
     }
 
     @Transactional(readOnly = true)

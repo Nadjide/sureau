@@ -251,12 +251,15 @@ Toutes les routes `/api` demandent une session, sauf `status`, `csrf`, `setup` e
 | `GET` | `/api/assets` · `/api/assets/{id}` | session | Lister et consulter les matériels |
 | `POST` · `PUT` | `/api/assets` · `/api/assets/{id}` | éditeur | Créer et modifier un matériel |
 | `PATCH` | `/api/assets/{id}/retire` | éditeur | Retirer un matériel du parc |
+| `POST` | `/api/assets/import` | éditeur | Créer jusqu’à 1 000 matériels d’un coup |
 | `GET` | `/api/assets/{id}/history` | session | Consulter l’historique d’un matériel |
 | `GET` · `PUT` | `/api/workspace` | session · éditeur | Lire et enregistrer l’espace et ses localisations |
 
 La modification d’un matériel et l’enregistrement de l’espace portent le numéro de version connu : une version périmée est refusée. `GET /api/workspace` répond 404 tant qu’aucun espace n’a été enregistré.
 
 Un matériel à l’état `ASSIGNED` peut nommer la personne qui le détient (`assignee` : nom obligatoire, e-mail et service facultatifs), sans qu’elle ait de compte Sureau. Tout autre état refuse une personne ; un matériel affecté avant cette fonction peut rester sans personne nommée. Rendre un matériel revient à changer son état sans personne.
+
+`POST /api/assets/import` reçoit `{ "assets": [...] }`, chaque élément ayant la forme d’une création, et crée tout ou rien. Chaque ligne refusée est signalée comme `assets[n].champ` (n compté depuis 0) : champ invalide, identifiant ou numéro de série répété dans l’import ou déjà présent dans l’inventaire, personne sur un matériel non affecté. Le corps est limité à 2,1 Mo. L’historique de chaque matériel importé commence par l’événement `IMPORTED`.
 
 L’historique d’un matériel retient, du plus récent au plus ancien (200 au plus), sa création, chaque champ modifié avec ses valeurs avant et après, son retrait et chaque changement de poste, avec l’auteur et la date. Il est écrit dans la même transaction que le changement : une modification refusée ne laisse aucune trace. Le matériel antérieur à cette fonction commence son historique à sa date de création, sans auteur connu.
 
