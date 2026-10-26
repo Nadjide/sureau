@@ -5,13 +5,15 @@
 # aléatoires, projet Compose et volume dédiés), puis enchaîne :
 #   1. l'installation par l'interface et la création de données,
 #   2. un redémarrage de l'application,
-#   3. une sauvegarde complète puis sa restauration,
-#   4. deux restaurations qui doivent échouer sans rien modifier : une archive
+#   3. une panne de la base : l'application se déclare indisponible en
+#      quelques secondes sans redémarrer, puis revient seule avec la base,
+#   4. une sauvegarde complète puis sa restauration,
+#   5. deux restaurations qui doivent échouer sans rien modifier : une archive
 #      tronquée, puis une erreur SQL provoquée au milieu du remplacement,
 # en vérifiant à chaque étape que comptes, inventaire et plan sont conservés.
 # L'instance et ses données sont supprimées à la fin.
 #
-# Prérequis : Docker, pnpm et un navigateur (voir e2e/package.json).
+# Prérequis : Docker, curl, pnpm et un navigateur (voir e2e/package.json).
 #   SUREAU_E2E_PORT     port local de l'instance (défaut : 18090)
 #   SUREAU_E2E_CHANNEL  chrome pour utiliser le Chrome installé
 #   PNPM                commande pnpm à utiliser (défaut : pnpm)
@@ -62,6 +64,25 @@ e2e install
 echo
 echo "== Redémarrage de l'application"
 sureau compose restart app
+sureau compose up -d --wait --wait-timeout 300
+e2e after-restart
+
+echo
+echo "== Panne puis retour de la base"
+probe() {
+  curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 "$SUREAU_E2E_ORIGIN/actuator/health/$1" || true
+}
+sureau compose stop postgres
+start=$(date +%s)
+readiness=$(probe readiness)
+elapsed=$(($(date +%s) - start))
+liveness=$(probe liveness)
+if [ "$readiness" != 503 ] || [ "$elapsed" -gt 8 ] || [ "$liveness" != 200 ]; then
+  echo "Base coupée : disponibilité $readiness après $elapsed s, vie $liveness (attendu : 503 en 8 s au plus, 200)." >&2
+  exit 1
+fi
+echo "Base coupée : application indisponible après $elapsed s, toujours en vie."
+sureau compose start postgres
 sureau compose up -d --wait --wait-timeout 300
 e2e after-restart
 

@@ -68,7 +68,7 @@ Le cookie s'appelle `SUREAU_SESSION_<namespace>`. Deux instances jointes sous le
 
 ## Sondes, ressources et réseau
 
-- La sonde de disponibilité de l'application vérifie PostgreSQL ; celle de vie, non : une panne de la base retire l'application du service sans la redémarrer en boucle.
+- La sonde de disponibilité de l'application vérifie PostgreSQL ; celle de vie, non : une panne de la base retire l'application du service sans la redémarrer en boucle. Sans base, la sonde répond 503 en 3 s au plus, dans son délai de 5 s.
 - Requêtes et limites sont modestes (application : 512 Mo à 1 Go ; base : 256 à 512 Mo). Ajustez-les dans un overlay selon votre usage.
 - La `NetworkPolicy` ne laisse joindre la base que par l'application. Elle n'agit que si le plugin réseau du cluster applique les `NetworkPolicy`.
 
