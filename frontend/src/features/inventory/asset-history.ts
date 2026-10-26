@@ -60,6 +60,7 @@ export function changeValue(field: string, value: string | null): string {
 export function eventTitle(event: AssetEvent): string {
   switch (event.action) {
     case 'CREATED': return 'Fiche créée'
+    case 'IMPORTED': return 'Importé depuis un fichier'
     case 'UPDATED': return 'Fiche modifiée'
     case 'RETIRED': return 'Retiré du parc'
     case 'LOCATED': {
@@ -82,7 +83,7 @@ export function eventDate(event: AssetEvent): string {
   return dateFormat.format(new Date(event.occurredAt))
 }
 
-/** A creation lists the initial values only; other events show each value before and after. */
+/** A creation or an import lists the initial values only; other events show each value before and after. */
 export function isCreation(event: AssetEvent): boolean {
-  return event.action === 'CREATED'
+  return event.action === 'CREATED' || event.action === 'IMPORTED'
 }

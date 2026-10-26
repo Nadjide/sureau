@@ -24,6 +24,7 @@ import {
 import type { useInventory } from './use-inventory'
 import { useSession } from '@/features/auth/use-session'
 import { CreateAssetSheet } from './create-asset-sheet'
+import { ImportAssetsSheet } from './import-assets-sheet'
 import { EditAssetSheet } from './edit-asset-sheet'
 import { AssetHistorySheet } from './asset-history-sheet'
 import { RetireAssetDialog } from './retire-asset-dialog'
@@ -46,6 +47,7 @@ export function InventoryPanel({
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<Status | ''>('')
   const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' | 'retired' } | null>(null)
+  const [imported, setImported] = useState<number | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   const [retiringAsset, setRetiringAsset] = useState<Asset | null>(null)
   const [historyAsset, setHistoryAsset] = useState<Asset | null>(null)
@@ -103,10 +105,14 @@ export function InventoryPanel({
           >
             <RefreshCw className={requestStatus === 'loading' ? 'animate-spin' : ''} />
           </Button>
+          <ImportAssetsSheet canEdit={canEdit} onImported={(assets) => {
+            setConfirmation(null); setImported(assets.length); setQuery(''); setStatus(''); reload()
+          }} />
           <CreateAssetSheet canEdit={canEdit} onCreated={(asset) => {
-            setConfirmation({ asset, action: 'created' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id)
+            setImported(null); setConfirmation({ asset, action: 'created' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id)
           }} />
         </div>
+        {imported !== null && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{imported} matériel{imported > 1 ? 's' : ''}</strong> {imported > 1 ? 'ont été importés' : 'a été importé'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation de l’import" onClick={() => setImported(null)}><X aria-hidden="true" /></Button></div>}
         {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) a été {confirmation.action === 'created' ? 'enregistré' : confirmation.action === 'updated' ? 'mis à jour' : 'retiré du parc'} dans l’inventaire partagé.{requestStatus === 'loading' ? ' Actualisation du parc…' : ''}</p><Button variant="ghost" size="icon-sm" aria-label="Masquer la confirmation" onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
         {error && (
           <div className="inventory-alert" role="alert">
