@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { useSession } from '@/features/auth/use-session'
 import { roleLabels } from '@/features/auth/session-state'
 import { ApiError } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import { createUserInputSchema, resetPasswordInputSchema, sameEmail, updateUserInputSchema, type AdminUser, type CreateUserInput, type ResetPasswordInput, type UpdateUserInput } from './user-schema'
 import { usersApi } from './users-api'
 import { AdminPasswordResetPanel, type PasswordResetResult } from './admin-password-reset-panel'
@@ -79,10 +80,10 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       const users = await usersApi.list(operation.controller.signal)
       if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return
       setAccounts(users); setListStatus('ready'); setBlocked(false); setError(null)
-      setNotice('Liste des comptes actualisée. Les saisies en cours sont conservées.')
+      setNotice(t('Liste des comptes actualisée. Les saisies en cours sont conservées.'))
     } catch (failure) {
       if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return
-      setListStatus('error'); setListError(failure instanceof Error ? failure.message : 'Les comptes n’ont pas pu être chargés.')
+      setListStatus('error'); setListError(failure instanceof Error ? failure.message : t('Les comptes n’ont pas pu être chargés.'))
     } finally {
       if (request.current === operation) { request.current = null; if (mounted.current) setPending(null) }
     }
@@ -118,7 +119,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     if (request.current?.kind === 'list' && destination === 'close') {
       request.current.controller.abort(); request.current = null; setPending(null)
       setListStatus(latest.current.accounts === null ? 'idle' : 'error')
-      setListError('L’actualisation a été interrompue. Actualisez les comptes avant un nouvel enregistrement. Votre saisie est conservée.')
+      setListError(t('L’actualisation a été interrompue. Actualisez les comptes avant un nouvel enregistrement. Votre saisie est conservée.'))
     } else if (request.current) return
     if (destination === 'close' && latest.current.session.state.phase === 'authenticated' && !latest.current.canAdmin) { navigate('close'); return }
     if (destination !== 'close' && destination !== 'list' && !latest.current.canAdmin) return
@@ -146,7 +147,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   function invalid(issues: ReadonlyArray<{ path: readonly PropertyKey[]; message: string }>) {
     const errors: Record<string, string> = {}
     for (const issue of issues) if (typeof issue.path[0] === 'string' && !errors[issue.path[0]]) errors[issue.path[0]] = issue.message
-    setFields(errors); setError('Vérifiez les champs indiqués avant d’enregistrer le compte.')
+    setFields(errors); setError(t('Vérifiez les champs indiqués avant d’enregistrer le compte.'))
     const first = Object.keys(errors)[0]
     if (first) document.getElementById(`user-${form?.kind ?? 'create'}-${first}`)?.focus()
   }
@@ -156,9 +157,9 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       if (failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) setBlocked(true)
     }
     if (failure instanceof ApiError && failure.code === 'DUPLICATE_RESOURCE') {
-      setError('Cet identifiant ou cette adresse e-mail est déjà utilisé par un autre compte. Votre saisie est conservée.'); return
+      setError(t('Cet identifiant ou cette adresse e-mail est déjà utilisé par un autre compte. Votre saisie est conservée.')); return
     }
-    setError(failure instanceof Error ? failure.message : 'La modification du compte n’a pas pu être confirmée.')
+    setError(failure instanceof Error ? failure.message : t('La modification du compte n’a pas pu être confirmée.'))
   }
   function canSubmit() {
     const current = latest.current
@@ -174,7 +175,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       setAccounts((previous) => mergeAccount(previous, account))
       setForm({ kind: 'edit', base: account, values: editValues(account) })
       setResetDirty(false); setResetGeneration((previous) => previous + 1)
-      setNotice(`Le compte @${account.username} est créé. Son mot de passe initial n’est pas conservé dans cette saisie.`)
+      setNotice(t('Le compte @{username} est créé. Son mot de passe initial n’est pas conservé dans cette saisie.', { username: account.username }))
     } catch (failure) {
       if (mounted.current && !operation.controller.signal.aborted && request.current === operation) fail(failure)
     } finally {
@@ -188,12 +189,12 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     const parsed = updateUserInputSchema.safeParse(current.form.values)
     if (!target || !sameAccount(target, base) || !sameAccount(current.form.base, base)
       || !parsed.success || !sameValues(parsed.data, values)) {
-      setSecurityConfirmation(null); setError('Le compte ou votre saisie a changé. Reprenez les informations actualisées avant de confirmer.'); return
+      setSecurityConfirmation(null); setError(t('Le compte ou votre saisie a changé. Reprenez les informations actualisées avant de confirmer.')); return
     }
-    if (base.id === current.userId && !values.enabled) { setError('Votre compte ne peut pas être désactivé depuis cette saisie.'); return }
+    if (base.id === current.userId && !values.enabled) { setError(t('Votre compte ne peut pas être désactivé depuis cette saisie.')); return }
     const removesAdministrator = base.enabled && base.role === 'ADMIN' && (!values.enabled || values.role !== 'ADMIN')
     if (removesAdministrator && current.accounts?.filter((account) => account.enabled && account.role === 'ADMIN').length === 1) {
-      setError('Un administrateur actif doit rester disponible. Ajoutez ou activez un autre administrateur avant cette modification.'); return
+      setError(t('Un administrateur actif doit rester disponible. Ajoutez ou activez un autre administrateur avant cette modification.')); return
     }
     const operation: Request = { controller: new AbortController(), kind: 'update' }
     request.current = operation; setPending('update'); setError(null); setFields({})
@@ -201,7 +202,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       const account = await usersApi.update(base.id, values, operation.controller.signal)
       if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return
       setAccounts((previous) => mergeAccount(previous, account)); setForm({ kind: 'edit', base: account, values: editValues(account) }); setSecurityConfirmation(null)
-      setNotice(`Les informations de @${account.username} sont enregistrées.`)
+      setNotice(t('Les informations de @{username} sont enregistrées.', { username: account.username }))
       if (account.id === current.userId) {
         if (base.role !== account.role || base.enabled !== account.enabled || !sameEmail(base.email, account.email)) current.session.expire()
         else current.session.updateUser({ id: account.id, displayName: account.displayName })
@@ -217,32 +218,34 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     const rejected = (message: string): PasswordResetResult => ({ ok: false, message })
     if (!mounted.current || !current.canAdmin || request.current || current.blocked || current.listStatus !== 'ready'
       || current.discard !== null || current.securityConfirmation !== null || current.passwordUncertain.has(base.id)) {
-      return rejected('La réinitialisation est indisponible. Vérifiez votre session et les informations du compte avant de confirmer.')
+      return rejected(t('La réinitialisation est indisponible. Vérifiez votre session et les informations du compte avant de confirmer.'))
     }
     const target = current.accounts?.find((account) => account.id === base.id)
     if (current.form?.kind !== 'edit' || current.form.base.id !== base.id || accountFormDirty(current.form)
       || !target || !sameAccount(target, base) || !sameAccount(current.form.base, base)) {
-      return rejected('Le compte ou votre saisie a changé. Reprenez sa fiche actualisée avant de réinitialiser son mot de passe.')
+      return rejected(t('Le compte ou votre saisie a changé. Reprenez sa fiche actualisée avant de réinitialiser son mot de passe.'))
     }
     const parsed = resetPasswordInputSchema.safeParse(input)
-    if (!parsed.success) return rejected('Le nouveau mot de passe ne respecte pas les règles indiquées.')
+    if (!parsed.success) return rejected(t('Le nouveau mot de passe ne respecte pas les règles indiquées.'))
     const operation: Request = { controller: new AbortController(), kind: 'reset' }
     request.current = operation; setPending('reset'); setError(null); setNotice(null)
     try {
       await usersApi.resetPassword(base.id, parsed.data, operation.controller.signal)
-      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected('La réinitialisation a été interrompue.')
+      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected(t('La réinitialisation a été interrompue.'))
       setResetDirty(false); setResetGeneration((previous) => previous + 1)
-      setNotice(`Le mot de passe de @${base.username} est réinitialisé. Toutes ses sessions ont été fermées${base.enabled ? '.' : ' ; son compte reste désactivé.'}`)
-      if (base.id === current.userId) current.session.expire('Votre mot de passe a été réinitialisé. Reconnectez-vous avec le nouveau mot de passe pour reprendre votre travail.')
+      setNotice(base.enabled
+          ? t('Le mot de passe de @{username} est réinitialisé. Toutes ses sessions ont été fermées.', { username: base.username })
+          : t('Le mot de passe de @{username} est réinitialisé. Toutes ses sessions ont été fermées ; son compte reste désactivé.', { username: base.username }))
+      if (base.id === current.userId) current.session.expire(t('Votre mot de passe a été réinitialisé. Reconnectez-vous avec le nouveau mot de passe pour reprendre votre travail.'))
       return { ok: true }
     } catch (failure) {
-      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected('La réinitialisation a été interrompue.')
+      if (!mounted.current || operation.controller.signal.aborted || request.current !== operation) return rejected(t('La réinitialisation a été interrompue.'))
       if (!(failure instanceof ApiError) || failure.kind !== 'http' || (failure.status !== null && failure.status >= 500)) {
         setPasswordUncertain((previous) => new Set(previous).add(base.id))
       }
       return {
         ok: false,
-        message: failure instanceof Error ? failure.message : 'La réinitialisation du mot de passe n’a pas pu être confirmée.',
+        message: failure instanceof Error ? failure.message : t('La réinitialisation du mot de passe n’a pas pu être confirmée.'),
         ...(failure instanceof ApiError ? { fieldErrors: failure.fieldErrors } : {}),
       }
     } finally {
@@ -256,7 +259,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     const target = current.accounts?.find((account) => account.id === base.id)
     if (!target || !sameAccount(target, base)) return false
     setPasswordUncertain((previous) => { const next = new Set(previous); next.delete(base.id); return next })
-    setNotice(`Vous avez confirmé la vérification de l’accès à @${base.username}. Une nouvelle réinitialisation peut être préparée si nécessaire.`)
+    setNotice(t('Vous avez confirmé la vérification de l’accès à @{username}. Une nouvelle réinitialisation peut être préparée si nécessaire.', { username: base.username }))
     return true
   }
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -267,12 +270,12 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
       const { confirmation, ...input } = form.values
       const parsed = createUserInputSchema.safeParse(input)
       if (!parsed.success) { invalid(parsed.error.issues); return }
-      if (confirmation !== input.password) { invalid([{ path: ['confirmation'], message: 'Les deux mots de passe doivent être identiques.' }]); return }
+      if (confirmation !== input.password) { invalid([{ path: ['confirmation'], message: t('Les deux mots de passe doivent être identiques.') }]); return }
       void createAccount(parsed.data)
     } else {
       const parsed = updateUserInputSchema.safeParse(form.values)
       if (!parsed.success) { invalid(parsed.error.issues); return }
-      if (targetChanged) { setError('Ce compte a changé sur le serveur. Reprenez sa fiche actualisée avant de l’enregistrer.'); return }
+      if (targetChanged) { setError(t('Ce compte a changé sur le serveur. Reprenez sa fiche actualisée avant de l’enregistrer.')); return }
       if (securityChange) setSecurityConfirmation({ base: form.base, values: parsed.data })
       else void updateAccount(form.base, parsed.data)
     }
@@ -282,11 +285,11 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
   const prefix = `user-${form?.kind ?? 'create'}`
   const restricted = state.phase === 'authenticated' && !canAdmin
   const mutating = pending === 'create' || pending === 'update' || pending === 'reset'
-  const resetUnavailableReason = discard !== null || securityConfirmation !== null ? 'Terminez la confirmation en cours avant de réinitialiser ce mot de passe.'
-    : accountDirty ? 'Enregistrez ou annulez d’abord les modifications des informations du compte.'
-      : targetChanged ? 'Reprenez les informations actualisées de ce compte avant de réinitialiser son mot de passe.'
-        : blocked ? 'Vérifiez d’abord le résultat de la modification du compte en actualisant la liste.'
-          : listStatus !== 'ready' ? 'Actualisez les comptes avant de réinitialiser ce mot de passe.' : null
+  const resetUnavailableReason = discard !== null || securityConfirmation !== null ? t('Terminez la confirmation en cours avant de réinitialiser ce mot de passe.')
+    : accountDirty ? t('Enregistrez ou annulez d’abord les modifications des informations du compte.')
+      : targetChanged ? t('Reprenez les informations actualisées de ce compte avant de réinitialiser son mot de passe.')
+        : blocked ? t('Vérifiez d’abord le résultat de la modification du compte en actualisant la liste.')
+          : listStatus !== 'ready' ? t('Actualisez les comptes avant de réinitialiser ce mot de passe.') : null
   const fieldError = (name: string) => fields[name] ? <small className="user-field-error" id={`${prefix}-${name}-error`}>{fields[name]}</small> : null
   const described = (name: string) => fields[name] ? `${prefix}-${name}-error` : undefined
 
@@ -294,49 +297,51 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
     <SheetContent className="user-management-sheet" showCloseButton={false}
       onEscapeKeyDown={(event) => { if (mutating || (pending !== 'list' && !restricted && (discard !== null || securityConfirmation))) event.preventDefault() }}
       onInteractOutside={(event) => { if (mutating) event.preventDefault() }}>
-      <SheetHeader><p className="eyebrow">LES PERSONNES DERRIÈRE LE PARC</p><SheetTitle>Gérer l’équipe</SheetTitle><SheetDescription>Les comptes et les droits d’accès à votre instance Sureau.</SheetDescription></SheetHeader>
-      <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" disabled={mutating} aria-label="Fermer la gestion de l’équipe" onClick={() => requestNavigate('close')}><X aria-hidden="true" /></Button>
-      {restricted ? <div className="user-management-scroll"><p className="user-notice" role="status">Votre session ne dispose plus des droits administrateur. La gestion de l’équipe est fermée à ce compte ; vos espaces et votre travail restent ouverts.</p><Button variant="outline" disabled={mutating} onClick={() => requestNavigate('close')}>Fermer la gestion de l’équipe</Button></div> : <div className="user-management-scroll">
-        {!canAdmin && <p className="user-notice" role="status">Les droits administrateur sont nécessaires pour modifier les comptes. Vos informations et vos saisies restent affichées.</p>}
-        <div className="user-list-toolbar"><div><Users size={19} aria-hidden="true" /><h3>Les comptes de l’instance</h3></div><Button variant="ghost" size="sm" disabled={!canAdmin || Boolean(pending)} onClick={() => { void loadAccounts() }}><RefreshCw />Actualiser les comptes</Button></div>
-        {listStatus === 'loading' && <p className="user-loading" role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" />Chargement des comptes…</p>}
-        {listError && <div className="user-error" role="alert"><p>{listError}</p><Button variant="outline" size="sm" disabled={!canAdmin || Boolean(pending)} onClick={() => { void loadAccounts() }}>Réessayer le chargement des comptes</Button></div>}
-        {listStatus === 'idle' && <p className="user-notice">Utilisez « Actualiser les comptes » pour charger la liste avec une session administrateur.</p>}
-        {accounts !== null && <ul className="user-account-list" aria-label="Comptes de l’instance">{accounts.map((account) => <li key={account.id}><button type="button" className={form?.kind === 'edit' && form.base.id === account.id ? 'is-current' : ''} disabled={!canAdmin || Boolean(pending)} aria-label={`Modifier le compte ${account.username}`} aria-pressed={form?.kind === 'edit' && form.base.id === account.id} onClick={() => requestNavigate(account)}><span className="user-account-icon"><UserRound size={18} aria-hidden="true" /></span><span className="user-account-copy"><strong>{account.displayName}{account.id === state.user?.id && <small>Vous</small>}</strong><span>@{account.username} · {roleLabels[account.role]}{account.email && <> · {account.email}</>}</span></span><span className={`user-access-badge${account.enabled ? '' : ' is-disabled'}`}>{account.enabled ? 'Actif' : 'Désactivé'}</span></button></li>)}</ul>}
-        {listStatus === 'ready' && accounts?.length === 0 && <p className="user-notice">Aucun compte n’a été renvoyé par cette instance.</p>}
-        {canAdmin && <Button variant="outline" className="user-create-button" disabled={Boolean(pending) || accounts === null || listStatus !== 'ready'} onClick={() => requestNavigate('create')}><Plus />Créer un compte</Button>}
+      <SheetHeader><p className="eyebrow">{t('LES PERSONNES DERRIÈRE LE PARC')}</p><SheetTitle>{t('Gérer l’équipe')}</SheetTitle><SheetDescription>{t('Les comptes et les droits d’accès à votre instance Sureau.')}</SheetDescription></SheetHeader>
+      <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" disabled={mutating} aria-label={t('Fermer la gestion de l’équipe')} onClick={() => requestNavigate('close')}><X aria-hidden="true" /></Button>
+      {restricted ? <div className="user-management-scroll"><p className="user-notice" role="status">{t('Votre session ne dispose plus des droits administrateur. La gestion de l’équipe est fermée à ce compte ; vos espaces et votre travail restent ouverts.')}</p><Button variant="outline" disabled={mutating} onClick={() => requestNavigate('close')}>{t('Fermer la gestion de l’équipe')}</Button></div> : <div className="user-management-scroll">
+        {!canAdmin && <p className="user-notice" role="status">{t('Les droits administrateur sont nécessaires pour modifier les comptes. Vos informations et vos saisies restent affichées.')}</p>}
+        <div className="user-list-toolbar"><div><Users size={19} aria-hidden="true" /><h3>{t('Les comptes de l’instance')}</h3></div><Button variant="ghost" size="sm" disabled={!canAdmin || Boolean(pending)} onClick={() => { void loadAccounts() }}><RefreshCw />{t('Actualiser les comptes')}</Button></div>
+        {listStatus === 'loading' && <p className="user-loading" role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" />{t('Chargement des comptes…')}</p>}
+        {listError && <div className="user-error" role="alert"><p>{listError}</p><Button variant="outline" size="sm" disabled={!canAdmin || Boolean(pending)} onClick={() => { void loadAccounts() }}>{t('Réessayer le chargement des comptes')}</Button></div>}
+        {listStatus === 'idle' && <p className="user-notice">{t('Utilisez « Actualiser les comptes » pour charger la liste avec une session administrateur.')}</p>}
+        {accounts !== null && <ul className="user-account-list" aria-label={t('Comptes de l’instance')}>{accounts.map((account) => <li key={account.id}><button type="button" className={form?.kind === 'edit' && form.base.id === account.id ? 'is-current' : ''} disabled={!canAdmin || Boolean(pending)} aria-label={t('Modifier le compte {username}', { username: account.username })} aria-pressed={form?.kind === 'edit' && form.base.id === account.id} onClick={() => requestNavigate(account)}><span className="user-account-icon"><UserRound size={18} aria-hidden="true" /></span><span className="user-account-copy"><strong>{account.displayName}{account.id === state.user?.id && <small>{t('Vous')}</small>}</strong><span>@{account.username} · {t(roleLabels[account.role])}{account.email && <> · {account.email}</>}</span></span><span className={`user-access-badge${account.enabled ? '' : ' is-disabled'}`}>{account.enabled ? t('Actif') : t('Désactivé')}</span></button></li>)}</ul>}
+        {listStatus === 'ready' && accounts?.length === 0 && <p className="user-notice">{t('Aucun compte n’a été renvoyé par cette instance.')}</p>}
+        {canAdmin && <Button variant="outline" className="user-create-button" disabled={Boolean(pending) || accounts === null || listStatus !== 'ready'} onClick={() => requestNavigate('create')}><Plus />{t('Créer un compte')}</Button>}
         {notice && <p className="user-success" role="status"><Check size={14} aria-hidden="true" />{notice}</p>}
-        {blocked && <p className="user-error" role="alert">Le résultat de la dernière modification doit être vérifié. Actualisez explicitement les comptes avant une nouvelle tentative. Votre saisie est conservée.</p>}
+        {blocked && <p className="user-error" role="alert">{t('Le résultat de la dernière modification doit être vérifié. Actualisez explicitement les comptes avant une nouvelle tentative. Votre saisie est conservée.')}</p>}
         {form && <form className="user-entry-form" noValidate onSubmit={submit}>
-          <div className="user-form-heading"><ShieldCheck size={20} strokeWidth={1.4} aria-hidden="true" /><div><h3>{form.kind === 'create' ? 'Un nouveau compte' : `Le compte @${form.base.username}`}</h3><p>{form.kind === 'create' ? 'Choisissez les accès de cette personne et son mot de passe initial.' : 'L’identifiant du compte reste le même.'}</p></div></div>
-          {targetChanged && <div className="user-error" role="alert"><p>{currentTarget ? 'Ce compte a changé depuis l’ouverture de cette fiche. Votre saisie est conservée.' : 'Ce compte ne figure plus dans la liste actualisée. Votre saisie est conservée.'}</p>{currentTarget && <Button type="button" variant="outline" disabled={Boolean(pending) || !canAdmin} onClick={() => requestNavigate(currentTarget)}>Reprendre les informations actualisées</Button>}</div>}
-          {resetDirty && <p className="user-help">Une réinitialisation de mot de passe est en cours de saisie. Terminez-la ou annulez-la pour modifier les informations de ce compte.</p>}
+          <div className="user-form-heading"><ShieldCheck size={20} strokeWidth={1.4} aria-hidden="true" /><div><h3>{form.kind === 'create' ? t('Un nouveau compte') : t('Le compte @{username}', { username: form.base.username })}</h3><p>{form.kind === 'create' ? t('Choisissez les accès de cette personne et son mot de passe initial.') : t('L’identifiant du compte reste le même.')}</p></div></div>
+          {targetChanged && <div className="user-error" role="alert"><p>{currentTarget ? t('Ce compte a changé depuis l’ouverture de cette fiche. Votre saisie est conservée.') : t('Ce compte ne figure plus dans la liste actualisée. Votre saisie est conservée.')}</p>{currentTarget && <Button type="button" variant="outline" disabled={Boolean(pending) || !canAdmin} onClick={() => requestNavigate(currentTarget)}>{t('Reprendre les informations actualisées')}</Button>}</div>}
+          {resetDirty && <p className="user-help">{t('Une réinitialisation de mot de passe est en cours de saisie. Terminez-la ou annulez-la pour modifier les informations de ce compte.')}</p>}
           <fieldset disabled={inputDisabled}>
             {form.kind === 'create' ? <>
-              <label htmlFor="user-create-username">Identifiant *<input id="user-create-username" name="username" value={form.values.username} maxLength={50} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.username)} aria-describedby={described('username')} onChange={(event) => changeCreate('username', event.target.value)} />{fieldError('username')}<small>3 à 50 caractères : lettres, chiffres, point, tiret ou tiret bas.</small></label>
-              <label htmlFor="user-create-displayName">Nom affiché *<input id="user-create-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeCreate('displayName', event.target.value)} />{fieldError('displayName')}</label>
-              <label htmlFor="user-create-email">E-mail<input id="user-create-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeCreate('email', event.target.value)} />{fieldError('email')}<small>Facultatif. Il permet à cette personne d’utiliser la connexion d’entreprise, si elle est configurée.</small></label>
-              <label htmlFor="user-create-password">Mot de passe initial *<input id="user-create-password" name="password" type="password" value={form.values.password} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.password)} aria-describedby={described('password')} onChange={(event) => changeCreate('password', event.target.value)} />{fieldError('password')}<small>12 à 64 caractères. Les espaces saisis font partie du mot de passe.</small></label>
-              <label htmlFor="user-create-confirmation">Confirmer le mot de passe *<input id="user-create-confirmation" name="confirmation" type="password" value={form.values.confirmation} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.confirmation)} aria-describedby={described('confirmation')} onChange={(event) => changeCreate('confirmation', event.target.value)} />{fieldError('confirmation')}</label>
-              <label htmlFor="user-create-role">Rôle<select id="user-create-role" name="role" value={form.values.role} onChange={(event) => changeCreate('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>{fieldError('role')}</label>
+              <label htmlFor="user-create-username">{t('Identifiant *')}<input id="user-create-username" name="username" value={form.values.username} maxLength={50} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.username)} aria-describedby={described('username')} onChange={(event) => changeCreate('username', event.target.value)} />{fieldError('username')}<small>{t('3 à 50 caractères : lettres, chiffres, point, tiret ou tiret bas.')}</small></label>
+              <label htmlFor="user-create-displayName">{t('Nom affiché *')}<input id="user-create-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeCreate('displayName', event.target.value)} />{fieldError('displayName')}</label>
+              <label htmlFor="user-create-email">{t('E-mail')}<input id="user-create-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeCreate('email', event.target.value)} />{fieldError('email')}<small>{t('Facultatif. Il permet à cette personne d’utiliser la connexion d’entreprise, si elle est configurée.')}</small></label>
+              <label htmlFor="user-create-password">{t('Mot de passe initial *')}<input id="user-create-password" name="password" type="password" value={form.values.password} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.password)} aria-describedby={described('password')} onChange={(event) => changeCreate('password', event.target.value)} />{fieldError('password')}<small>{t('12 à 64 caractères. Les espaces saisis font partie du mot de passe.')}</small></label>
+              <label htmlFor="user-create-confirmation">{t('Confirmer le mot de passe *')}<input id="user-create-confirmation" name="confirmation" type="password" value={form.values.confirmation} maxLength={64} autoComplete="new-password" aria-invalid={Boolean(fields.confirmation)} aria-describedby={described('confirmation')} onChange={(event) => changeCreate('confirmation', event.target.value)} />{fieldError('confirmation')}</label>
+              <label htmlFor="user-create-role">{t('Rôle')}<select id="user-create-role" name="role" value={form.values.role} onChange={(event) => changeCreate('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role}>{t(label)}</option>)}</select>{fieldError('role')}</label>
             </> : <>
-              <label htmlFor="user-edit-displayName">Nom affiché *<input id="user-edit-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeEdit('displayName', event.target.value)} />{fieldError('displayName')}</label>
-              <label htmlFor="user-edit-email">E-mail<input id="user-edit-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeEdit('email', event.target.value)} />{fieldError('email')}<small>Facultatif. Il permet la connexion d’entreprise ; le changer ferme les sessions de ce compte.</small></label>
-              <label htmlFor="user-edit-role">Rôle<select id="user-edit-role" name="role" value={form.values.role} onChange={(event) => changeEdit('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role} disabled={Boolean(lastAdministrator) && role !== 'ADMIN'}>{label}</option>)}</select>{fieldError('role')}</label>
-              <label className="user-enabled-option" htmlFor="user-edit-enabled"><input id="user-edit-enabled" name="enabled" type="checkbox" checked={form.values.enabled} disabled={inputDisabled || form.base.id === state.user?.id || Boolean(lastAdministrator)} onChange={(event) => changeEdit('enabled', event.target.checked)} /><span>Autoriser l’accès à ce compte</span></label>{fieldError('enabled')}
-              {form.base.id === state.user?.id && <p className="user-help">Pour désactiver votre propre compte, demandez à un autre administrateur.</p>}
-              {lastAdministrator && <p className="user-help">Ce compte est le dernier administrateur actif de la liste. Un autre administrateur doit être disponible avant de modifier ses accès.</p>}
+              <label htmlFor="user-edit-displayName">{t('Nom affiché *')}<input id="user-edit-displayName" name="displayName" value={form.values.displayName} maxLength={80} autoComplete="off" aria-invalid={Boolean(fields.displayName)} aria-describedby={described('displayName')} onChange={(event) => changeEdit('displayName', event.target.value)} />{fieldError('displayName')}</label>
+              <label htmlFor="user-edit-email">{t('E-mail')}<input id="user-edit-email" name="email" type="email" value={form.values.email ?? ''} maxLength={254} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(fields.email)} aria-describedby={described('email')} onChange={(event) => changeEdit('email', event.target.value)} />{fieldError('email')}<small>{t('Facultatif. Il permet la connexion d’entreprise ; le changer ferme les sessions de ce compte.')}</small></label>
+              <label htmlFor="user-edit-role">{t('Rôle')}<select id="user-edit-role" name="role" value={form.values.role} onChange={(event) => changeEdit('role', event.target.value)}>{Object.entries(roleLabels).map(([role, label]) => <option key={role} value={role} disabled={Boolean(lastAdministrator) && role !== 'ADMIN'}>{t(label)}</option>)}</select>{fieldError('role')}</label>
+              <label className="user-enabled-option" htmlFor="user-edit-enabled"><input id="user-edit-enabled" name="enabled" type="checkbox" checked={form.values.enabled} disabled={inputDisabled || form.base.id === state.user?.id || Boolean(lastAdministrator)} onChange={(event) => changeEdit('enabled', event.target.checked)} /><span>{t('Autoriser l’accès à ce compte')}</span></label>{fieldError('enabled')}
+              {form.base.id === state.user?.id && <p className="user-help">{t('Pour désactiver votre propre compte, demandez à un autre administrateur.')}</p>}
+              {lastAdministrator && <p className="user-help">{t('Ce compte est le dernier administrateur actif de la liste. Un autre administrateur doit être disponible avant de modifier ses accès.')}</p>}
             </>}
-            <p className="user-role-help">Administrateur : comptes et parc · Éditeur : matériel et espaces · Lecteur : consultation.</p>
+            <p className="user-role-help">{t('Administrateur : comptes et parc · Éditeur : matériel et espaces · Lecteur : consultation.')}</p>
           </fieldset>
           {error && <p className="user-error" role="alert">{error}</p>}
-          {securityConfirmation && <div className="user-confirm" role="alert"><h3>Confirmer les nouveaux accès ?</h3><p>@{securityConfirmation.base.username} : {roleLabels[securityConfirmation.base.role]} → {roleLabels[securityConfirmation.values.role]} · {securityConfirmation.values.enabled ? 'Accès autorisé' : 'Accès désactivé'}.</p>{!sameEmail(securityConfirmation.base.email, securityConfirmation.values.email) && <p>E-mail de connexion : {securityConfirmation.base.email ?? 'aucun'} → {securityConfirmation.values.email ?? 'aucun'}.</p>}<p>Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter{securityConfirmation.values.enabled ? '.' : ' après la réactivation de son accès.'}</p>{securityConfirmation.base.id === state.user?.id && <p>Vous devrez vous reconnecter pour continuer avec vos nouveaux droits.</p>}<div><Button type="button" variant="outline" disabled={Boolean(pending)} onClick={() => setSecurityConfirmation(null)}>Revenir à la saisie</Button><Button type="button" disabled={Boolean(pending) || !canAdmin || blocked || listStatus !== 'ready'} onClick={() => { const captured = latest.current.securityConfirmation; if (captured) void updateAccount(captured.base, captured.values) }}>Confirmer la modification du compte</Button></div></div>}
-          <div className="user-form-actions"><Button type="button" variant="outline" disabled={Boolean(pending) || discard !== null} onClick={() => requestNavigate('list')}>Annuler la saisie</Button><Button type="submit" disabled={Boolean(submitDisabled)}>{pending === 'create' || pending === 'update' ? <LoaderCircle className="animate-spin" /> : form.kind === 'create' ? <Plus /> : <Save />}{form.kind === 'create' ? 'Créer le compte' : 'Enregistrer le compte'}</Button></div>
+          {securityConfirmation && <div className="user-confirm" role="alert"><h3>{t('Confirmer les nouveaux accès ?')}</h3><p>@{securityConfirmation.base.username} : {t(roleLabels[securityConfirmation.base.role])} → {t(roleLabels[securityConfirmation.values.role])} · {securityConfirmation.values.enabled ? t('Accès autorisé') : t('Accès désactivé')}.</p>{!sameEmail(securityConfirmation.base.email, securityConfirmation.values.email) && <p>{t('E-mail de connexion : {before} → {after}.', { before: securityConfirmation.base.email ?? t('aucun'), after: securityConfirmation.values.email ?? t('aucun') })}</p>}<p>{securityConfirmation.values.enabled
+            ? t('Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter.')
+            : t('Les sessions ouvertes de ce compte seront révoquées. Cette personne devra se reconnecter après la réactivation de son accès.')}</p>{securityConfirmation.base.id === state.user?.id && <p>{t('Vous devrez vous reconnecter pour continuer avec vos nouveaux droits.')}</p>}<div><Button type="button" variant="outline" disabled={Boolean(pending)} onClick={() => setSecurityConfirmation(null)}>{t('Revenir à la saisie')}</Button><Button type="button" disabled={Boolean(pending) || !canAdmin || blocked || listStatus !== 'ready'} onClick={() => { const captured = latest.current.securityConfirmation; if (captured) void updateAccount(captured.base, captured.values) }}>{t('Confirmer la modification du compte')}</Button></div></div>}
+          <div className="user-form-actions"><Button type="button" variant="outline" disabled={Boolean(pending) || discard !== null} onClick={() => requestNavigate('list')}>{t('Annuler la saisie')}</Button><Button type="submit" disabled={Boolean(submitDisabled)}>{pending === 'create' || pending === 'update' ? <LoaderCircle className="animate-spin" /> : form.kind === 'create' ? <Plus /> : <Save />}{form.kind === 'create' ? t('Créer le compte') : t('Enregistrer le compte')}</Button></div>
         </form>}
         {form?.kind === 'edit' && <AdminPasswordResetPanel key={`${form.base.id}:${resetGeneration}`} target={form.base} canAdmin={canAdmin}
           pending={Boolean(pending)} resetting={pending === 'reset'} unavailableReason={resetUnavailableReason}
           uncertain={passwordUncertain.has(form.base.id)} onDirtyChange={setResetDirty} onReset={resetPassword} onAcknowledgeUncertain={acknowledgePassword} />}
-        {discard !== null && <div className="user-confirm" role="alert"><h3>Abandonner cette saisie ?</h3><p>Les champs non enregistrés seront effacés, y compris les mots de passe saisis pour la création ou la réinitialisation d’un compte.</p><div><Button variant="outline" disabled={Boolean(pending)} onClick={() => setDiscard(null)}>Conserver ma saisie</Button><Button variant="ghost" disabled={Boolean(pending)} onClick={() => { if (!request.current && latest.current.discard !== null) navigate(latest.current.discard) }}>Effacer et continuer</Button></div></div>}
+        {discard !== null && <div className="user-confirm" role="alert"><h3>{t('Abandonner cette saisie ?')}</h3><p>{t('Les champs non enregistrés seront effacés, y compris les mots de passe saisis pour la création ou la réinitialisation d’un compte.')}</p><div><Button variant="outline" disabled={Boolean(pending)} onClick={() => setDiscard(null)}>{t('Conserver ma saisie')}</Button><Button variant="ghost" disabled={Boolean(pending)} onClick={() => { if (!request.current && latest.current.discard !== null) navigate(latest.current.discard) }}>{t('Effacer et continuer')}</Button></div></div>}
       </div>}
     </SheetContent>
   </Sheet>

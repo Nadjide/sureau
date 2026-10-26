@@ -1,4 +1,5 @@
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
+import { t } from '@/lib/i18n'
 
 type Point = readonly [number, number]
 type PlanItem = Workstation | FurnitureItem
@@ -16,7 +17,7 @@ const epsilon = 1e-7
 const fullTurn = Math.PI * 2
 
 export function normalizeRotation(radians: number): number {
-  if (!Number.isFinite(radians)) throw new RangeError('La rotation doit être un nombre fini.')
+  if (!Number.isFinite(radians)) throw new RangeError(t('La rotation doit être un nombre fini.'))
   const rotation = radians % fullTurn
   const positive = rotation < 0 ? rotation + fullTurn : rotation
   return positive === 0 || positive >= fullTurn ? 0 : positive
@@ -25,7 +26,7 @@ export function normalizeRotation(radians: number): number {
 function envelope(station: PlanItem): Envelope {
   if (![...station.position, station.width, station.depth].every(Number.isFinite)
     || station.width <= 0 || station.depth <= 0) {
-    throw new RangeError('Les dimensions et coordonnées du mobilier sont invalides.')
+    throw new RangeError(t('Les dimensions et coordonnées du mobilier sont invalides.'))
   }
   const rotation = normalizeRotation(station.rotation)
   const cosine = Math.cos(rotation)
@@ -63,13 +64,13 @@ export function footprintBounds(item: PlanItem): { minX: number; maxX: number; m
 
 function clampItem<T extends PlanItem>(plan: PlanBounds, station: T): T {
   if (![plan.width, plan.depth].every(Number.isFinite) || plan.width <= 0 || plan.depth <= 0) {
-    throw new RangeError('Les dimensions du plateau sont invalides.')
+    throw new RangeError(t('Les dimensions du plateau sont invalides.'))
   }
   const box = envelope(station)
   const xRadius = projectedRadius(box, [1, 0])
   const zRadius = projectedRadius(box, [0, 1])
   if (xRadius * 2 > plan.width + epsilon || zRadius * 2 > plan.depth + epsilon) {
-    throw new RangeError('Ce mobilier ne tient pas dans le plateau.')
+    throw new RangeError(t('Ce mobilier ne tient pas dans le plateau.'))
   }
   const boundedX = Math.max(-plan.width / 2 + xRadius, Math.min(plan.width / 2 - xRadius, box.center[0]))
   const boundedZ = Math.max(-plan.depth / 2 + zRadius, Math.min(plan.depth / 2 - zRadius, box.center[1]))

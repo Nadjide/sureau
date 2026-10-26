@@ -1,3 +1,5 @@
+import { msg, plural, t } from './i18n'
+
 export type ApiErrorKind = 'network' | 'http' | 'invalid-response'
 
 export class ApiError extends Error {
@@ -31,21 +33,21 @@ type AuthFailureListener = (error: ApiError) => void
 interface CsrfToken { token: string; headerName: string }
 
 const messages: Record<string, string> = {
-  INVALID_CREDENTIALS: 'L’identifiant ou le mot de passe est incorrect.',
-  AUTHENTICATION_REQUIRED: 'Votre session a expiré. Reconnectez-vous pour continuer.',
-  ACCESS_DENIED: 'Votre session ou vos droits ne permettent pas cette action. Réessayez après vérification de la connexion.',
-  VALIDATION_ERROR: 'Vérifiez les champs indiqués avant de réessayer.',
-  MALFORMED_REQUEST: 'La demande contient des données invalides.',
-  INVALID_REQUEST: 'Les informations saisies ne permettent pas de terminer cette action.',
-  DUPLICATE_RESOURCE: 'Cet identifiant est déjà utilisé. Choisissez-en un autre.',
-  LAST_ADMIN_REQUIRED: 'Conservez au moins un compte administrateur actif. Cette modification n’a pas été appliquée.',
-  CURRENT_PASSWORD_INVALID: 'Le mot de passe actuel est incorrect. Vérifiez-le avant de réessayer.',
-  ASSET_CONFLICT: 'Cette fiche a été modifiée par une autre personne. Votre saisie est conservée. Rechargez la version du serveur avant de poursuivre.',
-  ASSET_STATUS_CONFLICT: 'Un matériel affecté doit d’abord être désaffecté et enregistré avant de pouvoir être retiré du parc.',
-  WORKSPACE_CONFLICT: 'L’espace a changé sur le serveur. Votre brouillon est conservé.',
-  WORKSPACE_INVALID: 'L’espace contient des données invalides et n’a pas été enregistré.',
-  WORKSPACE_TOO_LARGE: 'L’espace dépasse la taille autorisée.',
-  PAYLOAD_TOO_LARGE: 'Les données envoyées sont trop volumineuses.',
+  INVALID_CREDENTIALS: msg('L’identifiant ou le mot de passe est incorrect.'),
+  AUTHENTICATION_REQUIRED: msg('Votre session a expiré. Reconnectez-vous pour continuer.'),
+  ACCESS_DENIED: msg('Votre session ou vos droits ne permettent pas cette action. Réessayez après vérification de la connexion.'),
+  VALIDATION_ERROR: msg('Vérifiez les champs indiqués avant de réessayer.'),
+  MALFORMED_REQUEST: msg('La demande contient des données invalides.'),
+  INVALID_REQUEST: msg('Les informations saisies ne permettent pas de terminer cette action.'),
+  DUPLICATE_RESOURCE: msg('Cet identifiant est déjà utilisé. Choisissez-en un autre.'),
+  LAST_ADMIN_REQUIRED: msg('Conservez au moins un compte administrateur actif. Cette modification n’a pas été appliquée.'),
+  CURRENT_PASSWORD_INVALID: msg('Le mot de passe actuel est incorrect. Vérifiez-le avant de réessayer.'),
+  ASSET_CONFLICT: msg('Cette fiche a été modifiée par une autre personne. Votre saisie est conservée. Rechargez la version du serveur avant de poursuivre.'),
+  ASSET_STATUS_CONFLICT: msg('Un matériel affecté doit d’abord être désaffecté et enregistré avant de pouvoir être retiré du parc.'),
+  WORKSPACE_CONFLICT: msg('L’espace a changé sur le serveur. Votre brouillon est conservé.'),
+  WORKSPACE_INVALID: msg('L’espace contient des données invalides et n’a pas été enregistré.'),
+  WORKSPACE_TOO_LARGE: msg('L’espace dépasse la taille autorisée.'),
+  PAYLOAD_TOO_LARGE: msg('Les données envoyées sont trop volumineuses.'),
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -53,30 +55,30 @@ function object(value: unknown): value is Record<string, unknown> {
 }
 
 function validationMessage(value: unknown): string {
-  if (typeof value !== 'string') return 'Vérifiez ce champ.'
-  if (/must not be (blank|null|empty)/i.test(value)) return 'Ce champ est obligatoire.'
+  if (typeof value !== 'string') return t('Vérifiez ce champ.')
+  if (/must not be (blank|null|empty)/i.test(value)) return t('Ce champ est obligatoire.')
   const size = /size must be between (\d+) and (\d+)/i.exec(value)
-  if (size) return `Utilisez entre ${size[1]} et ${size[2]} caractères.`
-  if (/must match/i.test(value)) return 'Utilisez le format demandé.'
-  if (/well-formed email/i.test(value)) return 'Renseignez une adresse e-mail valide.'
-  if (/already used by an existing asset/i.test(value)) return 'Déjà utilisé par un matériel de l’inventaire.'
+  if (size) return t('Utilisez entre {min} et {max} caractères.', { min: size[1]!, max: size[2]! })
+  if (/must match/i.test(value)) return t('Utilisez le format demandé.')
+  if (/well-formed email/i.test(value)) return t('Renseignez une adresse e-mail valide.')
+  if (/already used by an existing asset/i.test(value)) return t('Déjà utilisé par un matériel de l’inventaire.')
   const repeated = /repeated in this import \(row (\d+)\)/i.exec(value)
-  if (repeated) return `Déjà présent ligne ${Number(repeated[1]) + 1} du fichier.`
-  if (/only an assigned asset can name its holder/i.test(value)) return 'Seul un matériel affecté peut nommer une personne.'
-  return 'Vérifiez la valeur de ce champ.'
+  if (repeated) return t('Déjà présent ligne {line} du fichier.', { line: Number(repeated[1]) + 1 })
+  if (/only an assigned asset can name its holder/i.test(value)) return t('Seul un matériel affecté peut nommer une personne.')
+  return t('Vérifiez la valeur de ce champ.')
 }
 
 function tooManyAttempts(retryAfter: string | null): string {
   const seconds = Number(retryAfter)
   if (!retryAfter || !Number.isFinite(seconds) || seconds <= 0) {
-    return 'Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.'
+    return t('Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.')
   }
   if (seconds < 60) {
     const rounded = Math.ceil(seconds)
-    return `Trop de tentatives échouées. Réessayez dans ${rounded} seconde${rounded > 1 ? 's' : ''}.`
+    return plural(rounded, 'Trop de tentatives échouées. Réessayez dans {count} seconde.', 'Trop de tentatives échouées. Réessayez dans {count} secondes.')
   }
   const minutes = Math.ceil(seconds / 60)
-  return `Trop de tentatives échouées. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`
+  return plural(minutes, 'Trop de tentatives échouées. Réessayez dans {count} minute.', 'Trop de tentatives échouées. Réessayez dans {count} minutes.')
 }
 
 async function responseError(response: Response): Promise<ApiError> {
@@ -92,14 +94,14 @@ async function responseError(response: Response): Promise<ApiError> {
   // The server locks an account or address after repeated failures; Retry-After gives the wait.
   if (response.status === 429) return new ApiError('http', tooManyAttempts(response.headers.get('Retry-After')), 429, code, fields)
   const fallback = response.status >= 500
-    ? 'Le service est momentanément indisponible. Réessayez dans un instant.'
-    : response.status === 401 ? messages.AUTHENTICATION_REQUIRED!
-      : response.status === 403 ? messages.ACCESS_DENIED!
-        : response.status === 404 ? 'La ressource demandée est introuvable.'
-          : response.status === 409 ? 'Ces informations ont changé ou sont déjà utilisées. Vérifiez-les avant de réessayer.'
-            : response.status === 412 ? 'Cette fiche a changé sur le serveur. Votre saisie est conservée ; rechargez la fiche avant de poursuivre.'
-            : 'La demande n’a pas pu être terminée. Réessayez dans un instant.'
-  return new ApiError('http', code && Object.hasOwn(messages, code) ? messages[code]! : fallback, response.status, code, fields)
+    ? t('Le service est momentanément indisponible. Réessayez dans un instant.')
+    : response.status === 401 ? t(messages.AUTHENTICATION_REQUIRED!)
+      : response.status === 403 ? t(messages.ACCESS_DENIED!)
+        : response.status === 404 ? t('La ressource demandée est introuvable.')
+          : response.status === 409 ? t('Ces informations ont changé ou sont déjà utilisées. Vérifiez-les avant de réessayer.')
+            : response.status === 412 ? t('Cette fiche a changé sur le serveur. Votre saisie est conservée ; rechargez la fiche avant de poursuivre.')
+            : t('La demande n’a pas pu être terminée. Réessayez dans un instant.')
+  return new ApiError('http', code && Object.hasOwn(messages, code) ? t(messages[code]!) : fallback, response.status, code, fields)
 }
 
 /** One instance per browser origin. Credentials and CSRF never enter browser storage. */
@@ -112,7 +114,7 @@ export function createApiClient(defaultFetcher: typeof fetch = (...args) => fetc
     if (!path.startsWith('/api/') || path.startsWith('//')) throw new Error('An API path on the current origin is required.')
     options.signal?.throwIfAborted()
     if (options.ifMatch !== undefined && (!Number.isSafeInteger(options.ifMatch) || options.ifMatch < 0)) {
-      throw new RangeError('Une révision entière positive ou nulle est requise.')
+      throw new RangeError(t('Une révision entière positive ou nulle est requise.'))
     }
     const method = options.method || 'GET'
     const fetcher = options.fetcher || defaultFetcher
@@ -135,7 +137,7 @@ export function createApiClient(defaultFetcher: typeof fetch = (...args) => fetc
     let response: Response
     try { response = await fetcher(path, init) } catch {
       options.signal?.throwIfAborted()
-      throw new ApiError('network', 'Impossible de joindre Sureau. Vérifiez votre connexion puis réessayez.')
+      throw new ApiError('network', t('Impossible de joindre Sureau. Vérifiez votre connexion puis réessayez.'))
     }
     options.signal?.throwIfAborted()
     if (!response.ok) {
@@ -155,17 +157,17 @@ export function createApiClient(defaultFetcher: typeof fetch = (...args) => fetc
     let payload: unknown
     try { payload = await response.json() } catch {
       options.signal?.throwIfAborted()
-      throw new ApiError('invalid-response', 'Sureau a renvoyé une réponse illisible. Réessayez dans un instant.')
+      throw new ApiError('invalid-response', t('Sureau a renvoyé une réponse illisible. Réessayez dans un instant.'))
     }
     options.signal?.throwIfAborted()
     try { return decode(payload) } catch {
-      throw new ApiError('invalid-response', 'Les données reçues de Sureau sont incompatibles avec cette version.')
+      throw new ApiError('invalid-response', t('Les données reçues de Sureau sont incompatibles avec cette version.'))
     }
   }
 
   async function requestVoid(path: string, options: ApiRequestOptions = {}): Promise<void> {
     const response = await request(path, options)
-    if (response.status !== 204) throw new ApiError('invalid-response', 'Sureau n’a pas confirmé cette action. Vérifiez son résultat avant de réessayer.')
+    if (response.status !== 204) throw new ApiError('invalid-response', t('Sureau n’a pas confirmé cette action. Vérifiez son résultat avant de réessayer.'))
     options.signal?.throwIfAborted()
   }
 

@@ -20,6 +20,8 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     baseURL: origin,
+    // Sans choix enregistré, l'interface suit la langue du navigateur.
+    locale: 'fr-FR',
     // SUREAU_E2E_CHANNEL=chrome utilise le Chrome installé plutôt que le
     // Chromium téléchargé par Playwright.
     channel: process.env.SUREAU_E2E_CHANNEL || undefined,

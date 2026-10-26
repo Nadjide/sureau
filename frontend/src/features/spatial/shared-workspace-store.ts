@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api-client'
+import { msg, t } from '@/lib/i18n'
 import { updateLocation } from './local-locations'
 import type { SpatialPlan } from './plan-document'
 import {
@@ -34,9 +35,9 @@ export interface SharedWorkspaceDependencies {
 type StoredState = Omit<SharedWorkspaceState, 'draft' | 'dirty' | 'canUndo' | 'canRedo'>
 type Operation = { kind: 'load' | 'save'; controller: AbortController; cycle: number }
 
-const uncertainMessage = 'L’enregistrement de l’espace n’a pas pu être confirmé. Votre brouillon est conservé. Rechargez la version du serveur pour vérifier son état avant de réessayer.'
-const conflictMessage = 'L’espace a été modifié sur le serveur. Votre brouillon est conservé. Exportez votre travail ou rechargez la version du serveur avant de poursuivre.'
-const missingMessage = 'Le serveur ne contient plus l’espace précédemment chargé. Votre brouillon et ses localisations sont conservés. Exportez votre travail et vérifiez cette instance avant de recharger.'
+const uncertainMessage = msg('L’enregistrement de l’espace n’a pas pu être confirmé. Votre brouillon est conservé. Rechargez la version du serveur pour vérifier son état avant de réessayer.')
+const conflictMessage = msg('L’espace a été modifié sur le serveur. Votre brouillon est conservé. Exportez votre travail ou rechargez la version du serveur avant de poursuivre.')
+const missingMessage = msg('Le serveur ne contient plus l’espace précédemment chargé. Votre brouillon et ses localisations sont conservés. Exportez votre travail et vérifiez cette instance avant de recharger.')
 
 function message(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -74,7 +75,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
   }
 
   function warn(error: unknown): false {
-    publish({ ...state, warning: message(error, 'Cette modification est invalide. Aucun changement n’a été appliqué.') })
+    publish({ ...state, warning: message(error, t('Cette modification est invalide. Aucun changement n’a été appliqué.')) })
     return false
   }
 
@@ -99,7 +100,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
       if (!current(request)) return false
       if (snapshot === null) {
         if (state.base !== null || (state.revision !== null && state.revision > 0)) {
-          publish({ ...state, phase: 'ready', loading: false, blocked: 'uncertain', error: missingMessage })
+          publish({ ...state, phase: 'ready', loading: false, blocked: 'uncertain', error: t(missingMessage) })
           return false
         }
         publish({
@@ -111,7 +112,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
       const history = createSpatialHistory({ workspace: snapshot.workspace, locations: snapshot.locations })
       if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision <= 0
         || typeof snapshot.updatedAt !== 'string' || !Number.isFinite(Date.parse(snapshot.updatedAt))) {
-        throw new ApiError('invalid-response', 'La réponse du serveur ne contient pas une version valide de l’espace.')
+        throw new ApiError('invalid-response', t('La réponse du serveur ne contient pas une version valide de l’espace.'))
       }
       publish({
         phase: 'ready', history, base: history.present, revision: snapshot.revision, updatedAt: snapshot.updatedAt,
@@ -121,7 +122,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
     } catch (error) {
       if (!current(request)) return false
       publish({ ...state, phase: state.history ? 'ready' : 'error', loading: false,
-        error: message(error, 'L’espace n’a pas pu être chargé. Réessayez après avoir vérifié votre connexion.') })
+        error: message(error, t('L’espace n’a pas pu être chargé. Réessayez après avoir vérifié votre connexion.')) })
       return false
     } finally {
       if (operation === request) operation = null
@@ -144,7 +145,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
     operation = null
     pending?.controller.abort()
     if (pending?.kind === 'save') {
-      publish({ ...state, saving: false, blocked: 'uncertain', error: uncertainMessage })
+      publish({ ...state, saving: false, blocked: 'uncertain', error: t(uncertainMessage) })
     } else if (pending?.kind === 'load') {
       publish({ ...state, loading: false })
     }
@@ -176,7 +177,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
     return change(() => {
       const present = state.history!.present
       if (workstationId !== null && !present.workspace.rooms.some((room) => room.plan.workstations.some((station) => station.id === workstationId))) {
-        throw new RangeError('Ce poste n’existe pas dans l’espace. Aucun lien n’a été modifié.')
+        throw new RangeError(t('Ce poste n’existe pas dans l’espace. Aucun lien n’a été modifié.'))
       }
       return { ...present, locations: updateLocation(present.locations, assetId, workstationId) }
     })
@@ -205,7 +206,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
       if (snapshot.revision !== expectedRevision + 1 || !Number.isSafeInteger(snapshot.revision)
         || typeof snapshot.updatedAt !== 'string' || !Number.isFinite(Date.parse(snapshot.updatedAt))
         || !sameSpatialDraft(sent, confirmed)) {
-        throw new ApiError('invalid-response', uncertainMessage)
+        throw new ApiError('invalid-response', t(uncertainMessage))
       }
       // The history may contain newer edits or an undo made while the request was in flight.
       publish({ ...state, base: confirmed, revision: snapshot.revision, updatedAt: snapshot.updatedAt,
@@ -218,7 +219,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
         ? error.kind !== 'http' || (error.status !== null && error.status >= 500)
         : !(error instanceof RangeError)
       publish({ ...state, saving: false, blocked: conflict ? 'conflict' : uncertain ? 'uncertain' : null,
-        error: conflict ? conflictMessage : uncertain ? uncertainMessage : message(error, 'L’espace n’a pas pu être enregistré.') })
+        error: conflict ? t(conflictMessage) : uncertain ? t(uncertainMessage) : message(error, t('L’espace n’a pas pu être enregistré.')) })
       return false
     } finally {
       if (operation === request) operation = null
@@ -228,7 +229,7 @@ export function createSharedWorkspaceStore(dependencies: SharedWorkspaceDependen
   async function reload(discardDraft = false): Promise<boolean> {
     if (!active || operation) return false
     if ((state.dirty || state.blocked) && !discardDraft) {
-      return warn(new Error('Confirmez le remplacement de votre brouillon avant de recharger la version du serveur.'))
+      return warn(new Error(t('Confirmez le remplacement de votre brouillon avant de recharger la version du serveur.')))
     }
     return load()
   }

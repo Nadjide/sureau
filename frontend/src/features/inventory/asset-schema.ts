@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { msg, t } from '@/lib/i18n'
 
 export const assetCategorySchema = z.enum([
   'COMPUTER',
@@ -50,7 +51,7 @@ export const assetsSchema = z.array(assetSchema).superRefine((assets, context) =
     if (ids.has(asset.id)) {
       context.addIssue({
         code: 'custom',
-        message: 'Chaque matériel doit avoir un identifiant unique.',
+        message: t('Chaque matériel doit avoir un identifiant unique.'),
         path: [index, 'id'],
       })
     }
@@ -64,22 +65,23 @@ export type AssetCategory = z.infer<typeof assetCategorySchema>
 export type AssetStatus = z.infer<typeof assetStatusSchema>
 export type Assignee = z.infer<typeof assigneeSchema>
 
+// Labels are French keys: show them through t().
 export const categoryLabels: Record<AssetCategory, string> = {
-  COMPUTER: 'Ordinateur',
-  HEADSET: 'Casque',
-  MONITOR: 'Écran',
-  PHONE: 'Téléphone',
-  KEYBOARD: 'Clavier',
-  MOUSE: 'Souris',
-  NETWORK_EQUIPMENT: 'Équipement réseau',
-  SERVER: 'Serveur',
-  OTHER: 'Autre',
+  COMPUTER: msg('Ordinateur'),
+  HEADSET: msg('Casque'),
+  MONITOR: msg('Écran'),
+  PHONE: msg('Téléphone'),
+  KEYBOARD: msg('Clavier'),
+  MOUSE: msg('Souris'),
+  NETWORK_EQUIPMENT: msg('Équipement réseau'),
+  SERVER: msg('Serveur'),
+  OTHER: msg('Autre'),
 }
 
 export const statusLabels: Record<AssetStatus, string> = {
-  AVAILABLE: 'Disponible',
-  ASSIGNED: 'Affecté',
-  MAINTENANCE: 'En maintenance',
-  RETIRED: 'Retiré du parc',
-  LOST: 'Perdu',
+  AVAILABLE: msg('Disponible'),
+  ASSIGNED: msg('Affecté'),
+  MAINTENANCE: msg('En maintenance'),
+  RETIRED: msg('Retiré du parc'),
+  LOST: msg('Perdu'),
 }

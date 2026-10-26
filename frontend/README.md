@@ -33,6 +33,12 @@ Le bouton « Guide » de l’en-tête ouvre une visite en sept étapes (espaces,
 
 Une session expirée ne fait pas perdre le travail : le brouillon de l’atelier, l’historique et les champs saisis restent à l’écran pendant la reconnexion, et aucune action n’est rejouée automatiquement. Un résultat incertain (réponse perdue, erreur réseau) est signalé et demande une vérification explicite avant toute nouvelle tentative.
 
+## Langues
+
+L’interface est écrite en français ; `src/lib/i18n-en.ts` en donne la traduction anglaise, indexée par le texte français lui-même. Un texte affiché passe par `t('…')`, avec des valeurs nommées (`t('Salles de {floor}', { floor })`) plutôt qu’une concaténation, et `plural(nombre, 'un', 'plusieurs')` pour l’accord. Un libellé défini hors d’un composant (catégories, rôles, contenu du guide) est marqué par `msg('…')` et traduit par `t()` là où il s’affiche, pour suivre un changement de langue. Quand les mêmes mots français demandent deux traductions, la clé porte un contexte invisible : `t('Annuler|défaire')` affiche « Annuler » en français et « Undo » en anglais.
+
+La langue choisie est lue au premier usage, jamais à l’import d’un module. Les noms de l’exemple (salle, postes, mobilier) sont écrits dans la langue active au moment où l’exemple est créé ; ils deviennent ensuite des données de l’équipe. L’import CSV accepte les en-têtes, catégories et états dans l’une ou l’autre langue. Le test `i18n.test.ts` vérifie que chaque texte marqué a sa traduction, avec les mêmes valeurs à insérer, et qu’aucune traduction n’est orpheline.
+
 ## Inventaire
 
 Le frontend consulte et modifie les matériels via `/api/assets`. En développement, Vite relaie `/api` vers `http://127.0.0.1:8080`. Pour changer cette adresse, copier `.env.example` dans `.env.local` puis relancer Vite. Le backend doit être lancé séparément.

@@ -1,3 +1,4 @@
+import { msg } from '@/lib/i18n'
 export interface Workstation {
   id: string
   label: string
@@ -44,7 +45,8 @@ export interface SpatialPlan {
 
 export type SpatialView = '3d' | '2d'
 
-export const room = { id: 'plateau-a', name: 'Plateau A', width: 13, depth: 9 } as const
+// The example's names are French keys; createExamplePlan writes them in the current language.
+export const room = { id: 'plateau-a', name: msg('Plateau A'), width: 13, depth: 9 } as const
 
 export const workstations: readonly Workstation[] = Array.from({ length: 8 }, (_, index) => ({
   id: `desk-${String(index + 1).padStart(2, '0')}`,

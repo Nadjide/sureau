@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { t } from '@/lib/i18n'
 import { categoryLabels, statusLabels, type Asset, type AssetCategory } from './asset-schema'
 import type { ReactNode } from 'react'
 
@@ -38,13 +39,13 @@ export function AssetStatus({ asset }: { asset: Asset }) {
   return (
     <span className={`asset-status status-${asset.status.toLowerCase()}`}>
       <span aria-hidden="true" />
-      {statusLabels[asset.status]}
+      {t(statusLabels[asset.status])}
     </span>
   )
 }
 
 function civilDate(value: string | null) {
-  if (!value) return 'Non renseignée'
+  if (!value) return t('Non renseignée')
   const [year, month, day] = value.split('-')
   return `${day}/${month}/${year}`
 }
@@ -62,19 +63,19 @@ export function AssetDetails({
 }) {
   if (!asset)
     return (
-      <aside className="asset-inspector empty-inspector" aria-label="Fiche matériel">
+      <aside className="asset-inspector empty-inspector" aria-label={t('Fiche matériel')}>
         <Fingerprint size={28} strokeWidth={1.2} />
-        <h2>Un matériel, une histoire.</h2>
-        <p>Sélectionnez un équipement pour consulter sa fiche.</p>
+        <h2>{t('Un matériel, une histoire.')}</h2>
+        <p>{t('Sélectionnez un équipement pour consulter sa fiche.')}</p>
       </aside>
     )
 
   return (
-    <aside className="asset-inspector" aria-label={`Fiche de ${asset.name}`}>
+    <aside className="asset-inspector" aria-label={t('Fiche de {name}', { name: asset.name })}>
       <div className="inspector-top">
-        <span className="eyebrow">FICHE MATÉRIEL</span>
+        <span className="eyebrow">{t('FICHE MATÉRIEL')}</span>
         {onClose && (
-          <Button variant="ghost" size="icon-xs" onClick={onClose} aria-label="Fermer la fiche">
+          <Button variant="ghost" size="icon-xs" onClick={onClose} aria-label={t('Fermer la fiche')}>
             <X />
           </Button>
         )}
@@ -92,40 +93,40 @@ export function AssetDetails({
         {asset.status === 'ASSIGNED' && (
           <div className="asset-assignee">
             <dt>
-              <UserRound size={12} aria-hidden="true" /> Affecté à
+              <UserRound size={12} aria-hidden="true" /> {t('Affecté à')}
             </dt>
             <dd>
-              {asset.assignee ? asset.assignee.name : 'Personne non renseignée'}
+              {asset.assignee ? asset.assignee.name : t('Personne non renseignée')}
               {asset.assignee?.department && <small>{asset.assignee.department}</small>}
               {asset.assignee?.email && <small><a href={`mailto:${asset.assignee.email}`}>{asset.assignee.email}</a></small>}
             </dd>
           </div>
         )}
         <div>
-          <dt>Catégorie</dt>
-          <dd>{categoryLabels[asset.category]}</dd>
+          <dt>{t('Catégorie')}</dt>
+          <dd>{t(categoryLabels[asset.category])}</dd>
         </div>
         <div>
-          <dt>Marque</dt>
-          <dd>{asset.brand || 'Non renseignée'}</dd>
+          <dt>{t('Marque')}</dt>
+          <dd>{asset.brand || t('Non renseignée')}</dd>
         </div>
         <div>
-          <dt>Modèle</dt>
-          <dd>{asset.model || 'Non renseigné'}</dd>
+          <dt>{t('Modèle')}</dt>
+          <dd>{asset.model || t('Non renseigné')}</dd>
         </div>
         <div>
-          <dt>Numéro de série</dt>
-          <dd className="mono">{asset.serialNumber || 'Non renseigné'}</dd>
+          <dt>{t('Numéro de série')}</dt>
+          <dd className="mono">{asset.serialNumber || t('Non renseigné')}</dd>
         </div>
         <div>
           <dt>
-            <CalendarDays size={12} aria-hidden="true" /> Achat
+            <CalendarDays size={12} aria-hidden="true" /> {t('Achat')}
           </dt>
           <dd>{civilDate(asset.purchaseDate)}</dd>
         </div>
       </dl>
       <Badge variant="outline" className="mt-6">
-        Données de l’inventaire
+        {t('Données de l’inventaire')}
       </Badge>
       {children}
     </aside>

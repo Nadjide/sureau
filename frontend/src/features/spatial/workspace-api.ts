@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ApiError, apiClient, type createApiClient } from '@/lib/api-client'
+import { t } from '@/lib/i18n'
 import { parseSpatialDraft, sameSpatialDraft, type SpatialDraft } from './shared-workspace-model'
 import { workspaceFileSizeLimit } from './workspace-document'
 
@@ -55,15 +56,15 @@ export async function saveWorkspace(expectedRevision: number, draft: SpatialDraf
   client: ReturnType<typeof createApiClient> = apiClient): Promise<WorkspaceSnapshot> {
   signal?.throwIfAborted()
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || expectedRevision >= Number.MAX_SAFE_INTEGER) {
-    throw new RangeError('Une révision entière comprise entre 0 et la limite autorisée est requise.')
+    throw new RangeError(t('Une révision entière comprise entre 0 et la limite autorisée est requise.'))
   }
   const validated = parseSpatialDraft(draft)
   if (encoder.encode(JSON.stringify(validated.workspace)).byteLength > workspaceFileSizeLimit) {
-    throw new RangeError('Cet espace de travail est trop volumineux. La limite est de 2 Mo.')
+    throw new RangeError(t('Cet espace de travail est trop volumineux. La limite est de 2 Mo.'))
   }
   const payload = { expectedRevision, workspace: validated.workspace, locations: validated.locations }
   if (encoder.encode(JSON.stringify(payload)).byteLength > requestSizeLimit) {
-    throw new RangeError('L’espace et ses associations sont trop volumineux. La limite est de 2,1 Mo.')
+    throw new RangeError(t('L’espace et ses associations sont trop volumineux. La limite est de 2,1 Mo.'))
   }
   try {
     return await client.requestJson('/api/workspace', (response) => {
@@ -78,7 +79,7 @@ export async function saveWorkspace(expectedRevision: number, draft: SpatialDraf
     signal?.throwIfAborted()
     if (error instanceof ApiError && (error.kind !== 'http' || (error.status !== null && error.status >= 500))) {
       throw new ApiError(error.kind,
-        'L’enregistrement de l’espace n’a pas pu être confirmé. Rechargez la version du serveur pour vérifier son état avant de réessayer.',
+        t('L’enregistrement de l’espace n’a pas pu être confirmé. Rechargez la version du serveur pour vérifier son état avant de réessayer.'),
         error.status, error.code, error.fieldErrors)
     }
     throw error

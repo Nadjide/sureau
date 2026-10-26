@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { apiClient } from '@/lib/api-client'
+import { formatDateTime, msg, t } from '@/lib/i18n'
 import { categoryLabels, statusLabels, type AssetCategory, type AssetStatus } from './asset-schema'
 
 const assetChangeSchema = z.object({
@@ -31,56 +32,54 @@ export function getAssetHistory(id: number, signal: AbortSignal, fetcher?: typeo
 }
 
 const fieldLabels: Record<string, string> = {
-  assetTag: 'Identifiant',
-  serialNumber: 'Numéro de série',
-  name: 'Nom',
-  brand: 'Marque',
-  model: 'Modèle',
-  category: 'Catégorie',
-  status: 'État',
-  purchaseDate: 'Date d’achat',
-  assigneeName: 'Personne équipée',
-  assigneeEmail: 'E-mail de la personne',
-  assigneeDepartment: 'Service de la personne',
-  location: 'Poste',
+  assetTag: msg('Identifiant|matériel'),
+  serialNumber: msg('Numéro de série'),
+  name: msg('Nom'),
+  brand: msg('Marque'),
+  model: msg('Modèle'),
+  category: msg('Catégorie'),
+  status: msg('État'),
+  purchaseDate: msg('Date d’achat'),
+  assigneeName: msg('Personne équipée'),
+  assigneeEmail: msg('E-mail de la personne'),
+  assigneeDepartment: msg('Service de la personne'),
+  location: msg('Poste'),
 }
 
 export function changeLabel(field: string): string {
-  return fieldLabels[field] ?? field
+  return Object.hasOwn(fieldLabels, field) ? t(fieldLabels[field]!) : field
 }
 
 export function changeValue(field: string, value: string | null): string {
-  if (value === null) return field === 'location' ? 'Non localisé' : 'Non renseigné'
-  if (field === 'category' && Object.hasOwn(categoryLabels, value)) return categoryLabels[value as AssetCategory]
-  if (field === 'status' && Object.hasOwn(statusLabels, value)) return statusLabels[value as AssetStatus]
+  if (value === null) return field === 'location' ? t('Non localisé') : t('Non renseigné')
+  if (field === 'category' && Object.hasOwn(categoryLabels, value)) return t(categoryLabels[value as AssetCategory])
+  if (field === 'status' && Object.hasOwn(statusLabels, value)) return t(statusLabels[value as AssetStatus])
   if (field === 'purchaseDate' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value.split('-').reverse().join('/')
   return value
 }
 
 export function eventTitle(event: AssetEvent): string {
   switch (event.action) {
-    case 'CREATED': return 'Fiche créée'
-    case 'IMPORTED': return 'Importé depuis un fichier'
-    case 'UPDATED': return 'Fiche modifiée'
-    case 'RETIRED': return 'Retiré du parc'
+    case 'CREATED': return t('Fiche créée')
+    case 'IMPORTED': return t('Importé depuis un fichier')
+    case 'UPDATED': return t('Fiche modifiée')
+    case 'RETIRED': return t('Retiré du parc')
     case 'LOCATED': {
       const move = event.changes.find((change) => change.field === 'location')
-      if (move?.from === null) return 'Placé sur un poste'
-      if (move?.to === null) return 'Retiré de son poste'
-      return 'Changé de poste'
+      if (move?.from === null) return t('Placé sur un poste')
+      if (move?.to === null) return t('Retiré de son poste')
+      return t('Changé de poste')
     }
-    default: return 'Changement enregistré'
+    default: return t('Changement enregistré')
   }
 }
 
 export function eventAuthor(event: AssetEvent): string {
-  return event.actor ? `${event.actor.displayName} (@${event.actor.username})` : 'Auteur non enregistré'
+  return event.actor ? `${event.actor.displayName} (@${event.actor.username})` : t('Auteur non enregistré')
 }
 
-const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
-
 export function eventDate(event: AssetEvent): string {
-  return dateFormat.format(new Date(event.occurredAt))
+  return formatDateTime(new Date(event.occurredAt))
 }
 
 /** A creation or an import lists the initial values only; other events show each value before and after. */

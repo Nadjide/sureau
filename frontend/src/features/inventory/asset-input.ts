@@ -1,34 +1,38 @@
 import { z } from 'zod'
 import type { AssetFormValues } from './asset-form-model'
 import { assetCategorySchema, assetStatusSchema } from './asset-schema'
+import { t } from '@/lib/i18n'
+
+// Messages are written when a value is checked, so they follow the language chosen meanwhile.
+const atMost = (count: number) => ({ error: () => t('Utilisez au maximum {count} caractères.', { count }) })
 
 const optionalText = z.preprocess(
   (value) => typeof value === 'string' ? value.trim() || null : value,
-  z.string().max(100, 'Utilisez au maximum 100 caractères.').nullable(),
+  z.string().max(100, atMost(100)).nullable(),
 )
 
 const assigneeInputSchema = z.object({
-  name: z.string().trim().min(1, 'Nommez la personne à qui ce matériel est affecté.').max(150, 'Utilisez au maximum 150 caractères.'),
+  name: z.string().trim().min(1, { error: () => t('Nommez la personne à qui ce matériel est affecté.') }).max(150, atMost(150)),
   email: z.preprocess((value) => typeof value === 'string' ? value.trim() || null : value,
-    z.email({ error: 'Renseignez une adresse e-mail valide.' }).max(254, 'Utilisez au maximum 254 caractères.').nullable()),
+    z.email({ error: () => t('Renseignez une adresse e-mail valide.') }).max(254, atMost(254)).nullable()),
   department: optionalText,
 }).strict()
 
 /** The write contract is separate from server-owned identifiers and timestamps. */
 export const assetInputSchema = z.object({
-  assetTag: z.string().trim().min(1, 'L’identifiant est obligatoire.').max(50, 'Utilisez au maximum 50 caractères.'),
+  assetTag: z.string().trim().min(1, { error: () => t('L’identifiant est obligatoire.') }).max(50, atMost(50)),
   serialNumber: optionalText,
-  name: z.string().trim().min(1, 'Le nom du matériel est obligatoire.').max(150, 'Utilisez au maximum 150 caractères.'),
+  name: z.string().trim().min(1, { error: () => t('Le nom du matériel est obligatoire.') }).max(150, atMost(150)),
   brand: optionalText,
   model: optionalText,
-  category: z.enum(assetCategorySchema.options, { error: 'Choisissez une catégorie de matériel.' }),
-  status: z.enum(assetStatusSchema.options, { error: 'Choisissez un état du matériel.' }),
+  category: z.enum(assetCategorySchema.options, { error: () => t('Choisissez une catégorie de matériel.') }),
+  status: z.enum(assetStatusSchema.options, { error: () => t('Choisissez un état du matériel.') }),
   purchaseDate: z.preprocess((value) => value === '' ? null : value,
-    z.iso.date({ error: 'Renseignez une date d’achat valide.' }).nullable()),
+    z.iso.date({ error: () => t('Renseignez une date d’achat valide.') }).nullable()),
   assignee: assigneeInputSchema.nullable().default(null),
 }).strict().superRefine((asset, context) => {
   if (asset.assignee && asset.status !== 'ASSIGNED') {
-    context.addIssue({ code: 'custom', path: ['assignee', 'name'], message: 'Seul un matériel affecté peut nommer une personne.' })
+    context.addIssue({ code: 'custom', path: ['assignee', 'name'], message: t('Seul un matériel affecté peut nommer une personne.') })
   }
 })
 

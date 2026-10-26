@@ -36,6 +36,7 @@ import { roleLabels } from '@/features/auth/session-state'
 import { useSession } from '@/features/auth/use-session'
 import { useGuideIntroduction } from '@/features/guide/use-guide-introduction'
 import { GuideIntroduction, UserGuide } from '@/features/guide/user-guide'
+import { msg, plural, t } from '@/lib/i18n'
 
 export type WorkspaceTab = 'spaces' | 'inventory'
 
@@ -51,8 +52,8 @@ type AppShellProps = {
 }
 
 const tabs = [
-  { id: 'spaces', label: 'Espaces', icon: LayoutGrid },
-  { id: 'inventory', label: 'Matériel', icon: Monitor },
+  { id: 'spaces', label: msg('Espaces'), icon: LayoutGrid },
+  { id: 'inventory', label: msg('Matériel'), icon: Monitor },
 ] as const
 
 function SpaceNavigation({
@@ -72,8 +73,8 @@ function SpaceNavigation({
 }) {
   return (
     <>
-      <p className="sidebar-section-label">MES ESPACES</p>
-      <nav className="space-tree min-h-0 flex-1 overflow-y-auto" aria-label="Salles de l’espace de travail">
+      <p className="sidebar-section-label">{t('MES ESPACES')}</p>
+      <nav className="space-tree min-h-0 flex-1 overflow-y-auto" aria-label={t('Salles de l’espace de travail')}>
         {workspace ? <><div className="space-tree-item space-tree-root">
           <Building2 size={16} aria-hidden="true" />
           <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{workspace.name}</span>
@@ -85,9 +86,9 @@ function SpaceNavigation({
               <div className="space-tree-item space-floor-label">
                 <Layers size={15} aria-hidden="true" />
                 <span className="space-tree-title" style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{floor.name}</span>
-                <span className="space-room-count shrink-0" aria-label={`${rooms.length} salle${rooms.length > 1 ? 's' : ''}`}>{rooms.length}</span>
+                <span className="space-room-count shrink-0" aria-label={plural(rooms.length, '{count} salle', '{count} salles')}>{rooms.length}</span>
               </div>
-              <ul className="space-tree-indent space-room-list" aria-label={`Salles de ${floor.name}`}>
+              <ul className="space-tree-indent space-room-list" aria-label={t('Salles de {floor}', { floor: floor.name })}>
                 {rooms.map(({ plan }) => {
                   const current = active && activeRoomId === plan.id
                   return <li key={plan.id}>
@@ -95,7 +96,7 @@ function SpaceNavigation({
                       type="button"
                       className={`space-tree-item space-room-button${current ? ' is-current' : ''}`}
                       aria-current={current ? 'page' : undefined}
-                      aria-label={`Ouvrir ${plan.name}, ${floor.name}`}
+                      aria-label={t('Ouvrir {room}, {floor}', { room: plan.name, floor: floor.name })}
                       onClick={() => onSelect(plan.id)}
                     >
                       <PanelTop size={16} aria-hidden="true" />
@@ -108,15 +109,15 @@ function SpaceNavigation({
           })}
         </ul></> : <div className="space-tree-item space-tree-root items-start">
           <Building2 size={16} aria-hidden="true" />
-          <div className="min-w-0"><span className="space-tree-title">Vos espaces partagés</span><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Ouvrez Espaces pour consulter le chargement ou préparer votre atelier.</p></div>
+          <div className="min-w-0"><span className="space-tree-title">{t('Vos espaces partagés')}</span><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t('Ouvrez Espaces pour consulter le chargement ou préparer votre atelier.')}</p></div>
         </div>}
       </nav>
       {workspace && canManage && <Button variant="outline" className="space-management-button my-4 w-full shrink-0" onClick={onManage}>
-        <Settings2 aria-hidden="true" />Gérer les espaces
+        <Settings2 aria-hidden="true" />{t('Gérer les espaces')}
       </Button>}
       <div className="sidebar-note">
-        <span>ATELIER PARTAGÉ</span>
-        <p>Enregistrez vos salles et vos localisations pour les retrouver sur le serveur de cette instance.</p>
+        <span>{t('ATELIER PARTAGÉ')}</span>
+        <p>{t('Enregistrez vos salles et vos localisations pour les retrouver sur le serveur de cette instance.')}</p>
       </div>
     </>
   )
@@ -128,7 +129,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
   const introduction = useGuideIntroduction()
   const { theme, toggleTheme } = useTheme()
   const { state, canEdit } = useSession()
-  const themeLabel = theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'
+  const themeLabel = theme === 'dark' ? t('Passer au thème clair') : t('Passer au thème sombre')
 
   function openGuide() {
     introduction.dismiss()
@@ -155,7 +156,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
   return (
     <TooltipProvider delayDuration={350}>
       <div className="app-shell">
-        <a className="skip-link" href="#workspace-main">Aller au contenu</a>
+        <a className="skip-link" href="#workspace-main">{t('Aller au contenu')}</a>
 
         <header className="app-header">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -164,27 +165,27 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
                 variant="ghost"
                 size="icon"
                 className="mobile-menu"
-                aria-label="Ouvrir le menu de navigation"
+                aria-label={t('Ouvrir le menu de navigation')}
               >
                 <Menu aria-hidden="true" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" showCloseButton={false} className="w-72">
               <SheetHeader>
-                <SheetTitle>Votre espace Sureau</SheetTitle>
-                <SheetDescription>Parcourir les espaces et le matériel.</SheetDescription>
+                <SheetTitle>{t('Votre espace Sureau')}</SheetTitle>
+                <SheetDescription>{t('Parcourir les espaces et le matériel.')}</SheetDescription>
               </SheetHeader>
               <SheetClose asChild>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   className="absolute top-3 right-3"
-                  aria-label="Fermer le menu de navigation"
+                  aria-label={t('Fermer le menu de navigation')}
                 >
                   <X aria-hidden="true" />
                 </Button>
               </SheetClose>
-              <nav className="mobile-navigation flex flex-col gap-1 px-4" aria-label="Navigation mobile">
+              <nav className="mobile-navigation flex flex-col gap-1 px-4" aria-label={t('Navigation mobile')}>
                 {tabs.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -194,7 +195,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
                     onClick={() => navigate(id)}
                   >
                     <Icon size={16} aria-hidden="true" />
-                    {label}
+                    {t(label)}
                   </button>
                 ))}
               </nav>
@@ -205,7 +206,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
           </Sheet>
 
           <div className="app-brand"><Brand /></div>
-          <nav className="app-nav" aria-label="Navigation principale">
+          <nav className="app-nav" aria-label={t('Navigation principale')}>
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -215,14 +216,14 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
                 onClick={() => navigate(id)}
               >
                 <Icon size={15} aria-hidden="true" />
-                {label}
+                {t(label)}
               </button>
             ))}
           </nav>
           <div className="header-spacer" />
-          <span className="app-header-meta">{state.user ? roleLabels[state.user.role].toLocaleUpperCase('fr') : 'VOTRE ESPACE'}</span>
+          <span className="app-header-meta">{state.user ? t(roleLabels[state.user.role]).toLocaleUpperCase() : t('VOTRE ESPACE')}</span>
           <Button variant="ghost" size="sm" className="guide-button" onClick={openGuide}>
-            <CircleHelp aria-hidden="true" /><span className="guide-button-label">Guide</span>
+            <CircleHelp aria-hidden="true" /><span className="guide-button-label">{t('Guide')}</span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -236,7 +237,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
         </header>
 
         <div className="app-body">
-          <aside className="space-sidebar" aria-label="Vos espaces">
+          <aside className="space-sidebar" aria-label={t('Vos espaces')}>
             <SpaceNavigation workspace={workspace} activeRoomId={activeRoomId} active={tab === 'spaces'} onSelect={chooseRoom} onManage={manageSpaces} canManage={canEdit} />
           </aside>
           <main id="workspace-main" className="workspace-main" tabIndex={-1}>
@@ -247,7 +248,7 @@ export function AppShell({ tab, onTabChange, children, workspace, activeRoomId, 
 
         <footer className="app-footer">
           <span>SUREAU</span>
-          <span>Le matériel, dans son espace.</span>
+          <span>{t('Le matériel, dans son espace.')}</span>
         </footer>
         {guideOpen && state.user && <UserGuide role={state.user.role} onClose={() => setGuideOpen(false)} />}
       </div>

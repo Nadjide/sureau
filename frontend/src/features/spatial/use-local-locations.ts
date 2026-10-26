@@ -7,6 +7,7 @@ import {
   type LocalLocations,
   type LocationStorage,
 } from './local-locations'
+import { t } from '@/lib/i18n'
 
 interface LocationState extends LoadedLocations {
   storage: LocationStorage | null
@@ -42,7 +43,7 @@ export function useLocalLocations(): LocalLocationsResult {
     try {
       locations = updateLocation(previous.locations, assetId, workstationId)
     } catch {
-      const next = { ...previous, warning: 'Cette localisation est invalide. Aucun changement n’a été appliqué.' }
+      const next = { ...previous, warning: t('Cette localisation est invalide. Aucun changement n’a été appliqué.') }
       current.current = next
       setState(next)
       return

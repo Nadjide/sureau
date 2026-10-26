@@ -1,6 +1,7 @@
 import { HardDrive, MapPin, MoveUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Asset } from '@/features/inventory/asset-schema'
+import { t } from '@/lib/i18n'
 import { findWorkstation, type SpatialPlan } from './room-model'
 import { defaultPlan } from './plan-document'
 import type { useLocalLocations } from './use-local-locations'
@@ -23,20 +24,20 @@ export function AssetLocationActions({ asset, local, canEdit = true, onShowInPla
     : findWorkstation(stationId, plan.workstations)
 
   return (
-    <section className="location-actions" aria-label={`Localisation de ${asset.assetTag}`}>
+    <section className="location-actions" aria-label={t('Localisation de {tag}', { tag: asset.assetTag })}>
       <h3>
         <MapPin size={13} aria-hidden="true" />
-        Localisation dans le plan
+        {t('Localisation dans le plan')}
       </h3>
-      <label htmlFor={`location-${asset.id}`}>Poste de travail</label>
+      <label htmlFor={`location-${asset.id}`}>{t('Poste de travail')}</label>
       <select
         id={`location-${asset.id}`}
         value={stationId}
         disabled={!canEdit}
         onChange={(event) => { if (canEdit) local.associate(asset.id, event.target.value || null) }}
       >
-        <option value="">Non localisé</option>
-        {stationId && !station && <option value={stationId}>Poste absent du plan · lien conservé</option>}
+        <option value="">{t('Non localisé')}</option>
+        {stationId && !station && <option value={stationId}>{t('Poste absent du plan · lien conservé')}</option>}
         {workspace
           ? workspace.floors.flatMap((floor) => workspace.rooms
             .filter((room) => room.floorId === floor.id && room.plan.workstations.length > 0)
@@ -56,15 +57,15 @@ export function AssetLocationActions({ asset, local, canEdit = true, onShowInPla
       {station && (
         <Button variant="outline" className="w-full mt-3" onClick={() => onShowInPlan(asset.id)}>
           <MoveUpRight />
-          Voir dans le plan
+          {t('Voir dans le plan')}
         </Button>
       )}
       <p className="local-save-label" role="status">
         <HardDrive size={12} aria-hidden="true" />
-        {local.persisted ? 'Localisation enregistrée sur le serveur' : 'Brouillon · enregistrer pour partager'}
+        {local.persisted ? t('Localisation enregistrée sur le serveur') : t('Brouillon · enregistrer pour partager')}
       </p>
       <p className="location-help">
-        Cette localisation fait partie de l’espace partagé. Appliquez vos changements avec Enregistrer l’espace. Le statut du matériel reste inchangé.
+        {t('Cette localisation fait partie de l’espace partagé. Appliquez vos changements avec Enregistrer l’espace. Le statut du matériel reste inchangé.')}
       </p>
       {local.warning && (
         <p className="storage-warning" role="alert">
