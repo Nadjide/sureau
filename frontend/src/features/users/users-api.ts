@@ -28,7 +28,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
         return await client.requestJson('/api/users', (payload) => {
           const account = adminUserSchema.parse(payload)
           if (account.username !== validated.username || account.displayName !== validated.displayName
-            || account.role !== validated.role || !account.enabled) {
+            || account.role !== validated.role || !account.enabled || account.email !== validated.email) {
             throw new Error('The server did not confirm the requested account creation.')
           }
           return account
@@ -46,7 +46,7 @@ export function createUsersApi(client: ReturnType<typeof createApiClient> = apiC
         return await client.requestJson(`/api/users/${id}`, (payload) => {
           const account = adminUserSchema.parse(payload)
           if (account.id !== id || account.displayName !== validated.displayName
-            || account.role !== validated.role || account.enabled !== validated.enabled) {
+            || account.role !== validated.role || account.enabled !== validated.enabled || account.email !== validated.email) {
             throw new Error('The server did not confirm the requested account update.')
           }
           return account

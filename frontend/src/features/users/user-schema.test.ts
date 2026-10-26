@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   adminUserListSchema, adminUserSchema, changeOwnPasswordInputSchema, createUserInputSchema,
-  resetPasswordInputSchema, updateUserInputSchema,
+  resetPasswordInputSchema, sameEmail, updateUserInputSchema,
 } from './user-schema'
 
 const creation = {
   username: 'equipe.atelier', displayName: 'Équipe Atelier', role: 'EDITOR', password: 'Sureau-test-only-42!',
 }
-const update = { displayName: creation.displayName, role: creation.role, enabled: true }
-const user = { id: 42, username: creation.username, displayName: creation.displayName, role: creation.role, enabled: true }
+const update = { displayName: creation.displayName, role: creation.role, enabled: true, email: null }
+const user = { id: 42, username: creation.username, displayName: creation.displayName, role: creation.role, enabled: true, email: null }
 
 function newPasswordResults(password: unknown): boolean[] {
   return [
@@ -23,9 +23,19 @@ describe('saisie des comptes de l’instance', () => {
     const password = '  secret pour atelier  '
     expect(createUserInputSchema.parse({
       ...creation, username: '  ÉQUIPE  '.replace('É', 'E'), displayName: '  Équipe Atelier 🪴  ', password,
-    })).toEqual({ username: 'equipe', displayName: 'Équipe Atelier 🪴', password, role: 'EDITOR' })
+    })).toEqual({ username: 'equipe', displayName: 'Équipe Atelier 🪴', password, role: 'EDITOR', email: null })
     expect(updateUserInputSchema.parse({ ...update, displayName: '  Équipe Atelier  ', enabled: false }))
       .toEqual({ ...update, enabled: false })
+  })
+
+  it('accepte une adresse e-mail facultative pour la connexion d’entreprise', () => {
+    expect(createUserInputSchema.parse({ ...creation, email: '  Camille@Exemple.fr ' }).email).toBe('Camille@Exemple.fr')
+    expect(updateUserInputSchema.parse({ ...update, email: '   ' }).email).toBeNull()
+    expect(updateUserInputSchema.safeParse({ ...update, email: 'camille' }).error?.issues[0]?.message)
+      .toBe('Renseignez une adresse e-mail valide.')
+    expect(sameEmail('Camille@Exemple.fr', ' camille@exemple.FR ')).toBe(true)
+    expect(sameEmail(null, '')).toBe(true)
+    expect(sameEmail('camille@exemple.fr', null)).toBe(false)
   })
 
   it('accepte les identifiants compatibles avec le serveur aux bornes de longueur après normalisation', () => {
@@ -142,11 +152,11 @@ describe('contrats des mots de passe', () => {
 })
 
 describe('réponses administratives des comptes', () => {
-  it('retient seulement les cinq champs publics même si une réponse contient des champs internes', () => {
+  it('retient seulement les six champs publics même si une réponse contient des champs internes', () => {
     const payload = { ...user, password: 'ne-pas-conserver', passwordHash: 'hash-interne', authVersion: 8, futureField: true }
     expect(adminUserSchema.parse(payload)).toEqual(user)
     expect(adminUserListSchema.parse([payload])).toEqual([user])
-    expect(Object.keys(adminUserSchema.parse(payload))).toEqual(['id', 'username', 'displayName', 'role', 'enabled'])
+    expect(Object.keys(adminUserSchema.parse(payload))).toEqual(['id', 'username', 'displayName', 'role', 'enabled', 'email'])
     expect(payload.passwordHash).toBe('hash-interne')
   })
 

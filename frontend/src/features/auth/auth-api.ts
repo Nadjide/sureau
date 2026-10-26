@@ -18,7 +18,12 @@ export class AccountCreatedError extends Error {
   }
 }
 
-const setupStatusSchema = z.object({ setupRequired: z.boolean() })
+const setupStatusSchema = z.object({
+  setupRequired: z.boolean(),
+  /** Present when enterprise sign-in is configured; the provider name is optional. */
+  sso: z.object({ name: z.string().nullable() }).nullable().default(null),
+})
+export type EnterpriseSignIn = { name: string | null }
 
 export function createAuthApi(client: ReturnType<typeof createApiClient> = apiClient) {
   async function me(signal?: AbortSignal): Promise<SessionUser> {

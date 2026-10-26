@@ -12,7 +12,7 @@ function render(workspace: WorkspaceDocument | null, role: 'ADMIN' | 'EDITOR' | 
     user: { id: 42, username: 'equipe', displayName: 'Équipe Atelier', role },
   }
   const session: SessionContextValue = {
-    state, ...sessionPermissions(state), busy: false,
+    state, enterpriseSignIn: null, ...sessionPermissions(state), busy: false,
     login: vi.fn().mockResolvedValue(undefined), setup: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined), refresh: vi.fn(),
     expire: vi.fn(), updateUser: vi.fn(),

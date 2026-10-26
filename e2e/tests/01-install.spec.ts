@@ -362,6 +362,28 @@ test('imports a spreadsheet file all at once, only once every line is valid', as
   expect(watched.errors).toEqual([]);
 });
 
+test('records the e-mail address that enterprise sign-in will match, after a security confirmation', async () => {
+  // Sans fournisseur configuré, la page de connexion ne propose que le mot de passe.
+  expect(await getJson(context.request, '/api/auth/status')).toMatchObject({ sso: null });
+
+  await page.goto('/#inventory');
+  await page.getByRole('button', { name: `Compte de ${admin.displayName}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Gérer l’équipe', exact: true }).click();
+  await page.getByRole('button', { name: `Modifier le compte ${viewer.username}`, exact: true }).click();
+  await page.locator('#user-edit-email').fill('  Lecteur.Recette@exemple.fr ');
+  await page.getByRole('button', { name: 'Enregistrer le compte', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Confirmer les nouveaux accès ?' }))
+    .toContainText('E-mail de connexion : aucun → Lecteur.Recette@exemple.fr.');
+  await page.getByRole('button', { name: 'Confirmer la modification du compte', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Comptes de l’instance' })).toContainText('Lecteur.Recette@exemple.fr');
+
+  const users = await getJson<{ username: string; email: string | null }[]>(context.request, '/api/users');
+  expect(users.find((account) => account.username === viewer.username)?.email).toBe('Lecteur.Recette@exemple.fr');
+  await page.keyboard.press('Escape');
+  saveState({ expected: { ...loadState().expected, users } });
+  expect(watched.errors).toEqual([]);
+});
+
 test('meets the automatic WCAG A/AA checks on the main screens, in both themes', async () => {
   // Quatorze audits complets : sur un runner de CI, ils dépassent le délai ordinaire d'un test.
   test.slow();
