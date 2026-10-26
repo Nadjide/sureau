@@ -43,7 +43,26 @@
 .asset-discard-confirm p { color: var(--muted-foreground); font-size: 11px; line-height: 1.8; margin: 8px 0 14px; }
 .asset-discard-confirm > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .asset-discard-confirm button { font-size: 10px; }
-.inventory-create-button { font-size: 11px; flex-shrink: 0; }
+.inventory-create-button, .inventory-import-button { font-size: 11px; flex-shrink: 0; }
+.asset-import-step { display: grid; gap: 10px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.asset-import-step:last-of-type { border-bottom: 0; margin-bottom: 0; }
+.asset-import-step h3 { display: flex; align-items: center; gap: 10px; }
+.asset-import-step h3 > span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-foreground); font-size: 11px; font-weight: 600; }
+.asset-import-step > p { font-size: 11px; line-height: 1.8; color: var(--muted-foreground); }
+.asset-import-step > button { justify-self: start; font-size: 11px; }
+.asset-import-file { position: relative; display: flex; align-items: center; gap: 12px; padding: 18px; border: 1px dashed var(--input); border-radius: 8px; background: var(--background); font-size: 12px; line-height: 1.6; cursor: pointer; }
+.asset-import-file:hover { border-color: var(--primary); }
+.asset-import-file:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.asset-import-file > svg { color: var(--accent-foreground); flex-shrink: 0; }
+.asset-import-file > span { overflow-wrap: anywhere; }
+.asset-import-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.asset-import-summary { font-size: 12px; font-weight: 550; color: var(--success); }
+.asset-import-summary.is-invalid { color: var(--destructive); }
+.asset-import-problems { list-style: none; display: grid; gap: 4px; margin: 0; }
+.asset-import-errors { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 6px; max-height: 220px; overflow-y: auto; border: 1px solid color-mix(in srgb, var(--destructive) 30%, var(--border)); border-radius: 7px; font-size: 11px; line-height: 1.6; }
+.asset-import-preview table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.asset-import-preview th { text-align: left; color: var(--muted-foreground); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.asset-import-preview td { padding: 7px 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .inventory-success { display: flex; align-items: flex-start; gap: 10px; color: var(--success); background: color-mix(in srgb, var(--success) 5%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 25%, var(--border)); border-radius: 7px; padding: 13px; margin: 0 0 20px; font-size: 11px; line-height: 1.8; }
 .inventory-success > svg { flex-shrink: 0; margin-top: 3px; }
 .inventory-success > p { flex: 1; }

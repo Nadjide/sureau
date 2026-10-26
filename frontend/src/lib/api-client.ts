@@ -58,6 +58,11 @@ function validationMessage(value: unknown): string {
   const size = /size must be between (\d+) and (\d+)/i.exec(value)
   if (size) return `Utilisez entre ${size[1]} et ${size[2]} caractères.`
   if (/must match/i.test(value)) return 'Utilisez le format demandé.'
+  if (/well-formed email/i.test(value)) return 'Renseignez une adresse e-mail valide.'
+  if (/already used by an existing asset/i.test(value)) return 'Déjà utilisé par un matériel de l’inventaire.'
+  const repeated = /repeated in this import \(row (\d+)\)/i.exec(value)
+  if (repeated) return `Déjà présent ligne ${Number(repeated[1]) + 1} du fichier.`
+  if (/only an assigned asset can name its holder/i.test(value)) return 'Seul un matériel affecté peut nommer une personne.'
   return 'Vérifiez la valeur de ce champ.'
 }
 
