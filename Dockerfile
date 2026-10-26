@@ -15,7 +15,7 @@ COPY frontend/src ./src
 COPY frontend/public ./public
 RUN pnpm run build
 
-FROM eclipse-temurin:21-jdk-noble@sha256:107215954359f1ab0be058a247d7c64ed6e69c71c1682d471d38ef751ec8e964 AS backend-build
+FROM eclipse-temurin:24-jdk-noble@sha256:dacac8e9a0df0d2bd24e702b4431132875c249930b70555ebd7ca285b5bee684 AS backend-build
 WORKDIR /build/backend
 COPY backend/pom.xml backend/mvnw ./
 COPY backend/.mvn ./.mvn
@@ -25,7 +25,7 @@ RUN --mount=type=cache,id=sureau-maven,target=/root/.m2 \
     sed -i 's/\r$//' mvnw && \
     sh ./mvnw --batch-mode --no-transfer-progress -Dmaven.test.skip=true clean package
 
-FROM eclipse-temurin:21-jre-noble@sha256:35501d3f93173b420ac9001658eb68157e813316b865087e345c187fca422c4c AS runtime
+FROM eclipse-temurin:24-jre-noble@sha256:b416d02335e702b0403ff280de9475a3348e29382285969c9d4e17862ce632e7 AS runtime
 RUN useradd --uid 10001 --user-group --no-create-home --home-dir /app --shell /usr/sbin/nologin sureau && \
     command -v curl
 WORKDIR /app
