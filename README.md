@@ -26,9 +26,9 @@ Sureau s’installe **sur votre propre infrastructure** : une instance regroupe 
 
 ## Présentation vidéo
 
-[![Ouvrir la présentation de Sureau : installation, inventaire, atelier 3D, personnalisation, étages et travail en équipe](frontend/docs/images/sureau-presentation.jpg)](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4 "Ouvrir la présentation de Sureau sur GitHub")
+https://github.com/user-attachments/assets/50ea9db0-92c4-4a0f-bcc9-d7d62c7a0ddd
 
-**[▶ Ouvrir la vidéo](https://github.com/Nadjide/sureau/blob/main/frontend/docs/videos/sureau-presentation.mp4)** · 2 min 01 s · Full HD (1080p) · 30 images/s · MP4, 12,7 Mo
+2 min 01 s · lecture directement sur GitHub · version originale en Full HD (1080p, 30 images/s, MP4 de 12,7 Mo avec chapitres) : [`frontend/docs/videos/sureau-presentation.mp4`](frontend/docs/videos/sureau-presentation.mp4)
 
 Deux minutes sur une instance réelle, installée pour l’occasion : installation en deux commandes, premier compte administrateur, inventaire partagé, exploration et personnalisation en 3D, étages et salles, enregistrement en équipe, sauvegarde et mise à jour. Les données (« Studio Lumen ») sont fictives. La vidéo se refait automatiquement avec [`docs/presentation`](docs/presentation/README.md).
 
