@@ -26,7 +26,7 @@ Sureau s’installe **sur votre propre infrastructure** : une instance regroupe 
 
 ## Présentation vidéo
 
-https://github.com/user-attachments/assets/50ea9db0-92c4-4a0f-bcc9-d7d62c7a0ddd
+https://github.com/user-attachments/assets/cddf8190-2456-45a5-ac3a-20a7aeb30333
 
 2 min 01 s · lecture directement sur GitHub · version originale en Full HD (1080p, 30 images/s, MP4 de 12,7 Mo avec chapitres) : [`frontend/docs/videos/sureau-presentation.mp4`](frontend/docs/videos/sureau-presentation.mp4)
 
