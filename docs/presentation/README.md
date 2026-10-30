@@ -24,10 +24,21 @@ Le script crée une instance jetable (port `VIDEO_PORT`, 18130 par défaut), fil
 | Fichier | Contenu |
 | --- | --- |
 | `sureau-presentation.mp4` | 1920 × 1080, 30 images/s, H.264 et AAC, avec chapitres |
-| `affiche.jpg` | Image d'aperçu, prise dans la vue 3D |
+| `affiche.jpg` | Image d'aperçu, prise dans la vue 3D, pour une publication ailleurs que sur GitHub |
 | `planche.jpg` | Une image toutes les 2 s, pour relire le montage d'un coup d'œil |
 
-Pour publier une nouvelle version, copier les deux premiers fichiers vers `frontend/docs/videos/sureau-presentation.mp4` et `frontend/docs/images/sureau-presentation.jpg`, puis mettre à jour la durée et la taille indiquées dans le README.
+Pour publier une nouvelle version :
+
+1. copier `sureau-presentation.mp4` vers `frontend/docs/videos/sureau-presentation.mp4` : c'est la version de référence, en Full HD ;
+2. préparer la copie lue dans le README. GitHub n'y affiche un lecteur que pour une vidéo déposée par son site, limitée à 10 Mo sur un compte gratuit. Deux passes à 500 kbit/s gardent le 1080p sous cette limite sans perte visible :
+
+   ```sh
+   ffmpeg -i sureau-presentation.mp4 -c:v libx264 -preset slow -b:v 500k -pix_fmt yuv420p -pass 1 -an -f null -
+   ffmpeg -i sureau-presentation.mp4 -map_chapters -1 -c:v libx264 -preset slow -b:v 500k -pix_fmt yuv420p -pass 2 -c:a aac -b:a 96k -movflags +faststart sureau-presentation-readme.mp4
+   ```
+
+3. glisser `sureau-presentation-readme.mp4` dans une zone de commentaire du dépôt sur GitHub (inutile de publier le commentaire), puis remplacer dans le README le lien `https://github.com/user-attachments/assets/…`, seul sur sa ligne, par celui que GitHub vient d'insérer. Dans un dépôt privé, la vidéo reste visible uniquement par les personnes qui y ont accès ;
+4. mettre à jour la durée et la taille indiquées dans le README.
 
 ## Fichiers
 
