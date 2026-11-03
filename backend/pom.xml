@@ -12,19 +12,24 @@
 	<artifactId>sureau-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Sureau API</name>
-	<description>API de gestion de materiel Sureau.</description>
-	<url/>
+	<description>API de Sureau : inventaire du matériel, comptes et espaces partagés.</description>
+	<url>https://github.com/Nadjide/sureau</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>GNU Affero General Public License v3.0 only</name>
+			<url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<id>Nadjide</id>
+			<name>Nadjide Omar</name>
+			<url>https://github.com/Nadjide</url>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/Nadjide/sureau.git</connection>
+		<url>https://github.com/Nadjide/sureau</url>
 	</scm>
 	<properties>
 		<java.version>21</java.version>

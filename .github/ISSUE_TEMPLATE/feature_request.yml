@@ -1,0 +1,23 @@
+name: Proposer une idée
+description: Une fonction ou une amélioration qui vous manque.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Le besoin
+      description: Ce que vous cherchez à faire aujourd’hui, et ce qui vous en empêche.
+    validations:
+      required: true
+  - type: textarea
+    id: idee
+    attributes:
+      label: L’idée
+      description: Comment Sureau pourrait y répondre.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Solutions envisagées
+      description: Contournements actuels ou autres outils, le cas échéant.
