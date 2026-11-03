@@ -144,7 +144,12 @@ describe('thème au premier affichage', () => {
   it('charge le script de thème avant l’application, sans script en ligne interdit par la CSP', () => {
     const head = html.slice(0, html.indexOf('</head>'))
     expect(head).toContain('<script src="/theme.js"></script>')
-    expect(html).not.toMatch(/<script>/)
+    const scriptTags = html
+      .toLowerCase()
+      .split('<script')
+      .slice(1)
+      .map((rest) => rest.slice(0, rest.indexOf('>')))
+    expect(scriptTags.filter((tag) => !tag.includes(' src='))).toEqual([])
     expect(html.indexOf('/theme.js')).toBeLessThan(html.indexOf('/src/main.tsx'))
   })
 

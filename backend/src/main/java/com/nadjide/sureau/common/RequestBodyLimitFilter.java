@@ -21,6 +21,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import tools.jackson.databind.ObjectMapper;
+
 /** Bounds the large documents (workspace snapshot, asset import) before JSON parsing, including chunked requests. */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 10)
@@ -29,6 +31,11 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
     private static final Map<String, String> LIMITED = Map.of(
             "PUT /api/workspace", "The complete workspace snapshot exceeds 2.1 MB.",
             "POST /api/assets/import", "The complete import exceeds 2.1 MB.");
+    private final ObjectMapper mapper;
+
+    public RequestBodyLimitFilter(ObjectMapper mapper) {
+        this.mapper = mapper;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -75,14 +82,13 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
         return request.getMethod() + " " + request.getRequestURI().substring(request.getContextPath().length());
     }
 
-    private static void tooLarge(HttpServletResponse response, String route) throws IOException {
+    private void tooLarge(HttpServletResponse response, String route) throws IOException {
         response.setStatus(413);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write("""
-                {"type":"about:blank","title":"Payload Too Large","status":413,
-                 "code":"PAYLOAD_TOO_LARGE","detail":"%s",
-                 "instance":"%s"}
-                """.formatted(LIMITED.get(route), route.substring(route.indexOf(' ') + 1)));
+        mapper.writeValue(response.getOutputStream(), Map.of(
+                "type", "about:blank", "title", "Payload Too Large", "status", 413,
+                "code", "PAYLOAD_TOO_LARGE", "detail", LIMITED.get(route),
+                "instance", route.substring(route.indexOf(' ') + 1)));
     }
 }
