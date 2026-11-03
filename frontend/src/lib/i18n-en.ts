@@ -1033,8 +1033,12 @@ export const english: Readonly<Record<string, string>> = {
   'Plateau A': 'Room A',
   'Plan 2D de {name}. {workstations} et {furniture} sélectionnables au clavier.':
     '2D plan of {name}. {workstations} and {furniture} selectable with the keyboard.',
-  'Sélectionner le meuble {name} dans le plan 2D': 'Select the furniture {name} in the 2D plan',
-  'Sélectionner {name} dans le plan 2D': 'Select {name} in the 2D plan',
+  '{name} — sélectionner le meuble dans le plan 2D': '{name} — select the furniture in the 2D plan',
+  '{number} — meuble {name}, sélectionner dans le plan 2D': '{number} — furniture {name}, select in the 2D plan',
+  '{name} — sélectionner dans le plan 2D': '{name} — select in the 2D plan',
+  '{number} — {name}, sélectionner dans le plan 2D': '{number} — {name}, select in the 2D plan',
+  '{name} — sélectionner dans la vue 3D': '{name} — select in the 3D view',
+  '{number} — {name}, sélectionner dans la vue 3D': '{number} — {name}, select in the 3D view',
   'Implantation de l’espace · mobilier du plan': 'Space layout · plan furniture',
   '{count} meuble': '{count} piece of furniture',
   '{count} meubles': '{count} pieces of furniture',
@@ -1042,7 +1046,6 @@ export const english: Readonly<Record<string, string>> = {
     '3D model of {name}. Select a desk or a piece of furniture to explore it.',
   'La vue 3D est indisponible sur cet appareil. Utilisez le plan 2D pour explorer les postes.':
     'The 3D view is not available on this device. Use the 2D plan to explore the desks.',
-  'Sélectionner {name} dans la vue 3D': 'Select {name} in the 3D view',
   'Le plan reste accessible.': 'The plan remains available.',
   'La vue 3D n’a pas pu démarrer sur cet appareil.': 'The 3D view could not start on this device.',
   'Ouvrir le plan 2D': 'Open the 2D plan',

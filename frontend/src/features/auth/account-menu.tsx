@@ -187,12 +187,9 @@ export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepa
         }}
       >
         <SheetTrigger asChild>
-          <button
-            type="button"
-            className="user-avatar account-trigger"
-            aria-label={t('Compte de {name}', { name: user.displayName })}
-          >
-            {initials}
+          <button type="button" className="user-avatar account-trigger">
+            <span aria-hidden="true">{initials}</span>
+            <span className="sr-only">{t('Compte de {name}', { name: user.displayName })}</span>
           </button>
         </SheetTrigger>
         <SheetContent className="account-sheet">

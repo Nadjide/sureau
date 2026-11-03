@@ -238,7 +238,14 @@ export function RoomPlan({
             transform={`translate(${x},${y})`}
             role="button"
             tabIndex={0}
-            aria-label={t('Sélectionner le meuble {name} dans le plan 2D', { name: item.label })}
+            aria-label={
+              plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== item.id
+                ? t('{number} — meuble {name}, sélectionner dans le plan 2D', {
+                    number: String(plan.workstations.length + index + 1).padStart(2, '0'),
+                    name: item.label,
+                  })
+                : t('{name} — sélectionner le meuble dans le plan 2D', { name: item.label })
+            }
             aria-pressed={selected}
             onPointerDown={(event) => beginDrag(event, item)}
             onClick={(event) => itemClick(event, item)}
@@ -308,7 +315,14 @@ export function RoomPlan({
             transform={`translate(${x},${y})`}
             role="button"
             tabIndex={0}
-            aria-label={t('Sélectionner {name} dans le plan 2D', { name: station.label })}
+            aria-label={
+              plan.workstations.length + plan.furniture.length > 16 && !selected && selectedWorkstationId !== station.id
+                ? t('{number} — {name}, sélectionner dans le plan 2D', {
+                    number: String(index + 1).padStart(2, '0'),
+                    name: station.label,
+                  })
+                : t('{name} — sélectionner dans le plan 2D', { name: station.label })
+            }
             aria-pressed={selected}
             onPointerDown={(event) => beginDrag(event, station)}
             onClick={(event) => itemClick(event, station)}
