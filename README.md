@@ -10,6 +10,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Nadjide/sureau/actions/workflows/ci.yml"><img alt="Intégration continue" src="https://github.com/Nadjide/sureau/actions/workflows/ci.yml/badge.svg?branch=main" /></a>
+  <a href="LICENSE"><img alt="Licence AGPL-3.0" src="https://img.shields.io/badge/licence-AGPL--3.0-blue" /></a>
+</p>
+
+<p align="center">
   <a href="#présentation-vidéo">Vidéo</a> ·
   <a href="#aperçu">Aperçu</a> ·
   <a href="#fonctionnalités">Fonctionnalités</a> ·
@@ -106,7 +111,7 @@ Sureau se sert à la **racine d’un domaine ou d’un sous-domaine** (par exemp
 
 - **Auto-hébergement.** L’installation autonome est le produit complet. Une instance, c’est une organisation : ses comptes, son parc et ses plans ne sont jamais mélangés avec ceux d’une autre.
 - **Hébergement géré.** Une offre où l’instance serait exploitée pour vous est envisagée, avec la même application dans une instance dédiée. **Elle n’existe pas aujourd’hui** : aucun service, tarif, délai d’intervention ou garantie de disponibilité n’est proposé.
-- **Licence.** Aucune licence n’a encore été choisie pour ce dépôt. Tant qu’elle n’est pas publiée, ne le présentez pas comme un projet open source.
+- **Licence.** Sureau est un logiciel libre, distribué sous licence [GNU AGPL-3.0](LICENSE). Vous pouvez l’utiliser, l’étudier, le modifier et le redistribuer ; si vous mettez une version modifiée à la disposition d’autres personnes, y compris comme service en ligne, vous leur en fournissez le code source sous la même licence.
 - **Images.** Le dépôt contient un workflow de publication d’images sur GitHub Container Registry, déclenché par un tag de version. En l’absence de version publiée, l’installation construit l’image localement.
 - **Limites.** Une instance tourne sur une seule machine ou une seule réplique, sans haute disponibilité. Les paliers de charge et la montée en échelle n’ont pas été mesurés.
 
@@ -176,7 +181,7 @@ Les migrations de schéma sont gérées par Flyway à partir de [`db/migration`]
 
 | Partie | Commande |
 | --- | --- |
-| Frontend (dans `frontend/`) | `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` |
+| Frontend (dans `frontend/`) | `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build` |
 | Backend (dans `backend/`) | `./mvnw test`, avec une base de test (voir ci-dessous) |
 | Parcours de bout en bout | `sh e2e/run.sh` |
 | Scripts shell | `shellcheck` sur tous les fichiers `.sh` (ShellCheck 0.11.0 en CI) |
@@ -270,4 +275,4 @@ Pour les réglages et le comportement détaillé de l’atelier, consulter le [g
 
 ---
 
-Développé par [Nadjide Omar](https://github.com/Nadjide).
+Développé par [Nadjide Omar](https://github.com/Nadjide) · [Licence AGPL-3.0](LICENSE) · [Contribuer](CONTRIBUTING.md) · [Sécurité](SECURITY.md)

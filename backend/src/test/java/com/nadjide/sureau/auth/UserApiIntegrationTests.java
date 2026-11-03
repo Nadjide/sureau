@@ -75,10 +75,10 @@ class UserApiIntegrationTests {
     @Test
     void administratorCreatesNormalizedAccountsAndNeverReceivesSecretsOrAuthenticationVersions() throws Exception {
         Browser admin = administrator();
-        JsonNode created = body(admin.jsonPost("/api/users", creation("  Elise.Test  ", "  Élise Omar  ", PASSWORD, "EDITOR"))
+        JsonNode created = body(admin.jsonPost("/api/users", creation("  Elise.Test  ", "  Inès Moreau  ", PASSWORD, "EDITOR"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("elise.test"))
-                .andExpect(jsonPath("$.displayName").value("Élise Omar"))
+                .andExpect(jsonPath("$.displayName").value("Inès Moreau"))
                 .andExpect(jsonPath("$.role").value("EDITOR"))
                 .andExpect(jsonPath("$.enabled").value(true)));
         assertThat(created.propertyNames()).containsExactlyInAnyOrder("id", "username", "displayName", "role", "enabled", "email");

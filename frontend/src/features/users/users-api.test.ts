@@ -5,7 +5,7 @@ import type { AdminUser, ChangeOwnPasswordInput, CreateUserInput, UpdateUserInpu
 
 const creation: CreateUserInput = {
   username: 'member.test',
-  displayName: 'Élise Omar',
+  displayName: 'Inès Moreau',
   password: '  Initial-password-42!  ',
   role: 'EDITOR',
   email: null,
@@ -13,7 +13,7 @@ const creation: CreateUserInput = {
 const account: AdminUser = {
   id: 42,
   username: 'member.test',
-  displayName: 'Élise Omar',
+  displayName: 'Inès Moreau',
   role: 'EDITOR',
   enabled: true,
   email: null,
@@ -108,7 +108,7 @@ describe('écritures des comptes et normalisation des DTO', () => {
       .mockResolvedValueOnce(json({ ...account, future: true }, 201))
     const api = createUsersApi(createApiClient(fetcher))
     await expect(
-      api.create({ ...creation, username: '  MEMBER.Test  ', displayName: '  Élise Omar  ' }),
+      api.create({ ...creation, username: '  MEMBER.Test  ', displayName: '  Inès Moreau  ' }),
     ).resolves.toEqual(account)
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf', '/api/users'])
     const init = fetcher.mock.calls[1]![1]

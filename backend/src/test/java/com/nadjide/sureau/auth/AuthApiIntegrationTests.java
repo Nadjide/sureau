@@ -88,11 +88,11 @@ class AuthApiIntegrationTests {
     @Test
     void bootstrapNormalizesTheAdministratorAndStoresOnlyAPasswordHash() throws Exception {
         Browser browser = new Browser();
-        browser.jsonPost("/api/auth/setup", setupPayload(SETUP_TOKEN, "  Admin.Test  ", "  Nadjide Omar  ", PASSWORD))
+        browser.jsonPost("/api/auth/setup", setupPayload(SETUP_TOKEN, "  Admin.Test  ", "  Alex Martin  ", PASSWORD))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.username").value("admin.test"))
-                .andExpect(jsonPath("$.displayName").value("Nadjide Omar"))
+                .andExpect(jsonPath("$.displayName").value("Alex Martin"))
                 .andExpect(jsonPath("$.role").value("ADMIN"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
