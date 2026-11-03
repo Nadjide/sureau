@@ -350,7 +350,7 @@ export const english: Readonly<Record<string, string>> = {
   'Utilisez « Actualiser les comptes » pour charger la liste avec une session administrateur.':
     'Use “Refresh the accounts” to load the list with an administrator session.',
   'Comptes de l’instance': 'Instance accounts',
-  'Modifier le compte {username}': 'Edit the account {username}',
+  'modifier ce compte': 'edit this account',
   Vous: 'You',
   Actif: 'Active',
   Désactivé: 'Disabled',

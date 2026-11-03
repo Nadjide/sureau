@@ -674,7 +674,6 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
                       type="button"
                       className={form?.kind === 'edit' && form.base.id === account.id ? 'is-current' : ''}
                       disabled={!canAdmin || Boolean(pending)}
-                      aria-label={t('Modifier le compte {username}', { username: account.username })}
                       aria-pressed={form?.kind === 'edit' && form.base.id === account.id}
                       onClick={() => requestNavigate(account)}
                     >
@@ -684,7 +683,12 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
                       <span className="user-account-copy">
                         <strong>
                           {account.displayName}
-                          {account.id === state.user?.id && <small>{t('Vous')}</small>}
+                          {account.id === state.user?.id && (
+                            <>
+                              {' '}
+                              <small>{t('Vous')}</small>
+                            </>
+                          )}
                         </strong>
                         <span>
                           @{account.username} · {t(roleLabels[account.role])}
@@ -694,6 +698,7 @@ export function UserManagementSheet({ open, onOpenChange }: Props) {
                       <span className={`user-access-badge${account.enabled ? '' : ' is-disabled'}`}>
                         {account.enabled ? t('Actif') : t('Désactivé')}
                       </span>
+                      <span className="sr-only">, {t('modifier ce compte')}</span>
                     </button>
                   </li>
                 ))}

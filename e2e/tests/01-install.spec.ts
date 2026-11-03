@@ -369,7 +369,8 @@ test('records the e-mail address that enterprise sign-in will match, after a sec
   await page.goto('/#inventory');
   await page.getByRole('button', { name: `Compte de ${admin.displayName}`, exact: true }).click();
   await page.getByRole('button', { name: 'Gérer l’équipe', exact: true }).click();
-  await page.getByRole('button', { name: `Modifier le compte ${viewer.username}`, exact: true }).click();
+  await page.getByRole('list', { name: 'Comptes de l’instance' }).getByRole('button')
+    .filter({ hasText: `@${viewer.username} ·` }).click();
   await page.locator('#user-edit-email').fill('  Lecteur.Recette@exemple.fr ');
   await page.getByRole('button', { name: 'Enregistrer le compte', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Confirmer les nouveaux accès ?' }))
