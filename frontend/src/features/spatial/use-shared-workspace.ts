@@ -10,12 +10,16 @@ export function useSharedWorkspace() {
     let currentPermission = canEdit
     return {
       store: createSharedWorkspaceStore({ getWorkspace, saveWorkspace, canEdit: () => currentPermission }),
-      setPermission(value: boolean) { currentPermission = value },
+      setPermission(value: boolean) {
+        currentPermission = value
+      },
     }
   })
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState)
 
-  useLayoutEffect(() => { setPermission(canEdit) }, [canEdit, setPermission])
+  useLayoutEffect(() => {
+    setPermission(canEdit)
+  }, [canEdit, setPermission])
 
   useEffect(() => {
     void store.start()

@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defaultPlan, parsePlan } from './plan-document'
 import {
-  createSpatialHistory, parseSpatialDraft, pushSpatialChange, redoSpatial, sameSpatialDraft,
-  spatialHistoryLimit, spatialLocationLimit, undoSpatial, type SpatialDraft,
+  createSpatialHistory,
+  parseSpatialDraft,
+  pushSpatialChange,
+  redoSpatial,
+  sameSpatialDraft,
+  spatialHistoryLimit,
+  spatialLocationLimit,
+  undoSpatial,
+  type SpatialDraft,
 } from './shared-workspace-model'
 import { createWorkspaceFromPlan } from './workspace-document'
 
@@ -19,7 +26,11 @@ function draft(): SpatialDraft {
 function reverseKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reverseKeys)
   if (typeof value !== 'object' || value === null) return value
-  return Object.fromEntries(Object.entries(value).reverse().map(([key, entry]) => [key, reverseKeys(entry)]))
+  return Object.fromEntries(
+    Object.entries(value)
+      .reverse()
+      .map(([key, entry]) => [key, reverseKeys(entry)]),
+  )
 }
 
 describe('brouillon spatial partagé', () => {
@@ -38,29 +49,36 @@ describe('brouillon spatial partagé', () => {
 
   it('accepte une table sans prototype et conserve les identifiants sûrs jusqu’à MAX_SAFE_INTEGER', () => {
     const locations: unknown = Object.assign(Object.create(null), {
-      '9007199254740991': 'desk-max', '4294967297': 'desk-grand', '1': 'desk-01',
+      '9007199254740991': 'desk-max',
+      '4294967297': 'desk-grand',
+      '1': 'desk-01',
     })
     const parsed = parseSpatialDraft({ workspace: draft().workspace, locations })
     expect(Object.keys(parsed.locations)).toEqual(['1', '4294967297', '9007199254740991'])
     expect(parsed.locations[Number.MAX_SAFE_INTEGER]).toBe('desk-max')
-    expect(JSON.stringify(parsed.locations)).toBe('{"1":"desk-01","4294967297":"desk-grand","9007199254740991":"desk-max"}')
+    expect(JSON.stringify(parsed.locations)).toBe(
+      '{"1":"desk-01","4294967297":"desk-grand","9007199254740991":"desk-max"}',
+    )
   })
 
-  it.each(['0', '-0', '-1', '01', '1.0', '1e2', '+1', ' 1', '1 ', 'NaN', 'Infinity', '9007199254740992', '__proto__']) (
-    'refuse la clé de matériel non canonique %s', (key) => {
+  it.each(['0', '-0', '-1', '01', '1.0', '1e2', '+1', ' 1', '1 ', 'NaN', 'Infinity', '9007199254740992', '__proto__'])(
+    'refuse la clé de matériel non canonique %s',
+    (key) => {
       const locations = Object.fromEntries([[key, 'desk-01']])
       expect(() => parseSpatialDraft({ ...draft(), locations })).toThrow()
     },
   )
 
   it.each([null, [], new Date(), new Map([[1, 'desk-01']]), Object.create({ 1: 'desk-01' })])(
-    'refuse une table de localisations incompatible : %s', (locations) => {
+    'refuse une table de localisations incompatible : %s',
+    (locations) => {
       expect(() => parseSpatialDraft({ ...draft(), locations })).toThrow()
     },
   )
 
   it.each([null, 42, '', 'desk-1', 'DESK-01', 'desk-01 ', 'room-01', `desk-${'a'.repeat(81)}`])(
-    'refuse une localisation invalide sans la retirer silencieusement : %s', (station) => {
+    'refuse une localisation invalide sans la retirer silencieusement : %s',
+    (station) => {
       expect(() => parseSpatialDraft({ ...draft(), locations: { 42: station } })).toThrow()
     },
   )
@@ -77,15 +95,19 @@ describe('brouillon spatial partagé', () => {
   })
 
   it('accepte 20 000 liens et refuse le dépassement sans tronquer le document', () => {
-    const locations = Object.fromEntries(Array.from({ length: spatialLocationLimit }, (_, index) => [index + 1, 'desk-absent']))
+    const locations = Object.fromEntries(
+      Array.from({ length: spatialLocationLimit }, (_, index) => [index + 1, 'desk-absent']),
+    )
     expect(Object.keys(parseSpatialDraft({ ...draft(), locations }).locations)).toHaveLength(spatialLocationLimit)
-    expect(() => parseSpatialDraft({ ...draft(), locations: { ...locations, [spatialLocationLimit + 1]: 'desk-01' } }))
-      .toThrow('20 000')
+    expect(() =>
+      parseSpatialDraft({ ...draft(), locations: { ...locations, [spatialLocationLimit + 1]: 'desk-01' } }),
+    ).toThrow('20 000')
     expect(Object.keys(locations)).toHaveLength(spatialLocationLimit)
   })
 
   it.each([null, [], '{}', {}, { workspace: draft().workspace }, { ...draft(), revision: 1 }])(
-    'refuse une enveloppe incomplète ou contenant des données étrangères', (value) => {
+    'refuse une enveloppe incomplète ou contenant des données étrangères',
+    (value) => {
       expect(() => parseSpatialDraft(value)).toThrow()
     },
   )
@@ -103,14 +125,25 @@ describe('brouillon spatial partagé', () => {
     expect(() => parseSpatialDraft(source)).toThrow()
   })
 
-  it.each(['\u0000', '\ud800', '\udfff', 'avant\ud800après', '\ud800\ud800']) (
-    'refuse les caractères incompatibles avec PostgreSQL dans chaque nom : %j', (invalid) => {
+  it.each(['\u0000', '\ud800', '\udfff', 'avant\ud800après', '\ud800\ud800'])(
+    'refuse les caractères incompatibles avec PostgreSQL dans chaque nom : %j',
+    (invalid) => {
       const changes = [
-        (value: SpatialDraft) => { value.workspace.name = `Nom${invalid}` },
-        (value: SpatialDraft) => { value.workspace.floors[0]!.name = `Étage${invalid}` },
-        (value: SpatialDraft) => { value.workspace.rooms[0]!.plan.name = `Salle${invalid}` },
-        (value: SpatialDraft) => { value.workspace.rooms[0]!.plan.workstations[0]!.label = `Poste${invalid}` },
-        (value: SpatialDraft) => { value.workspace.rooms[0]!.plan.furniture[0]!.label = `Meuble${invalid}` },
+        (value: SpatialDraft) => {
+          value.workspace.name = `Nom${invalid}`
+        },
+        (value: SpatialDraft) => {
+          value.workspace.floors[0]!.name = `Étage${invalid}`
+        },
+        (value: SpatialDraft) => {
+          value.workspace.rooms[0]!.plan.name = `Salle${invalid}`
+        },
+        (value: SpatialDraft) => {
+          value.workspace.rooms[0]!.plan.workstations[0]!.label = `Poste${invalid}`
+        },
+        (value: SpatialDraft) => {
+          value.workspace.rooms[0]!.plan.furniture[0]!.label = `Meuble${invalid}`
+        },
       ]
       for (const change of changes) {
         const source = draft()
@@ -126,7 +159,12 @@ describe('brouillon spatial partagé', () => {
     expect(sameSpatialDraft(initial, reordered)).toBe(true)
     expect(JSON.stringify(parseSpatialDraft(initial))).toBe(JSON.stringify(parseSpatialDraft(reordered)))
     expect(sameSpatialDraft(initial, { ...initial, locations: { ...initial.locations, 42: 'desk-02' } })).toBe(false)
-    expect(sameSpatialDraft(initial, { ...initial, workspace: { ...initial.workspace, rooms: [...initial.workspace.rooms].reverse() } })).toBe(false)
+    expect(
+      sameSpatialDraft(initial, {
+        ...initial,
+        workspace: { ...initial.workspace, rooms: [...initial.workspace.rooms].reverse() },
+      }),
+    ).toBe(false)
   })
 })
 
@@ -157,16 +195,26 @@ describe('historique spatial atomique', () => {
     })
     expect(changed.present.locations).toBe(initial.present.locations)
     expect(changed.present.locations[42]).toBe('desk-01')
-    expect(changed.present.workspace.rooms.some((room) => room.plan.workstations.some((station) => station.id === 'desk-01'))).toBe(false)
-    expect(undoSpatial(changed).present.workspace.rooms[0]!.plan.workstations.some((station) => station.id === 'desk-01')).toBe(true)
+    expect(
+      changed.present.workspace.rooms.some((room) =>
+        room.plan.workstations.some((station) => station.id === 'desk-01'),
+      ),
+    ).toBe(false)
+    expect(
+      undoSpatial(changed).present.workspace.rooms[0]!.plan.workstations.some((station) => station.id === 'desk-01'),
+    ).toBe(true)
   })
 
   it('garde la scène entière lors d’une simple association et les plans inchangés lors d’un renommage', () => {
     const initial = createSpatialHistory(draft())
-    const associated = pushSpatialChange(initial, { ...initial.present, locations: { ...initial.present.locations, 91: 'desk-03' } })
+    const associated = pushSpatialChange(initial, {
+      ...initial.present,
+      locations: { ...initial.present.locations, 91: 'desk-03' },
+    })
     expect(associated.present.workspace).toBe(initial.present.workspace)
     const renamed = pushSpatialChange(associated, {
-      ...associated.present, workspace: { ...associated.present.workspace, name: 'Agence Sureau' },
+      ...associated.present,
+      workspace: { ...associated.present.workspace, name: 'Agence Sureau' },
     })
     expect(renamed.present.locations).toBe(associated.present.locations)
     expect(renamed.present.workspace.floors[0]).toBe(initial.present.workspace.floors[0])
@@ -181,7 +229,9 @@ describe('historique spatial atomique', () => {
       ...initial.present,
       workspace: {
         ...initial.present.workspace,
-        rooms: initial.present.workspace.rooms.map((room) => room === original ? { ...room, floorId: 'floor-02' } : room),
+        rooms: initial.present.workspace.rooms.map((room) =>
+          room === original ? { ...room, floorId: 'floor-02' } : room,
+        ),
       },
     })
     expect(changed.present.workspace.rooms[0]!.floorId).toBe('floor-02')

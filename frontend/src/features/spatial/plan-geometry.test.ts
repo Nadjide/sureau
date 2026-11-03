@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPlan } from './plan-document'
 import type { FurnitureItem, SpatialPlan, Workstation } from './room-model'
-import { clampFurniture, clampWorkstation, findFreeFurniturePlacement, findFreePlacement, mixedOverlaps, normalizeRotation, overlaps, snapFurniture, snapWorkstation } from './plan-geometry'
+import {
+  clampFurniture,
+  clampWorkstation,
+  findFreeFurniturePlacement,
+  findFreePlacement,
+  mixedOverlaps,
+  normalizeRotation,
+  overlaps,
+  snapFurniture,
+  snapWorkstation,
+} from './plan-geometry'
 
 function plan(): SpatialPlan {
   return { ...structuredClone(defaultPlan), workstations: [], furniture: [] }
@@ -9,23 +19,39 @@ function plan(): SpatialPlan {
 
 function station(overrides: Partial<Workstation> = {}): Workstation {
   return {
-    id: 'desk-test', label: 'Poste test', position: [0, 0, 0],
-    rotation: 0, width: 2, depth: 1, color: null, ...overrides,
+    id: 'desk-test',
+    label: 'Poste test',
+    position: [0, 0, 0],
+    rotation: 0,
+    width: 2,
+    depth: 1,
+    color: null,
+    ...overrides,
   }
 }
 
 function furniture(overrides: Partial<FurnitureItem> = {}): FurnitureItem {
   return {
-    id: 'furniture-test', kind: 'table', label: 'Table', position: [0, 0, 0], rotation: 0,
-    width: 2, depth: 1, height: 0.75, color: '#123456', ...overrides,
+    id: 'furniture-test',
+    kind: 'table',
+    label: 'Table',
+    position: [0, 0, 0],
+    rotation: 0,
+    width: 2,
+    depth: 1,
+    height: 0.75,
+    color: '#123456',
+    ...overrides,
   }
 }
 
 function corners(item: Workstation): [number, number][] {
-  return [-item.width / 2, item.width / 2].flatMap((x) => [-0.5 * item.depth, 1.3 * item.depth].map((z): [number, number] => [
-    item.position[0] + Math.cos(item.rotation) * x + Math.sin(item.rotation) * z,
-    item.position[2] - Math.sin(item.rotation) * x + Math.cos(item.rotation) * z,
-  ]))
+  return [-item.width / 2, item.width / 2].flatMap((x) =>
+    [-0.5 * item.depth, 1.3 * item.depth].map((z): [number, number] => [
+      item.position[0] + Math.cos(item.rotation) * x + Math.sin(item.rotation) * z,
+      item.position[2] - Math.sin(item.rotation) * x + Math.cos(item.rotation) * z,
+    ]),
+  )
 }
 
 describe('géométrie du plateau', () => {
@@ -43,7 +69,8 @@ describe('géométrie du plateau', () => {
   })
 
   it.each([0, Math.PI / 4, Math.PI / 2, Math.PI, Math.PI * 1.5, -Math.PI / 3])(
-    'garde table et fauteuil dans les quatre murs à la rotation %s', (rotation) => {
+    'garde table et fauteuil dans les quatre murs à la rotation %s',
+    (rotation) => {
       const room = plan()
       for (const x of [-100, 100]) {
         for (const z of [-100, 100]) {
@@ -61,18 +88,25 @@ describe('géométrie du plateau', () => {
     const room = { ...plan(), width: 6, depth: 6 }
     expect(clampWorkstation(room, station({ position: [0, 0, 9] })).position[2]).toBeCloseTo(1.7)
     expect(clampWorkstation(room, station({ position: [9, 0, 0], rotation: Math.PI / 2 })).position[0]).toBeCloseTo(1.7)
-    expect(clampWorkstation(room, station({ position: [-9, 0, 0], rotation: Math.PI * 1.5 })).position[0]).toBeCloseTo(-1.7)
+    expect(clampWorkstation(room, station({ position: [-9, 0, 0], rotation: Math.PI * 1.5 })).position[0]).toBeCloseTo(
+      -1.7,
+    )
   })
 
   it.each([1e15, 1e308, Number.MAX_VALUE, -1e15, -1e308, -Number.MAX_VALUE])(
-    'borne une coordonnée finie très éloignée sans perdre la limite : %s', (coordinate) => {
+    'borne une coordonnée finie très éloignée sans perdre la limite : %s',
+    (coordinate) => {
       const room = plan()
       const side = Math.sign(coordinate)
       const bounded = clampWorkstation(room, station({ position: [coordinate, 0, coordinate] }))
       expect(bounded.position[0]).toBeCloseTo(side * (room.width / 2 - 1))
       expect(bounded.position[2]).toBeCloseTo(side > 0 ? room.depth / 2 - 1.3 : -room.depth / 2 + 0.5)
       expect(bounded.position.every(Number.isFinite)).toBe(true)
-      expect(corners(bounded).every(([x, z]) => Math.abs(x) <= room.width / 2 + 1e-7 && Math.abs(z) <= room.depth / 2 + 1e-7)).toBe(true)
+      expect(
+        corners(bounded).every(
+          ([x, z]) => Math.abs(x) <= room.width / 2 + 1e-7 && Math.abs(z) <= room.depth / 2 + 1e-7,
+        ),
+      ).toBe(true)
     },
   )
 
@@ -105,7 +139,9 @@ describe('géométrie du plateau', () => {
   })
 
   it.each([
-    station({ width: 0 }), station({ depth: -1 }), station({ position: [Infinity, 0, 0] }),
+    station({ width: 0 }),
+    station({ depth: -1 }),
+    station({ position: [Infinity, 0, 0] }),
     station({ rotation: Number.NaN }),
   ])('refuse des propriétés non finies ou des dimensions invalides', (candidate) => {
     expect(() => clampWorkstation(plan(), candidate)).toThrow(RangeError)
@@ -154,15 +190,23 @@ describe('géométrie du plateau', () => {
     expect(candidate?.position).toEqual([0, 0, 0])
     const outside = findFreePlacement(room, station({ position: [99, 0, 99], rotation: Math.PI / 4 }))
     expect(outside).not.toBeNull()
-    expect(corners(outside!).every(([x, z]) => Math.abs(x) <= room.width / 2 + 1e-7 && Math.abs(z) <= room.depth / 2 + 1e-7)).toBe(true)
+    expect(
+      corners(outside!).every(([x, z]) => Math.abs(x) <= room.width / 2 + 1e-7 && Math.abs(z) <= room.depth / 2 + 1e-7),
+    ).toBe(true)
   })
 
   it('retourne null dans une pièce entièrement occupée sans superposer un nouveau poste', () => {
     const room = { ...plan(), width: 6, depth: 6 }
     const depth = 2 / 1.8
-    room.workstations = [-2, 0, 2].flatMap((x, column) => [-2, 0, 2].map((center, row) => station({
-      id: `desk-${column}-${row}`, position: [x, 0, center - 0.4 * depth], depth,
-    })))
+    room.workstations = [-2, 0, 2].flatMap((x, column) =>
+      [-2, 0, 2].map((center, row) =>
+        station({
+          id: `desk-${column}-${row}`,
+          position: [x, 0, center - 0.4 * depth],
+          depth,
+        }),
+      ),
+    )
     expect(findFreePlacement(room, station({ depth }))).toBeNull()
   })
 
@@ -181,8 +225,12 @@ describe('géométrie du plateau', () => {
     const item = furniture({ position: [0.36, 0, -0.64] })
     expect(snapFurniture(room, item).position).toEqual([0.25, 0, -0.75])
     expect(snapFurniture(room, item, false).position).toEqual(item.position)
-    expect(snapFurniture(room, furniture({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position).toEqual([5.5, 0, 4])
-    expect(snapWorkstation(room, station({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position[2]).toBeCloseTo(3.2)
+    expect(snapFurniture(room, furniture({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position).toEqual([
+      5.5, 0, 4,
+    ])
+    expect(
+      snapWorkstation(room, station({ position: [Number.MAX_VALUE, 0, Number.MAX_VALUE] })).position[2],
+    ).toBeCloseTo(3.2)
   })
 
   it('détecte les collisions mixtes avec le fauteuil, en conservant les contacts autorisés', () => {
@@ -210,9 +258,16 @@ describe('géométrie du plateau', () => {
 
   it('refuse d’ajouter un poste ou un meuble dans une pièce remplie uniquement de meubles', () => {
     const room = { ...plan(), width: 6, depth: 6 }
-    room.furniture = [-1.5, 1.5].flatMap((x, column) => [-1.5, 1.5].map((z, row) => furniture({
-      id: `furniture-${column}-${row}`, position: [x, 0, z], width: 3, depth: 3,
-    })))
+    room.furniture = [-1.5, 1.5].flatMap((x, column) =>
+      [-1.5, 1.5].map((z, row) =>
+        furniture({
+          id: `furniture-${column}-${row}`,
+          position: [x, 0, z],
+          width: 3,
+          depth: 3,
+        }),
+      ),
+    )
     expect(findFreePlacement(room, station())).toBeNull()
     expect(findFreeFurniturePlacement(room, furniture())).toBeNull()
   })

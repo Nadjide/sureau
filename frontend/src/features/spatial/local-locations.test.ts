@@ -18,7 +18,9 @@ function memoryStorage(initial: string | null = null) {
   let raw = initial
   const storage = {
     getItem: vi.fn((_key: string) => raw),
-    setItem: vi.fn((_key: string, value: string) => { raw = value }),
+    setItem: vi.fn((_key: string, value: string) => {
+      raw = value
+    }),
   } satisfies LocationStorage
 
   return { storage, raw: () => raw }
@@ -67,7 +69,10 @@ describe('local locations', () => {
     { label: 'notation exponentielle', raw: snapshot({ '1e3': 'desk-01' }) },
     { label: 'tableau à la place du dictionnaire', raw: snapshot(['desk-01']) },
     { label: 'clé de prototype', raw: '{"version":1,"planId":"plateau-a","associations":{"__proto__":"desk-01"}}' },
-    { label: 'clé de constructeur', raw: '{"version":1,"planId":"plateau-a","associations":{"constructor":"desk-01"}}' },
+    {
+      label: 'clé de constructeur',
+      raw: '{"version":1,"planId":"plateau-a","associations":{"constructor":"desk-01"}}',
+    },
   ])('conserve le contenu initial invalide : $label', ({ raw }) => {
     const { storage, raw: storedRaw } = memoryStorage(raw)
 
@@ -115,7 +120,12 @@ describe('local locations', () => {
 
     expect(locations[42]).toBe('desk-03')
     expect(getWorkstationAssetIds(locations, 'desk-03')).toEqual([42, 84])
-    expect(reversed.filter((asset) => locations[asset.id] === 'desk-03').map((asset) => asset.id).sort((a, b) => a - b)).toEqual([42, 84])
+    expect(
+      reversed
+        .filter((asset) => locations[asset.id] === 'desk-03')
+        .map((asset) => asset.id)
+        .sort((a, b) => a - b),
+    ).toEqual([42, 84])
   })
 
   it('refuse une mutation avec un identifiant ou un poste invalide', () => {
@@ -129,7 +139,9 @@ describe('local locations', () => {
 
   it('signale le refus de lecture et ne tente pas d’écraser un contenu inaccessible', () => {
     const storage = {
-      getItem: vi.fn(() => { throw new Error('SecurityError') }),
+      getItem: vi.fn(() => {
+        throw new Error('SecurityError')
+      }),
       setItem: vi.fn(),
     } satisfies LocationStorage
 
@@ -141,7 +153,9 @@ describe('local locations', () => {
   it('garde les modifications en mémoire et signale un quota ou un refus d’écriture', () => {
     const storage = {
       getItem: vi.fn((_key: string) => snapshot({ 42: 'desk-01' })),
-      setItem: vi.fn(() => { throw new Error('QuotaExceededError') }),
+      setItem: vi.fn(() => {
+        throw new Error('QuotaExceededError')
+      }),
     } satisfies LocationStorage
     const locations = updateLocation(loadLocations(storage).locations, 42, 'desk-04')
 

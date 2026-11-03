@@ -29,23 +29,30 @@ describe('client HTTP commun', () => {
     expect(new Headers(init?.headers).has('X-CSRF-TOKEN')).toBe(false)
   })
 
-  it.each(['https://elsewhere.test/api/assets', '//elsewhere.test/api/assets', '/assets'])('refuse la destination %s avant tout envoi', async (path) => {
-    const fetcher = vi.fn<typeof fetch>()
-    const client = createApiClient(fetcher)
+  it.each(['https://elsewhere.test/api/assets', '//elsewhere.test/api/assets', '/assets'])(
+    'refuse la destination %s avant tout envoi',
+    async (path) => {
+      const fetcher = vi.fn<typeof fetch>()
+      const client = createApiClient(fetcher)
 
-    await expect(client.requestJson(path, decodeList)).rejects.toThrow('current origin')
-    expect(fetcher).not.toHaveBeenCalled()
-  })
+      await expect(client.requestJson(path, decodeList)).rejects.toThrow('current origin')
+      expect(fetcher).not.toHaveBeenCalled()
+    },
+  )
 
   it('protège une mutation JSON avec le jeton CSRF obtenu de la session', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf())
       .mockResolvedValueOnce(json({ revision: 2 }))
     const client = createApiClient(fetcher)
 
-    await expect(client.requestJson('/api/workspace', (payload) => payload, {
-      method: 'PUT', json: { expectedRevision: 1 },
-    })).resolves.toEqual({ revision: 2 })
+    await expect(
+      client.requestJson('/api/workspace', (payload) => payload, {
+        method: 'PUT',
+        json: { expectedRevision: 1 },
+      }),
+    ).resolves.toEqual({ revision: 2 })
 
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf', '/api/workspace'])
     const init = fetcher.mock.calls[1]![1]
@@ -57,15 +64,18 @@ describe('client HTTP commun', () => {
   })
 
   it.each([401, 403])('signale un refus %i une seule fois sans rejouer la mutation', async (status) => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf())
       .mockResolvedValueOnce(json({ code: status === 401 ? 'AUTHENTICATION_REQUIRED' : 'ACCESS_DENIED' }, status))
     const client = createApiClient(fetcher)
     const listener = vi.fn()
     client.subscribeAuthFailure(listener)
 
-    await expect(client.requestVoid('/api/assets/42/retire', { method: 'PATCH' }))
-      .rejects.toMatchObject({ kind: 'http', status })
+    await expect(client.requestVoid('/api/assets/42/retire', { method: 'PATCH' })).rejects.toMatchObject({
+      kind: 'http',
+      status,
+    })
 
     expect(listener).toHaveBeenCalledTimes(1)
     expect(listener).toHaveBeenCalledWith(expect.objectContaining({ status }))
@@ -79,8 +89,9 @@ describe('client HTTP commun', () => {
     const listener = vi.fn()
     client.subscribeAuthFailure(listener)
 
-    await expect(client.requestJson('/api/auth/me', (value) => value, { notifyAuthFailure: false }))
-      .rejects.toMatchObject({ status: 401 })
+    await expect(
+      client.requestJson('/api/auth/me', (value) => value, { notifyAuthFailure: false }),
+    ).rejects.toMatchObject({ status: 401 })
     expect(listener).not.toHaveBeenCalled()
   })
 
@@ -90,41 +101,59 @@ describe('client HTTP commun', () => {
       if (retryAfter !== null) response.headers.set('Retry-After', retryAfter)
       return response
     }
-    const fetcher = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(csrf()).mockResolvedValueOnce(locked('90'))
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
+      .mockResolvedValueOnce(locked('90'))
       .mockResolvedValueOnce(locked('1'))
       .mockResolvedValueOnce(locked(null))
     const client = createApiClient(fetcher)
-    const login = () => client.requestVoid('/api/auth/login', {
-      method: 'POST', body: new URLSearchParams({ username: 'admin', password: 'x' }), notifyAuthFailure: false,
-    })
+    const login = () =>
+      client.requestVoid('/api/auth/login', {
+        method: 'POST',
+        body: new URLSearchParams({ username: 'admin', password: 'x' }),
+        notifyAuthFailure: false,
+      })
 
-    await expect(login()).rejects.toMatchObject({ status: 429, code: 'TOO_MANY_ATTEMPTS',
-      message: 'Trop de tentatives échouées. Réessayez dans 2 minutes.' })
+    await expect(login()).rejects.toMatchObject({
+      status: 429,
+      code: 'TOO_MANY_ATTEMPTS',
+      message: 'Trop de tentatives échouées. Réessayez dans 2 minutes.',
+    })
     await expect(login()).rejects.toMatchObject({ message: 'Trop de tentatives échouées. Réessayez dans 1 seconde.' })
     await expect(login()).rejects.toMatchObject({
-      message: 'Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.' })
+      message: 'Trop de tentatives échouées. Patientez quelques minutes avant de réessayer.',
+    })
   })
 
   it('traduit les erreurs de champs sans exposer les messages techniques du serveur', async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({
-      code: 'VALIDATION_ERROR',
-      detail: 'Internal validation details',
-      errors: [
-        { field: 'name', message: 'must not be blank' },
-        { field: 'assetTag', message: 'size must be between 0 and 50' },
-        { field: 'username', message: 'must match "[a-z]+"' },
-        { field: 'purchaseDate', message: 'Unexpected server internals' },
-      ],
-    }, 400))
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      json(
+        {
+          code: 'VALIDATION_ERROR',
+          detail: 'Internal validation details',
+          errors: [
+            { field: 'name', message: 'must not be blank' },
+            { field: 'assetTag', message: 'size must be between 0 and 50' },
+            { field: 'username', message: 'must match "[a-z]+"' },
+            { field: 'purchaseDate', message: 'Unexpected server internals' },
+          ],
+        },
+        400,
+      ),
+    )
     const client = createApiClient(fetcher)
 
     await expect(client.requestJson('/api/assets', decodeList)).rejects.toMatchObject({
-      kind: 'http', status: 400, code: 'VALIDATION_ERROR',
+      kind: 'http',
+      status: 400,
+      code: 'VALIDATION_ERROR',
       message: 'Vérifiez les champs indiqués avant de réessayer.',
       fieldErrors: {
-        name: 'Ce champ est obligatoire.', assetTag: 'Utilisez entre 0 et 50 caractères.',
-        username: 'Utilisez le format demandé.', purchaseDate: 'Vérifiez la valeur de ce champ.',
+        name: 'Ce champ est obligatoire.',
+        assetTag: 'Utilisez entre 0 et 50 caractères.',
+        username: 'Utilisez le format demandé.',
+        purchaseDate: 'Vérifiez la valeur de ce champ.',
       },
     })
   })
@@ -133,7 +162,9 @@ describe('client HTTP commun', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('<h1>Bad gateway</h1>', { status: 502 }))
 
     await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
-      kind: 'http', status: 502, code: null,
+      kind: 'http',
+      status: 502,
+      code: null,
       message: 'Le service est momentanément indisponible. Réessayez dans un instant.',
     })
   })
@@ -145,7 +176,8 @@ describe('client HTTP commun', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response())
 
     await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
-      kind: 'invalid-response', status: null,
+      kind: 'invalid-response',
+      status: null,
     })
   })
 
@@ -153,7 +185,10 @@ describe('client HTTP commun', () => {
     const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'))
 
     await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toBeInstanceOf(ApiError)
-    await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({ kind: 'network', status: null })
+    await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
+      kind: 'network',
+      status: null,
+    })
   })
 
   it('ne démarre aucune requête déjà annulée', async () => {
@@ -161,16 +196,20 @@ describe('client HTTP commun', () => {
     controller.abort()
     const fetcher = vi.fn<typeof fetch>()
 
-    await expect(createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST', signal: controller.signal }))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(
+      createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST', signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
     expect(fetcher).not.toHaveBeenCalled()
   })
 
   it('transmet l’annulation en cours sans la transformer en panne réseau', async () => {
     const controller = new AbortController()
-    const fetcher = vi.fn<typeof fetch>().mockImplementation((_path, init) => new Promise((_resolve, reject) => {
-      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
-    }))
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(
+      (_path, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+        }),
+    )
     const pending = createApiClient(fetcher).requestJson('/api/assets', decodeList, { signal: controller.signal })
     controller.abort()
 
@@ -187,8 +226,9 @@ describe('client HTTP commun', () => {
     const listener = vi.fn()
     client.subscribeAuthFailure(listener)
 
-    await expect(client.requestJson('/api/assets', decodeList, { signal: controller.signal }))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(client.requestJson('/api/assets', decodeList, { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(listener).not.toHaveBeenCalled()
   })
 
@@ -199,29 +239,36 @@ describe('client HTTP commun', () => {
       return csrf()
     })
 
-    await expect(createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST', signal: controller.signal }))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(
+      createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST', signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf'])
   })
 
   it('exige une confirmation 204 pour une action sans réponse', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }))
 
-    await expect(createApiClient(fetcher).requestVoid('/api/auth/me')).rejects.toMatchObject({ kind: 'invalid-response' })
+    await expect(createApiClient(fetcher).requestVoid('/api/auth/me')).rejects.toMatchObject({
+      kind: 'invalid-response',
+    })
   })
 
   it('refuse un jeton CSRF incompatible avant de transmettre les données saisies', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ token: 'token', headerName: 'Authorization' }))
 
-    await expect(createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST' }))
-      .rejects.toMatchObject({ kind: 'invalid-response' })
+    await expect(createApiClient(fetcher).requestVoid('/api/auth/logout', { method: 'POST' })).rejects.toMatchObject({
+      kind: 'invalid-response',
+    })
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf'])
   })
 
   it('empêche une ancienne réponse CSRF de remplacer le jeton de la nouvelle session', async () => {
     let resolveOldToken!: (response: Response) => void
-    const oldToken = new Promise<Response>((resolve) => { resolveOldToken = resolve })
-    const fetcher = vi.fn<typeof fetch>()
+    const oldToken = new Promise<Response>((resolve) => {
+      resolveOldToken = resolve
+    })
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockReturnValueOnce(oldToken)
       .mockResolvedValueOnce(csrf('new-session'))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
@@ -238,12 +285,17 @@ describe('client HTTP commun', () => {
     expect(fetcher).toHaveBeenCalledTimes(3)
   })
 
-  it.each(['__proto__', 'toString', 'constructor', 'hasOwnProperty'])('utilise un message français stable pour le code inconnu %s', async (code) => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ code }, 400))
+  it.each(['__proto__', 'toString', 'constructor', 'hasOwnProperty'])(
+    'utilise un message français stable pour le code inconnu %s',
+    async (code) => {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ code }, 400))
 
-    await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
-      kind: 'http', status: 400, code,
-      message: 'La demande n’a pas pu être terminée. Réessayez dans un instant.',
-    })
-  })
+      await expect(createApiClient(fetcher).requestJson('/api/assets', decodeList)).rejects.toMatchObject({
+        kind: 'http',
+        status: 400,
+        code,
+        message: 'La demande n’a pas pu être terminée. Réessayez dans un instant.',
+      })
+    },
+  )
 })

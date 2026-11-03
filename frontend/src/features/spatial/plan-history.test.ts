@@ -40,10 +40,15 @@ describe('historique du plateau', () => {
     const added = plan()
     added.workstations.push({ ...added.workstations[0]!, id: 'desk-new-test', label: 'Nouveau', position: [0, 0, 0] })
     const created = pushPlanChange(initial, added)
-    const removed = pushPlanChange(created, { ...created.present, workstations: created.present.workstations.filter((station) => station.id !== 'desk-01') })
+    const removed = pushPlanChange(created, {
+      ...created.present,
+      workstations: created.present.workstations.filter((station) => station.id !== 'desk-01'),
+    })
     expect(removed.present.workstations.some((station) => station.id === 'desk-01')).toBe(false)
     const restored = undoPlan(removed)
-    expect(restored.present.workstations.find((station) => station.id === 'desk-01')).toEqual(defaultPlan.workstations[0])
+    expect(restored.present.workstations.find((station) => station.id === 'desk-01')).toEqual(
+      defaultPlan.workstations[0],
+    )
     expect(restored.present.workstations.some((station) => station.id === 'desk-new-test')).toBe(true)
     expect(undoPlan(restored).present).toEqual(initial.present)
     expect(redoPlan(redoPlan(undoPlan(restored)))).toEqual(removed)

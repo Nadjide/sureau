@@ -15,10 +15,7 @@ export class AssetApiError extends Error {
   }
 }
 
-export async function getAssets(
-  signal: AbortSignal,
-  fetcher: typeof fetch = fetch,
-): Promise<Asset[]> {
+export async function getAssets(signal: AbortSignal, fetcher: typeof fetch = fetch): Promise<Asset[]> {
   try {
     return await apiClient.requestJson('/api/assets', (payload) => assetsSchema.parse(payload), { signal, fetcher })
   } catch (error) {

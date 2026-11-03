@@ -15,12 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AssetDetails, AssetIcon, AssetStatus } from './asset-details'
-import {
-  categoryLabels,
-  statusLabels,
-  type Asset,
-  type AssetStatus as Status,
-} from './asset-schema'
+import { categoryLabels, statusLabels, type Asset, type AssetStatus as Status } from './asset-schema'
 import type { useInventory } from './use-inventory'
 import { useSession } from '@/features/auth/use-session'
 import { plural, t } from '@/lib/i18n'
@@ -38,16 +33,12 @@ type Props = {
   renderAssetActions: (asset: Asset) => ReactNode
 }
 
-export function InventoryPanel({
-  inventory,
-  selectedAssetId,
-  onSelect,
-  locationLabel,
-  renderAssetActions,
-}: Props) {
+export function InventoryPanel({ inventory, selectedAssetId, onSelect, locationLabel, renderAssetActions }: Props) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<Status | ''>('')
-  const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' | 'retired' } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ asset: Asset; action: 'created' | 'updated' | 'retired' } | null>(
+    null,
+  )
   const [imported, setImported] = useState<number | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   const [retiringAsset, setRetiringAsset] = useState<Asset | null>(null)
@@ -61,10 +52,16 @@ export function InventoryPanel({
       (asset) =>
         (!status || asset.status === status) &&
         (!normalized ||
-          [asset.name, asset.assetTag, asset.serialNumber, asset.brand, asset.model, asset.assignee?.name,
-            asset.assignee?.email, asset.assignee?.department].some((value) =>
-            value?.toLocaleLowerCase('fr').includes(normalized),
-          )),
+          [
+            asset.name,
+            asset.assetTag,
+            asset.serialNumber,
+            asset.brand,
+            asset.model,
+            asset.assignee?.name,
+            asset.assignee?.email,
+            asset.assignee?.department,
+          ].some((value) => value?.toLocaleLowerCase('fr').includes(normalized))),
     ) ?? []
 
   return (
@@ -106,15 +103,71 @@ export function InventoryPanel({
           >
             <RefreshCw className={requestStatus === 'loading' ? 'animate-spin' : ''} />
           </Button>
-          <ImportAssetsSheet canEdit={canEdit} onImported={(assets) => {
-            setConfirmation(null); setImported(assets.length); setQuery(''); setStatus(''); reload()
-          }} />
-          <CreateAssetSheet canEdit={canEdit} onCreated={(asset) => {
-            setImported(null); setConfirmation({ asset, action: 'created' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id)
-          }} />
+          <ImportAssetsSheet
+            canEdit={canEdit}
+            onImported={(assets) => {
+              setConfirmation(null)
+              setImported(assets.length)
+              setQuery('')
+              setStatus('')
+              reload()
+            }}
+          />
+          <CreateAssetSheet
+            canEdit={canEdit}
+            onCreated={(asset) => {
+              setImported(null)
+              setConfirmation({ asset, action: 'created' })
+              setQuery('')
+              setStatus('')
+              inventory.refreshAfterMutation(asset)
+              onSelect(asset.id)
+            }}
+          />
         </div>
-        {imported !== null && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p>{plural(imported, '{count} matériel a été importé dans l’inventaire partagé.', '{count} matériels ont été importés dans l’inventaire partagé.')}{requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}</p><Button variant="ghost" size="icon-sm" aria-label={t('Masquer la confirmation de l’import')} onClick={() => setImported(null)}><X aria-hidden="true" /></Button></div>}
-        {confirmation && <div className="inventory-success" role="status"><CheckCircle2 size={16} aria-hidden="true" /><p><strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}) {confirmation.action === 'created' ? t('a été enregistré dans l’inventaire partagé.') : confirmation.action === 'updated' ? t('a été mis à jour dans l’inventaire partagé.') : t('a été retiré du parc dans l’inventaire partagé.')}{requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}</p><Button variant="ghost" size="icon-sm" aria-label={t('Masquer la confirmation')} onClick={() => setConfirmation(null)}><X aria-hidden="true" /></Button></div>}
+        {imported !== null && (
+          <div className="inventory-success" role="status">
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <p>
+              {plural(
+                imported,
+                '{count} matériel a été importé dans l’inventaire partagé.',
+                '{count} matériels ont été importés dans l’inventaire partagé.',
+              )}
+              {requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Masquer la confirmation de l’import')}
+              onClick={() => setImported(null)}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+        {confirmation && (
+          <div className="inventory-success" role="status">
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <p>
+              <strong>{confirmation.asset.name}</strong> ({confirmation.asset.assetTag}){' '}
+              {confirmation.action === 'created'
+                ? t('a été enregistré dans l’inventaire partagé.')
+                : confirmation.action === 'updated'
+                  ? t('a été mis à jour dans l’inventaire partagé.')
+                  : t('a été retiré du parc dans l’inventaire partagé.')}
+              {requestStatus === 'loading' ? ` ${t('Actualisation du parc…')}` : ''}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Masquer la confirmation')}
+              onClick={() => setConfirmation(null)}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+        )}
         {error && (
           <div className="inventory-alert" role="alert">
             <AlertCircle size={17} aria-hidden="true" />
@@ -125,12 +178,7 @@ export function InventoryPanel({
                 {assets ? ` ${t('Les dernières données reçues restent affichées.')}` : ''}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={reload}
-              disabled={requestStatus === 'loading'}
-            >
+            <Button variant="outline" size="sm" onClick={reload} disabled={requestStatus === 'loading'}>
               {t('Réessayer')}
             </Button>
           </div>
@@ -153,7 +201,9 @@ export function InventoryPanel({
             <Boxes size={32} strokeWidth={1.2} />
             <h2>{t('Le matériel reste à portée.')}</h2>
             <p>
-              {t('La connexion à l’inventaire est momentanément indisponible. Vous pouvez continuer à parcourir votre espace.')}
+              {t(
+                'La connexion à l’inventaire est momentanément indisponible. Vous pouvez continuer à parcourir votre espace.',
+              )}
             </p>
           </div>
         )}
@@ -168,7 +218,9 @@ export function InventoryPanel({
           <>
             <div className="inventory-count" role="status">
               {query || status
-                ? plural(filtered.length, '{count} équipement sur {total}', '{count} équipements sur {total}', { total: assets.length })
+                ? plural(filtered.length, '{count} équipement sur {total}', '{count} équipements sur {total}', {
+                    total: assets.length,
+                  })
                 : plural(filtered.length, '{count} équipement', '{count} équipements')}
               <span>
                 {requestStatus === 'error'
@@ -208,10 +260,7 @@ export function InventoryPanel({
                   </thead>
                   <tbody>
                     {filtered.map((asset) => (
-                      <tr
-                        key={asset.id}
-                        className={asset.id === selectedAssetId ? 'is-selected' : ''}
-                      >
+                      <tr key={asset.id} className={asset.id === selectedAssetId ? 'is-selected' : ''}>
                         <td>
                           <button
                             className="asset-select"
@@ -226,10 +275,7 @@ export function InventoryPanel({
                               <small>
                                 {asset.assetTag}
                                 {asset.assignee && <span className="asset-row-assignee"> · {asset.assignee.name}</span>}
-                                <span className="asset-row-location">
-                                  {' '}
-                                  · {locationLabel(asset.id)}
-                                </span>
+                                <span className="asset-row-location"> · {locationLabel(asset.id)}</span>
                               </small>
                             </span>
                           </button>
@@ -251,16 +297,70 @@ export function InventoryPanel({
         )}
       </section>
       <AssetDetails asset={selected} onClose={() => onSelect(null)}>
-        {selected && canEdit && <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}><Pencil aria-hidden="true" />{t('Modifier la fiche')}</Button>}
-        {selected && <Button variant="outline" className="asset-history-button" onClick={() => setHistoryAsset(selected)}><History aria-hidden="true" />{t('Voir l’historique')}</Button>}
+        {selected && canEdit && (
+          <Button variant="outline" className="asset-edit-button" onClick={() => setEditingAsset(selected)}>
+            <Pencil aria-hidden="true" />
+            {t('Modifier la fiche')}
+          </Button>
+        )}
+        {selected && (
+          <Button variant="outline" className="asset-history-button" onClick={() => setHistoryAsset(selected)}>
+            <History aria-hidden="true" />
+            {t('Voir l’historique')}
+          </Button>
+        )}
         {selected && renderAssetActions(selected)}
-        {selected && canEdit && selected.status !== 'RETIRED' && <div className="asset-retire-action"><Button variant="ghost" disabled={selected.status === 'ASSIGNED'} onClick={() => setRetiringAsset(selected)}><Archive aria-hidden="true" />{t('Retirer du parc')}</Button>{selected.status === 'ASSIGNED' && <p>{t('Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.')}</p>}</div>}
+        {selected && canEdit && selected.status !== 'RETIRED' && (
+          <div className="asset-retire-action">
+            <Button
+              variant="ghost"
+              disabled={selected.status === 'ASSIGNED'}
+              onClick={() => setRetiringAsset(selected)}
+            >
+              <Archive aria-hidden="true" />
+              {t('Retirer du parc')}
+            </Button>
+            {selected.status === 'ASSIGNED' && (
+              <p>{t('Ce matériel est affecté. Désaffectez-le dans sa fiche avant de le retirer du parc.')}</p>
+            )}
+          </div>
+        )}
       </AssetDetails>
-      {editingAsset && <EditAssetSheet key={editingAsset.id} asset={editingAsset} canEdit={canEdit} onClose={() => setEditingAsset(null)}
-        onReloaded={inventory.refreshAfterMutation} onSaved={(asset) => { setConfirmation({ asset, action: 'updated' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
-      {historyAsset && <AssetHistorySheet key={historyAsset.id} asset={historyAsset} onClose={() => setHistoryAsset(null)} />}
-      {retiringAsset && <RetireAssetDialog key={retiringAsset.id} asset={retiringAsset} canEdit={canEdit} onClose={() => setRetiringAsset(null)} onReloaded={inventory.refreshAfterMutation}
-        onRetired={(asset) => { setConfirmation({ asset, action: 'retired' }); setQuery(''); setStatus(''); inventory.refreshAfterMutation(asset); onSelect(asset.id) }} />}
+      {editingAsset && (
+        <EditAssetSheet
+          key={editingAsset.id}
+          asset={editingAsset}
+          canEdit={canEdit}
+          onClose={() => setEditingAsset(null)}
+          onReloaded={inventory.refreshAfterMutation}
+          onSaved={(asset) => {
+            setConfirmation({ asset, action: 'updated' })
+            setQuery('')
+            setStatus('')
+            inventory.refreshAfterMutation(asset)
+            onSelect(asset.id)
+          }}
+        />
+      )}
+      {historyAsset && (
+        <AssetHistorySheet key={historyAsset.id} asset={historyAsset} onClose={() => setHistoryAsset(null)} />
+      )}
+      {retiringAsset && (
+        <RetireAssetDialog
+          key={retiringAsset.id}
+          asset={retiringAsset}
+          canEdit={canEdit}
+          onClose={() => setRetiringAsset(null)}
+          onReloaded={inventory.refreshAfterMutation}
+          onRetired={(asset) => {
+            setConfirmation({ asset, action: 'retired' })
+            setQuery('')
+            setStatus('')
+            inventory.refreshAfterMutation(asset)
+            onSelect(asset.id)
+          }}
+        />
+      )}
     </div>
   )
 }

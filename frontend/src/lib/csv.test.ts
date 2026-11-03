@@ -3,21 +3,33 @@ import { decodeText, parseCsv, toCsv } from './csv'
 
 describe('lecture d’un CSV de tableur', () => {
   it('reconnaît le point-virgule des tableurs français et retire la marque d’ordre des octets', () => {
-    expect(parseCsv('﻿Identifiant;Nom\r\nIT-1;Portable, 14 pouces\r\n')).toEqual([['Identifiant', 'Nom'], ['IT-1', 'Portable, 14 pouces']])
+    expect(parseCsv('﻿Identifiant;Nom\r\nIT-1;Portable, 14 pouces\r\n')).toEqual([
+      ['Identifiant', 'Nom'],
+      ['IT-1', 'Portable, 14 pouces'],
+    ])
   })
 
   it('reconnaît la virgule et les champs entre guillemets, sur plusieurs lignes', () => {
     expect(parseCsv('tag,name\nIT-1,"Écran ""Dell"", 27"""\nIT-2,"Ligne 1\nLigne 2"')).toEqual([
-      ['tag', 'name'], ['IT-1', 'Écran "Dell", 27"'], ['IT-2', 'Ligne 1\nLigne 2'],
+      ['tag', 'name'],
+      ['IT-1', 'Écran "Dell", 27"'],
+      ['IT-2', 'Ligne 1\nLigne 2'],
     ])
   })
 
   it('garde les cellules vides et ignore les lignes vides', () => {
-    expect(parseCsv('a;b;c\n\n1;;3\n;;\n')).toEqual([['a', 'b', 'c'], ['1', '', '3']])
+    expect(parseCsv('a;b;c\n\n1;;3\n;;\n')).toEqual([
+      ['a', 'b', 'c'],
+      ['1', '', '3'],
+    ])
   })
 
   it('relit exactement ce qu’il écrit', () => {
-    const rows = [['Identifiant', 'Nom'], ['IT-1', 'Portable "pro"; 14'], ['IT-2', '']]
+    const rows = [
+      ['Identifiant', 'Nom'],
+      ['IT-1', 'Portable "pro"; 14'],
+      ['IT-2', ''],
+    ]
     expect(parseCsv(toCsv(rows))).toEqual([rows[0], rows[1], ['IT-2', '']])
   })
 

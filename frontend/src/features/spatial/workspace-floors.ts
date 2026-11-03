@@ -10,9 +10,11 @@ function floorIn(workspace: WorkspaceDocument, floorId: string): WorkspaceFloor 
 function normalizedName(name: string, target: 'floor' | 'workspace'): string {
   const normalized = name.trim()
   if (!normalized || normalized.length > 60) {
-    throw new RangeError(target === 'floor'
-      ? t('Donnez un nom de 1 à 60 caractères à cet étage.')
-      : t('Donnez un nom de 1 à 60 caractères à l’espace de travail.'))
+    throw new RangeError(
+      target === 'floor'
+        ? t('Donnez un nom de 1 à 60 caractères à cet étage.')
+        : t('Donnez un nom de 1 à 60 caractères à l’espace de travail.'),
+    )
   }
   return normalized
 }
@@ -23,7 +25,9 @@ function validated(workspace: WorkspaceDocument): WorkspaceDocument {
 }
 
 export function createFloor(
-  workspace: WorkspaceDocument, name: string, createId: () => string = () => `floor-${crypto.randomUUID()}`,
+  workspace: WorkspaceDocument,
+  name: string,
+  createId: () => string = () => `floor-${crypto.randomUUID()}`,
 ): { workspace: WorkspaceDocument; floorId: string } {
   if (workspace.floors.length >= workspaceFloorLimit) {
     throw new RangeError(t('Cet espace peut contenir jusqu’à {count} étages.', { count: workspaceFloorLimit }))
@@ -45,7 +49,7 @@ export function renameFloor(workspace: WorkspaceDocument, floorId: string, name:
   if (floor.name === normalized) return validated(workspace)
   return validated({
     ...workspace,
-    floors: workspace.floors.map((item) => item === floor ? { ...floor, name: normalized } : item),
+    floors: workspace.floors.map((item) => (item === floor ? { ...floor, name: normalized } : item)),
   })
 }
 
@@ -56,13 +60,14 @@ export function moveRoomToFloor(workspace: WorkspaceDocument, roomId: string, fl
   if (room.floorId === floorId) return validated(workspace)
   return validated({
     ...workspace,
-    rooms: workspace.rooms.map((item) => item === room ? { ...room, floorId } : item),
+    rooms: workspace.rooms.map((item) => (item === room ? { ...room, floorId } : item)),
   })
 }
 
 export function reorderFloor(workspace: WorkspaceDocument, floorId: string, direction: -1 | 1): WorkspaceDocument {
   const floor = floorIn(workspace, floorId)
-  if (direction !== -1 && direction !== 1) throw new RangeError(t('Le déplacement d’un étage doit suivre un seul rang.'))
+  if (direction !== -1 && direction !== 1)
+    throw new RangeError(t('Le déplacement d’un étage doit suivre un seul rang.'))
   const index = workspace.floors.indexOf(floor)
   const destination = index + direction
   if (destination < 0 || destination >= workspace.floors.length) return validated(workspace)
@@ -72,7 +77,11 @@ export function reorderFloor(workspace: WorkspaceDocument, floorId: string, dire
   return validated({ ...workspace, floors })
 }
 
-export function removeFloor(workspace: WorkspaceDocument, floorId: string, destinationFloorId?: string): WorkspaceDocument {
+export function removeFloor(
+  workspace: WorkspaceDocument,
+  floorId: string,
+  destinationFloorId?: string,
+): WorkspaceDocument {
   floorIn(workspace, floorId)
   if (workspace.floors.length <= 1) throw new RangeError(t('Conservez au moins un étage dans votre espace de travail.'))
   const occupied = workspace.rooms.some((room) => room.floorId === floorId)
@@ -87,7 +96,7 @@ export function removeFloor(workspace: WorkspaceDocument, floorId: string, desti
     ...workspace,
     floors: workspace.floors.filter((floor) => floor.id !== floorId),
     rooms: occupied
-      ? workspace.rooms.map((room) => room.floorId === floorId ? { ...room, floorId: destinationFloorId! } : room)
+      ? workspace.rooms.map((room) => (room.floorId === floorId ? { ...room, floorId: destinationFloorId! } : room))
       : workspace.rooms,
   })
 }

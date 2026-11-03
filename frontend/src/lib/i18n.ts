@@ -47,10 +47,16 @@ export function setLanguage(next: Language): void {
 
 /** Re-renders the calling component when the language changes. */
 export function useLanguage(): Language {
-  return useSyncExternalStore((listener) => {
-    listeners.add(listener)
-    return () => { listeners.delete(listener) }
-  }, currentLanguage, currentLanguage)
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    currentLanguage,
+    currentLanguage,
+  )
 }
 
 // A key may end with «|context» when the same French words need two translations, such as «Annuler|défaire»
@@ -64,12 +70,19 @@ export function msg(text: string): string {
 
 /** The text in the current language; `{name}` placeholders take their value from `values`. */
 export function t(text: string, values?: Readonly<Record<string, string | number>>): string {
-  const template = currentLanguage() === 'en' ? english[text] ?? withoutContext(text) : withoutContext(text)
-  return values ? template.replace(/\{(\w+)\}/g, (placeholder, name: string) => String(values[name] ?? placeholder)) : template
+  const template = currentLanguage() === 'en' ? (english[text] ?? withoutContext(text)) : withoutContext(text)
+  return values
+    ? template.replace(/\{(\w+)\}/g, (placeholder, name: string) => String(values[name] ?? placeholder))
+    : template
 }
 
 /** Plural agreement on a count: the `one` text for 0 and 1 in French, for 1 only in English. */
-export function plural(count: number, one: string, other: string, values?: Readonly<Record<string, string | number>>): string {
+export function plural(
+  count: number,
+  one: string,
+  other: string,
+  values?: Readonly<Record<string, string | number>>,
+): string {
   const single = currentLanguage() === 'fr' ? count < 2 : count === 1
   return t(single ? one : other, { count, ...values })
 }
@@ -91,7 +104,6 @@ const dateFormats = new Map<string, Intl.DateTimeFormat>()
 export function formatDateTime(date: Date, dateStyle: 'medium' | 'long' = 'long'): string {
   const key = `${locale()}:${dateStyle}`
   let format = dateFormats.get(key)
-  if (!format) dateFormats.set(key, format = new Intl.DateTimeFormat(locale(), { dateStyle, timeStyle: 'short' }))
+  if (!format) dateFormats.set(key, (format = new Intl.DateTimeFormat(locale(), { dateStyle, timeStyle: 'short' })))
   return format.format(date)
 }
-

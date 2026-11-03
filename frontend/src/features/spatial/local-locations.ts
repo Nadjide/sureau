@@ -24,10 +24,12 @@ export const locationStorageKey = storageKeys.locations
 
 const emptyLocations: LocalLocations = Object.freeze({})
 const validWorkstationId = /^desk-[a-z0-9-]{2,80}$/
-const invalidStorageWarning =
-  msg('Les localisations enregistrées sont illisibles ou incompatibles. Elles ont été conservées. Vos modifications restent limitées à cette session.')
-const unavailableStorageWarning =
-  msg('Le stockage local est inaccessible. Les localisations restent disponibles uniquement pendant cette session.')
+const invalidStorageWarning = msg(
+  'Les localisations enregistrées sont illisibles ou incompatibles. Elles ont été conservées. Vos modifications restent limitées à cette session.',
+)
+const unavailableStorageWarning = msg(
+  'Le stockage local est inaccessible. Les localisations restent disponibles uniquement pendant cette session.',
+)
 
 function isAssetId(assetId: number): boolean {
   return Number.isSafeInteger(assetId) && assetId > 0
@@ -99,10 +101,7 @@ export function loadLocations(storage: LocationStorage | null): LoadedLocations 
   }
 }
 
-export function saveLocations(
-  storage: LocationStorage | null,
-  locations: LocalLocations,
-): LocationPersistence {
+export function saveLocations(storage: LocationStorage | null, locations: LocalLocations): LocationPersistence {
   if (storage === null) {
     return { warning: t(unavailableStorageWarning), persisted: false, canPersist: false }
   }
@@ -121,10 +120,7 @@ export function saveLocations(
   }
 
   try {
-    storage.setItem(
-      locationStorageKey,
-      JSON.stringify({ version: 1, planId: room.id, associations: locations }),
-    )
+    storage.setItem(locationStorageKey, JSON.stringify({ version: 1, planId: room.id, associations: locations }))
     return { warning: null, persisted: true, canPersist: true }
   } catch {
     return {

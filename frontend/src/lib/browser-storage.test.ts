@@ -11,7 +11,9 @@ function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial))
   const storage = {
     getItem: vi.fn((key: string) => values.get(key) ?? null),
-    setItem: vi.fn((key: string, value: string) => { values.set(key, value) }),
+    setItem: vi.fn((key: string, value: string) => {
+      values.set(key, value)
+    }),
   }
   return { storage, values }
 }
@@ -60,7 +62,8 @@ describe('continuité des sauvegardes après le changement de nom', () => {
   it('préserve un espace actuel corrompu au lieu de restaurer silencieusement un ancien état', () => {
     const raw = JSON.stringify(savedWorkspace())
     const { storage, values } = memoryStorage({
-      [storageKeys.workspace]: '{broken', [legacyStorageKeys.workspace]: raw,
+      [storageKeys.workspace]: '{broken',
+      [legacyStorageKeys.workspace]: raw,
     })
     expect(loadWorkspace(storage)).toMatchObject({ canPersist: false, persisted: false, warning: expect.any(String) })
     expect(saveWorkspace(storage, savedWorkspace()).persisted).toBe(false)
@@ -101,7 +104,11 @@ describe('continuité des sauvegardes après le changement de nom', () => {
   it('respecte des localisations actuelles vides au lieu de rétablir les anciens liens', () => {
     const { storage } = memoryStorage({
       [storageKeys.locations]: JSON.stringify({ version: 1, planId: 'plateau-a', associations: {} }),
-      [legacyStorageKeys.locations]: JSON.stringify({ version: 1, planId: 'plateau-a', associations: { 42: 'desk-01' } }),
+      [legacyStorageKeys.locations]: JSON.stringify({
+        version: 1,
+        planId: 'plateau-a',
+        associations: { 42: 'desk-01' },
+      }),
     })
     expect(loadLocations(storage).locations).toEqual({})
   })
@@ -120,7 +127,9 @@ describe('continuité des sauvegardes après le changement de nom', () => {
   it('conserve la sauvegarde historique quand le quota empêche le nouvel enregistrement', () => {
     const raw = JSON.stringify(savedWorkspace())
     const { storage, values } = memoryStorage({ [legacyStorageKeys.workspace]: raw })
-    storage.setItem.mockImplementation(() => { throw new Error('QuotaExceededError') })
+    storage.setItem.mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
     expect(saveWorkspace(storage, savedWorkspace())).toMatchObject({ persisted: false, warning: expect.any(String) })
     expect(values.get(legacyStorageKeys.workspace)).toBe(raw)
     expect(values.has(storageKeys.workspace)).toBe(false)
@@ -145,28 +154,37 @@ describe('thème au premier affichage', () => {
     { current: 'light', legacy: 'dark', systemDark: true, expected: false },
     { current: 'dark', legacy: 'light', systemDark: false, expected: true },
     { current: null, legacy: null, systemDark: true, expected: true },
-  ])('applique le thème enregistré avant le rendu : $current / $legacy', ({ current, legacy, systemDark, expected }) => {
-    const { storage } = memoryStorage({
-      ...(current === null ? {} : { [storageKeys.theme]: current }),
-      ...(legacy === null ? {} : { [legacyStorageKeys.theme]: legacy }),
-    })
-    const toggle = vi.fn()
-    runInNewContext(script, {
-      localStorage: storage,
-      matchMedia: () => ({ matches: systemDark }),
-      document: { documentElement: { classList: { toggle } } },
-    })
-    expect(toggle).toHaveBeenCalledWith('dark', expected)
-    expect(readStoredValue(storage, 'theme')).toBe(current ?? legacy)
-    expect(storage.setItem).not.toHaveBeenCalled()
-  })
+  ])(
+    'applique le thème enregistré avant le rendu : $current / $legacy',
+    ({ current, legacy, systemDark, expected }) => {
+      const { storage } = memoryStorage({
+        ...(current === null ? {} : { [storageKeys.theme]: current }),
+        ...(legacy === null ? {} : { [legacyStorageKeys.theme]: legacy }),
+      })
+      const toggle = vi.fn()
+      runInNewContext(script, {
+        localStorage: storage,
+        matchMedia: () => ({ matches: systemDark }),
+        document: { documentElement: { classList: { toggle } } },
+      })
+      expect(toggle).toHaveBeenCalledWith('dark', expected)
+      expect(readStoredValue(storage, 'theme')).toBe(current ?? legacy)
+      expect(storage.setItem).not.toHaveBeenCalled()
+    },
+  )
 
   it('tolère le stockage inaccessible pendant le premier affichage', () => {
     const toggle = vi.fn()
-    expect(() => runInNewContext(script, {
-      localStorage: { getItem: () => { throw new Error('SecurityError') } },
-      document: { documentElement: { classList: { toggle } } },
-    })).not.toThrow()
+    expect(() =>
+      runInNewContext(script, {
+        localStorage: {
+          getItem: () => {
+            throw new Error('SecurityError')
+          },
+        },
+        document: { documentElement: { classList: { toggle } } },
+      }),
+    ).not.toThrow()
     expect(toggle).not.toHaveBeenCalled()
   })
 })

@@ -13,20 +13,42 @@ import { createWorkspaceFromPlan } from './workspace-document'
 import { WorkspaceTransferPanel } from './workspace-transfer-panel'
 
 const asset: Asset = {
-  id: 73, revision: 0, assetTag: 'SUREAU-0073', name: 'Casque accueil', serialNumber: null,
-  brand: null, model: null, category: 'HEADSET', status: 'MAINTENANCE', purchaseDate: null,
-  createdAt: '2026-10-21T10:00:00Z', updatedAt: '2026-10-21T10:00:00Z',
+  id: 73,
+  revision: 0,
+  assetTag: 'SUREAU-0073',
+  name: 'Casque accueil',
+  serialNumber: null,
+  brand: null,
+  model: null,
+  category: 'HEADSET',
+  status: 'MAINTENANCE',
+  purchaseDate: null,
+  createdAt: '2026-10-21T10:00:00Z',
+  updatedAt: '2026-10-21T10:00:00Z',
 }
 const local = { locations: { 73: 'desk-01' }, warning: null, persisted: true, associate: vi.fn() }
 const workspace = createWorkspaceFromPlan()
 
 function viewer(editing: boolean, canEdit: boolean) {
-  return renderToStaticMarkup(createElement(SpatialViewer, {
-    plan: defaultPlan, canEdit, persisted: true, editing, onEditingChange: vi.fn(), onMove: vi.fn(),
-    history: { canUndo: true, canRedo: true, undo: vi.fn(), redo: vi.fn() }, view: '2d', onViewChange: vi.fn(),
-    selectedWorkstationId: 'desk-01', selectedIds: ['desk-01'], onSelectionChange: vi.fn(),
-    onSelectWorkstation: vi.fn(), inspector: null, localizedCounts: {},
-  }))
+  return renderToStaticMarkup(
+    createElement(SpatialViewer, {
+      plan: defaultPlan,
+      canEdit,
+      persisted: true,
+      editing,
+      onEditingChange: vi.fn(),
+      onMove: vi.fn(),
+      history: { canUndo: true, canRedo: true, undo: vi.fn(), redo: vi.fn() },
+      view: '2d',
+      onViewChange: vi.fn(),
+      selectedWorkstationId: 'desk-01',
+      selectedIds: ['desk-01'],
+      onSelectionChange: vi.fn(),
+      onSelectWorkstation: vi.fn(),
+      inspector: null,
+      localizedCounts: {},
+    }),
+  )
 }
 
 describe('outils spatiaux selon les permissions', () => {
@@ -58,19 +80,34 @@ describe('outils spatiaux selon les permissions', () => {
   })
 
   it('le plan 2D applique aussi son propre verrou de permission', () => {
-    const markup = renderToStaticMarkup(createElement(RoomPlan, {
-      plan: defaultPlan, editing: true, canEdit: false, snap: true, onMove: vi.fn(),
-      selectedWorkstationId: 'desk-01', selectedIds: ['desk-01'], multipleMode: true, onSelect: vi.fn(),
-    }))
+    const markup = renderToStaticMarkup(
+      createElement(RoomPlan, {
+        plan: defaultPlan,
+        editing: true,
+        canEdit: false,
+        snap: true,
+        onMove: vi.fn(),
+        selectedWorkstationId: 'desk-01',
+        selectedIds: ['desk-01'],
+        multipleMode: true,
+        onSelect: vi.fn(),
+      }),
+    )
     expect(markup).not.toContain('room-plan is-editing')
     expect(markup).toContain('sélectionnables au clavier')
     expect(markup).not.toContain('Implantation locale')
   })
 
   it('bloque le changement de localisation tout en gardant la navigation et l’état serveur', () => {
-    const markup = renderToStaticMarkup(createElement(AssetLocationActions, {
-      asset, local, workspace, canEdit: false, onShowInPlan: vi.fn(),
-    }))
+    const markup = renderToStaticMarkup(
+      createElement(AssetLocationActions, {
+        asset,
+        local,
+        workspace,
+        canEdit: false,
+        onShowInPlan: vi.fn(),
+      }),
+    )
     expect(markup).toMatch(/<select[^>]*disabled=""/)
     expect(markup).toContain('Voir dans le plan')
     expect(markup).toContain('Localisation enregistrée sur le serveur')
@@ -79,8 +116,14 @@ describe('outils spatiaux selon les permissions', () => {
 
   it('ne propose pas au lecteur de retirer les localisations conservées', () => {
     const props: ComponentProps<typeof SpatialInspector> = {
-      workspace, selectedWorkstationId: 'desk-01', selectedAssetId: null, canEdit: false,
-      onSelectAsset: vi.fn(), onOpenInventory: vi.fn(), onShowInPlan: vi.fn(), local,
+      workspace,
+      selectedWorkstationId: 'desk-01',
+      selectedAssetId: null,
+      canEdit: false,
+      onSelectAsset: vi.fn(),
+      onOpenInventory: vi.fn(),
+      onShowInPlan: vi.fn(),
+      local,
       inventory: { assets: [asset], status: 'ready', error: null, reload: vi.fn() },
     }
     const markup = renderToStaticMarkup(createElement(SpatialInspector, props))
@@ -92,11 +135,21 @@ describe('outils spatiaux selon les permissions', () => {
   })
 
   it('garde le formulaire de poste monté mais désactive ses saisies sans permission', () => {
-    const markup = renderToStaticMarkup(createElement(WorkstationEditor, {
-      plan: defaultPlan, canEdit: false, persisted: false, selectedId: 'desk-01', selectedIds: ['desk-01'],
-      workspace, onChange: vi.fn(), onSelect: vi.fn(), onSelectionChange: vi.fn(),
-      onWorkspaceChange: vi.fn(), onSelectionMoved: vi.fn(),
-    }))
+    const markup = renderToStaticMarkup(
+      createElement(WorkstationEditor, {
+        plan: defaultPlan,
+        canEdit: false,
+        persisted: false,
+        selectedId: 'desk-01',
+        selectedIds: ['desk-01'],
+        workspace,
+        onChange: vi.fn(),
+        onSelect: vi.fn(),
+        onSelectionChange: vi.fn(),
+        onWorkspaceChange: vi.fn(),
+        onSelectionMoved: vi.fn(),
+      }),
+    )
     expect(markup).toMatch(/<fieldset[^>]*disabled=""/)
     expect(markup).toContain('name="label"')
     expect(markup).toContain('Appliquer au poste')
@@ -106,9 +159,14 @@ describe('outils spatiaux selon les permissions', () => {
   })
 
   it('garde l’export de plan disponible pour le lecteur et bloque import et réinitialisation', () => {
-    const markup = renderToStaticMarkup(createElement(PlanTransferPanel, {
-      plan: defaultPlan, canEdit: false, persisted: false, onChange: vi.fn(),
-    }))
+    const markup = renderToStaticMarkup(
+      createElement(PlanTransferPanel, {
+        plan: defaultPlan,
+        canEdit: false,
+        persisted: false,
+        onChange: vi.fn(),
+      }),
+    )
     const buttons = [...markup.matchAll(/<button\b[^>]*>.*?<\/button>/g)].map(([button]) => button)
     expect(buttons.find((button) => button.includes('Exporter le plan'))).not.toContain('disabled=""')
     expect(buttons.find((button) => button.includes('Importer un plan'))).toContain('disabled=""')
@@ -118,9 +176,16 @@ describe('outils spatiaux selon les permissions', () => {
   })
 
   it('garde l’export d’espace disponible en lecture seule sans annoncer de sauvegarde locale', () => {
-    const markup = renderToStaticMarkup(createElement(WorkspaceTransferPanel, {
-      workspace, locations: local.locations, canEdit: false, persisted: true, onChange: vi.fn(), onImported: vi.fn(),
-    }))
+    const markup = renderToStaticMarkup(
+      createElement(WorkspaceTransferPanel, {
+        workspace,
+        locations: local.locations,
+        canEdit: false,
+        persisted: true,
+        onChange: vi.fn(),
+        onImported: vi.fn(),
+      }),
+    )
     const buttons = [...markup.matchAll(/<button\b[^>]*>.*?<\/button>/g)].map(([button]) => button)
     expect(buttons.find((button) => button.includes('Exporter l’espace'))).not.toContain('disabled=""')
     expect(buttons.find((button) => button.includes('Importer un espace'))).toContain('disabled=""')

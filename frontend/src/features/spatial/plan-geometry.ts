@@ -24,8 +24,11 @@ export function normalizeRotation(radians: number): number {
 }
 
 function envelope(station: PlanItem): Envelope {
-  if (![...station.position, station.width, station.depth].every(Number.isFinite)
-    || station.width <= 0 || station.depth <= 0) {
+  if (
+    ![...station.position, station.width, station.depth].every(Number.isFinite) ||
+    station.width <= 0 ||
+    station.depth <= 0
+  ) {
     throw new RangeError(t('Les dimensions et coordonnées du mobilier sont invalides.'))
   }
   const rotation = normalizeRotation(station.rotation)
@@ -36,7 +39,10 @@ function envelope(station: PlanItem): Envelope {
   const localOffset = furniture ? 0 : 0.4 * station.depth
   return {
     center: [station.position[0] + sine * localOffset, station.position[2] + cosine * localOffset],
-    axes: [[cosine, -sine], [sine, cosine]],
+    axes: [
+      [cosine, -sine],
+      [sine, cosine],
+    ],
     halfWidth: station.width / 2,
     halfDepth: station.depth * (furniture ? 0.5 : 0.9),
     localOffset,
@@ -48,8 +54,7 @@ function dot(first: Point, second: Point): number {
 }
 
 function projectedRadius(box: Envelope, axis: Point): number {
-  return Math.abs(dot(box.axes[0], axis)) * box.halfWidth
-    + Math.abs(dot(box.axes[1], axis)) * box.halfDepth
+  return Math.abs(dot(box.axes[0], axis)) * box.halfWidth + Math.abs(dot(box.axes[1], axis)) * box.halfDepth
 }
 
 export function footprintBounds(item: PlanItem): { minX: number; maxX: number; minZ: number; maxZ: number } {
@@ -57,8 +62,10 @@ export function footprintBounds(item: PlanItem): { minX: number; maxX: number; m
   const xRadius = projectedRadius(box, [1, 0])
   const zRadius = projectedRadius(box, [0, 1])
   return {
-    minX: box.center[0] - xRadius, maxX: box.center[0] + xRadius,
-    minZ: box.center[1] - zRadius, maxZ: box.center[1] + zRadius,
+    minX: box.center[0] - xRadius,
+    maxX: box.center[0] + xRadius,
+    minZ: box.center[1] - zRadius,
+    maxZ: box.center[1] + zRadius,
   }
 }
 
@@ -78,7 +85,13 @@ function clampItem<T extends PlanItem>(plan: PlanBounds, station: T): T {
   const x = boundedX === box.center[0] ? station.position[0] : boundedX - box.axes[1][0] * box.localOffset
   const z = boundedZ === box.center[1] ? station.position[2] : boundedZ - box.axes[1][1] * box.localOffset
   const rotation = normalizeRotation(station.rotation)
-  if (x === station.position[0] && z === station.position[2] && station.position[1] === 0 && rotation === station.rotation) return station
+  if (
+    x === station.position[0] &&
+    z === station.position[2] &&
+    station.position[1] === 0 &&
+    rotation === station.rotation
+  )
+    return station
   return { ...station, position: [x, 0, z], rotation }
 }
 
@@ -135,8 +148,8 @@ function freePlacement<T extends PlanItem>(plan: SpatialPlan, template: T): T | 
   for (let x = Math.ceil(-plan.width) / 2; x <= plan.width / 2 + epsilon; x += 0.5) {
     for (let z = Math.ceil(-plan.depth) / 2; z <= plan.depth / 2 + epsilon; z += 0.5) add(x, z)
   }
-  const distance = (station: T) => (station.position[0] - template.position[0]) ** 2
-    + (station.position[2] - template.position[2]) ** 2
+  const distance = (station: T) =>
+    (station.position[0] - template.position[0]) ** 2 + (station.position[2] - template.position[2]) ** 2
   const ordered = [...candidates.values()].sort((a, b) => distance(a) - distance(b))
   const occupants: PlanItem[] = [...plan.workstations, ...plan.furniture]
   return ordered.find((candidate) => !occupants.some((item) => mixedOverlaps(candidate, item))) ?? null

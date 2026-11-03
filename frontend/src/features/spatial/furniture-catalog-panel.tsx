@@ -2,39 +2,86 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { t } from '@/lib/i18n'
-import { createFurniture, findFreeFurniturePlacement, furnitureCatalog, numberedFurnitureLabel } from './furniture-catalog'
+import {
+  createFurniture,
+  findFreeFurniturePlacement,
+  furnitureCatalog,
+  numberedFurnitureLabel,
+} from './furniture-catalog'
 import { FurnitureIcon } from './furniture-summary'
 import type { FurnitureKind, SpatialPlan } from './room-model'
 
-interface Props { plan: SpatialPlan; onChange: (plan: SpatialPlan) => void; onSelect: (id: string) => void }
+interface Props {
+  plan: SpatialPlan
+  onChange: (plan: SpatialPlan) => void
+  onSelect: (id: string) => void
+}
 
 export function FurnitureCatalogPanel({ plan, onChange, onSelect }: Props) {
   const [error, setError] = useState<string | null>(null)
   function add(kind: FurnitureKind) {
-    if (plan.furniture.length >= 64) { setError(t('Cette salle peut accueillir jusqu’à 64 meubles.')); return }
+    if (plan.furniture.length >= 64) {
+      setError(t('Cette salle peut accueillir jusqu’à 64 meubles.'))
+      return
+    }
     const template = createFurniture(kind, `furniture-${crypto.randomUUID()}`)
     let index = 1
     while (plan.furniture.some((item) => item.label === numberedFurnitureLabel(kind, index))) index++
     template.label = numberedFurnitureLabel(kind, index)
     const item = findFreeFurniturePlacement(plan, template)
-    if (!item) { setError(t('Il manque une place libre pour ce meuble. Réorganisez ou agrandissez la pièce.')); return }
-    onChange({ ...plan, furniture: [...plan.furniture, item], display: { ...plan.display, decor: kind === 'plant' || kind === 'cabinet' ? true : plan.display.decor } })
+    if (!item) {
+      setError(t('Il manque une place libre pour ce meuble. Réorganisez ou agrandissez la pièce.'))
+      return
+    }
+    onChange({
+      ...plan,
+      furniture: [...plan.furniture, item],
+      display: { ...plan.display, decor: kind === 'plant' || kind === 'cabinet' ? true : plan.display.decor },
+    })
     onSelect(item.id)
     setError(null)
   }
-  return <section aria-label={t('Catalogue de mobilier')}>
-    <p className="eyebrow">{t('LES PIÈCES DE VOTRE ESPACE')}</p>
-    <h3 className="catalog-title">{t('Du mobilier, à composer.')}</h3>
-    <p className="location-help">{t('Ajoutez un meuble à sa taille réelle. Il se place dans une zone libre du plateau.')}</p>
-    <div className="furniture-catalog">
-      {furnitureCatalog.map((entry) => <article className="catalog-card" key={entry.kind}>
-        <div className={`catalog-thumbnail catalog-${entry.kind}`}><FurnitureIcon kind={entry.kind} size={42} /><span>{entry.width} × {entry.depth} m</span></div>
-        <div className="catalog-card-body"><h4>{t(entry.label)}</h4><p>{t(entry.description)}</p>
-          <Button size="sm" variant="outline" onClick={() => add(entry.kind)} disabled={plan.furniture.length >= 64} aria-label={t('Ajouter : {name}', { name: t(entry.label) })}><Plus size={13} />{t('Ajouter')}</Button>
-        </div>
-      </article>)}
-    </div>
-    {error && <p className="storage-warning" role="alert">{error}</p>}
-    <p className="location-help">{t('Le mobilier décrit l’implantation. Les équipements de l’inventaire restent liés aux postes de travail.')}</p>
-  </section>
+  return (
+    <section aria-label={t('Catalogue de mobilier')}>
+      <p className="eyebrow">{t('LES PIÈCES DE VOTRE ESPACE')}</p>
+      <h3 className="catalog-title">{t('Du mobilier, à composer.')}</h3>
+      <p className="location-help">
+        {t('Ajoutez un meuble à sa taille réelle. Il se place dans une zone libre du plateau.')}
+      </p>
+      <div className="furniture-catalog">
+        {furnitureCatalog.map((entry) => (
+          <article className="catalog-card" key={entry.kind}>
+            <div className={`catalog-thumbnail catalog-${entry.kind}`}>
+              <FurnitureIcon kind={entry.kind} size={42} />
+              <span>
+                {entry.width} × {entry.depth} m
+              </span>
+            </div>
+            <div className="catalog-card-body">
+              <h4>{t(entry.label)}</h4>
+              <p>{t(entry.description)}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => add(entry.kind)}
+                disabled={plan.furniture.length >= 64}
+                aria-label={t('Ajouter : {name}', { name: t(entry.label) })}
+              >
+                <Plus size={13} />
+                {t('Ajouter')}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+      {error && (
+        <p className="storage-warning" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="location-help">
+        {t('Le mobilier décrit l’implantation. Les équipements de l’inventaire restent liés aux postes de travail.')}
+      </p>
+    </section>
+  )
 }

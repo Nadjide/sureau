@@ -15,7 +15,11 @@ import { SpatialInspector } from '@/features/spatial/spatial-inspector'
 import { useSharedWorkspace } from '@/features/spatial/use-shared-workspace'
 import { WorkspaceConnectionBar } from '@/features/spatial/workspace-connection-bar'
 import { WorkspaceStartPanel } from '@/features/spatial/workspace-start-panel'
-import { createInitialSpatialDraft, serializeSpatialDraft, type InitialWorkspaceKind } from '@/features/spatial/shared-workspace-transfer'
+import {
+  createInitialSpatialDraft,
+  serializeSpatialDraft,
+  type InitialWorkspaceKind,
+} from '@/features/spatial/shared-workspace-transfer'
 import { selectIds, translateSelection } from '@/features/spatial/plan-selection'
 import { FurnitureSummary } from '@/features/spatial/furniture-summary'
 import { findWorkspaceStation, prepareRoomReplacement } from '@/features/spatial/workspace-rooms'
@@ -23,31 +27,75 @@ import '@/features/spatial/workspace-connection.css'
 import type { SpatialDraft } from '@/features/spatial/shared-workspace-model'
 import { t, useLanguage } from '@/lib/i18n'
 
-const loadInventoryPanel = () => import('@/features/inventory/inventory-panel').then((module) => ({ default: module.InventoryPanel }))
-const loadWorkstationEditor = () => import('@/features/spatial/workstation-editor').then((module) => ({ default: module.WorkstationEditor }))
-const loadWorkspaceManager = () => import('@/features/spatial/workspace-manager').then((module) => ({ default: module.WorkspaceManager }))
+const loadInventoryPanel = () =>
+  import('@/features/inventory/inventory-panel').then((module) => ({ default: module.InventoryPanel }))
+const loadWorkstationEditor = () =>
+  import('@/features/spatial/workstation-editor').then((module) => ({ default: module.WorkstationEditor }))
+const loadWorkspaceManager = () =>
+  import('@/features/spatial/workspace-manager').then((module) => ({ default: module.WorkspaceManager }))
 const emptyLocations: LocalLocations = Object.freeze({})
 
 function PanelStatus({ label, retry, persisted = false }: { label: string; retry?: () => void; persisted?: boolean }) {
-  return <div className="inventory-empty" role={retry ? 'alert' : 'status'}>
-    {!retry && <LoaderCircle className="animate-spin" size={24} aria-hidden="true" />}
-    <h2>{label}</h2>
-    {retry && <>
-      <p>{t('Le reste de votre espace reste accessible. Réessayez après avoir vérifié votre connexion.')}</p>
-      <Button variant="outline" onClick={retry}>{t('Réessayer le chargement')}</Button>
-      <p>{persisted ? t('Votre dernière version enregistrée reste sur cette instance.') : t('Votre brouillon reste disponible pendant cette session. Exportez une copie avant de quitter.')}</p>
-    </>}
-  </div>
+  return (
+    <div className="inventory-empty" role={retry ? 'alert' : 'status'}>
+      {!retry && <LoaderCircle className="animate-spin" size={24} aria-hidden="true" />}
+      <h2>{label}</h2>
+      {retry && (
+        <>
+          <p>{t('Le reste de votre espace reste accessible. Réessayez après avoir vérifié votre connexion.')}</p>
+          <Button variant="outline" onClick={retry}>
+            {t('Réessayer le chargement')}
+          </Button>
+          <p>
+            {persisted
+              ? t('Votre dernière version enregistrée reste sur cette instance.')
+              : t('Votre brouillon reste disponible pendant cette session. Exportez une copie avant de quitter.')}
+          </p>
+        </>
+      )}
+    </div>
+  )
 }
 
-function ManagerStatus({ open, onOpenChange, retry, persisted }: { open: boolean; onOpenChange: (open: boolean) => void; retry?: () => void; persisted: boolean }) {
-  return <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent side="right" showCloseButton={false} className="workspace-manager">
-      <SheetHeader><p className="eyebrow">{t('VOTRE ESPACE, À VOTRE MESURE')}</p><SheetTitle>{t('Organiser vos espaces')}</SheetTitle><SheetDescription>{t('Des étages aux salles, composez un lieu qui vous ressemble.')}</SheetDescription></SheetHeader>
-      <SheetClose asChild><Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label={t('Fermer la gestion des espaces')}><X /></Button></SheetClose>
-      <div className="workspace-manager-body"><PanelStatus label={retry ? t('La gestion des espaces n’a pas pu être chargée.') : t('Préparation de vos outils…')} persisted={persisted} {...(retry ? { retry } : {})} /></div>
-    </SheetContent>
-  </Sheet>
+function ManagerStatus({
+  open,
+  onOpenChange,
+  retry,
+  persisted,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  retry?: () => void
+  persisted: boolean
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" showCloseButton={false} className="workspace-manager">
+        <SheetHeader>
+          <p className="eyebrow">{t('VOTRE ESPACE, À VOTRE MESURE')}</p>
+          <SheetTitle>{t('Organiser vos espaces')}</SheetTitle>
+          <SheetDescription>{t('Des étages aux salles, composez un lieu qui vous ressemble.')}</SheetDescription>
+        </SheetHeader>
+        <SheetClose asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="absolute top-3 right-3"
+            aria-label={t('Fermer la gestion des espaces')}
+          >
+            <X />
+          </Button>
+        </SheetClose>
+        <div className="workspace-manager-body">
+          <PanelStatus
+            label={retry ? t('La gestion des espaces n’a pas pu être chargée.') : t('Préparation de vos outils…')}
+            persisted={persisted}
+            {...(retry ? { retry } : {})}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
 }
 
 function currentTab(): WorkspaceTab {
@@ -74,8 +122,15 @@ function App() {
   const plan = activeRoom?.plan ?? null
   const floorName = workspace?.floors.find((floor) => floor.id === activeRoom?.floorId)?.name ?? t('Vos espaces')
   const editable = canEdit && !workspaceStore.loading && workspace !== null
-  const persisted = !workspaceStore.dirty && !workspaceStore.saving && !workspaceStore.loading && !workspaceStore.blocked && (workspaceStore.revision ?? 0) > 0
-  const selectedIds = selection.filter((id) => plan && [...plan.workstations, ...plan.furniture].some((item) => item.id === id))
+  const persisted =
+    !workspaceStore.dirty &&
+    !workspaceStore.saving &&
+    !workspaceStore.loading &&
+    !workspaceStore.blocked &&
+    (workspaceStore.revision ?? 0) > 0
+  const selectedIds = selection.filter(
+    (id) => plan && [...plan.workstations, ...plan.furniture].some((item) => item.id === id),
+  )
   const selectedWorkstationId = selectedIds.at(-1) ?? null
   const selectedFurniture = plan?.furniture.find((item) => item.id === selectedWorkstationId)
   const { undo, redo } = workspaceStore
@@ -89,10 +144,18 @@ function App() {
       const target = workstationId ? findWorkspaceStation(workspace, workstationId) : undefined
       if (workstationId && !target) return
       if (!workspaceStore.associate(id, workstationId)) return
-      if (id === selectedAssetId && workstationId && target) { setActiveRoomId(target.room.plan.id); setSelection([workstationId]) }
+      if (id === selectedAssetId && workstationId && target) {
+        setActiveRoomId(target.room.plan.id)
+        setSelection([workstationId])
+      }
     },
   }
-  const localizedCounts = Object.fromEntries((plan?.workstations ?? []).map((station) => [station.id, getWorkstationAssetIds(local.locations, station.id).length]))
+  const localizedCounts = Object.fromEntries(
+    (plan?.workstations ?? []).map((station) => [
+      station.id,
+      getWorkstationAssetIds(local.locations, station.id).length,
+    ]),
+  )
   const hasOpenForms = editing || organizing
   const needsDepartureGuard = workspaceStore.dirty || hasOpenForms
 
@@ -100,13 +163,20 @@ function App() {
     if (tab !== 'spaces' || !editing || !editable) return
     const shortcut = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || (!event.ctrlKey && !event.metaKey)) return
-      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest('input, textarea, select, [contenteditable="true"]')
+      )
+        return
       const key = event.key.toLowerCase()
       if (key === 'z') {
         event.preventDefault()
         if (event.shiftKey) redo()
         else undo()
-      } else if (key === 'y') { event.preventDefault(); redo() }
+      } else if (key === 'y') {
+        event.preventDefault()
+        redo()
+      }
     }
     window.addEventListener('keydown', shortcut)
     return () => window.removeEventListener('keydown', shortcut)
@@ -122,7 +192,10 @@ function App() {
 
   useEffect(() => {
     if (!needsDepartureGuard && !workspaceStore.saving) return
-    const warnDeparture = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    const warnDeparture = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
     window.addEventListener('beforeunload', warnDeparture)
     return () => window.removeEventListener('beforeunload', warnDeparture)
   }, [needsDepartureGuard, workspaceStore.saving])
@@ -133,7 +206,10 @@ function App() {
       const applied = workspaceStore.replaceRoom(plan.id, prepareRoomReplacement(workspace, plan.id, next))
       if (applied) setRoomError(null)
       return applied
-    } catch (error) { setRoomError(error instanceof Error ? error.message : t('Le plan ne peut pas être appliqué à cette salle.')); return false }
+    } catch (error) {
+      setRoomError(error instanceof Error ? error.message : t('Le plan ne peut pas être appliqué à cette salle.'))
+      return false
+    }
   }
 
   function navigate(next: WorkspaceTab) {
@@ -146,12 +222,15 @@ function App() {
     if (id !== null && workspace) {
       const workstationId = local.locations[id]
       const target = workstationId ? findWorkspaceStation(workspace, workstationId) : undefined
-      if (target) { setActiveRoomId(target.room.plan.id); setSelection([target.station.id]) }
+      if (target) {
+        setActiveRoomId(target.room.plan.id)
+        setSelection([target.station.id])
+      }
     }
   }
 
   function selectWorkstation(id: string | null, additive = false, preserve = false) {
-    setSelection((current) => id ? selectIds(current, id, additive, preserve) : [])
+    setSelection((current) => (id ? selectIds(current, id, additive, preserve) : []))
     setSelectedAssetId(null)
   }
 
@@ -159,32 +238,49 @@ function App() {
     if (!workspace) return
     const target = findWorkspaceStation(workspace, local.locations[id] || null)
     if (!target) return
-    setActiveRoomId(target.room.plan.id); setSelection([target.station.id]); setSelectedAssetId(id)
+    setActiveRoomId(target.room.plan.id)
+    setSelection([target.station.id])
+    setSelectedAssetId(id)
     navigate('spaces')
   }
 
   function selectRoom(id: string) {
-    setActiveRoomId(id); setSelection([]); setSelectedAssetId(null); setRoomError(null)
+    setActiveRoomId(id)
+    setSelection([])
+    setSelectedAssetId(null)
+    setRoomError(null)
     navigate('spaces')
   }
 
   function initialize(kind: InitialWorkspaceKind) {
     const draft = createInitialSpatialDraft(kind)
-    if (workspaceStore.initialize(draft)) { setActiveRoomId(draft.workspace.rooms[0]!.plan.id); setSelection([]); setRoomError(null) }
+    if (workspaceStore.initialize(draft)) {
+      setActiveRoomId(draft.workspace.rooms[0]!.plan.id)
+      setSelection([])
+      setRoomError(null)
+    }
   }
 
   function recoverInitialWorkspace(draft: SpatialDraft): boolean {
     if (!canEdit || workspaceStore.loading || workspaceStore.phase !== 'missing') return false
     if (!workspaceStore.initialize(draft)) return false
-    setActiveRoomId(draft.workspace.rooms[0]!.plan.id); setSelection([]); setRoomError(null)
+    setActiveRoomId(draft.workspace.rooms[0]!.plan.id)
+    setSelection([])
+    setRoomError(null)
     return true
   }
 
   async function reloadWorkspace(confirmed = false): Promise<boolean> {
     const loaded = await workspaceStore.reload(confirmed)
     if (loaded) {
-      setEditing(false); setOrganizing(false); setManagerRequested(false)
-      setSelection([]); setSelectedAssetId(null); setActiveRoomId(''); setRoomError(null); setExportNotice(null)
+      setEditing(false)
+      setOrganizing(false)
+      setManagerRequested(false)
+      setSelection([])
+      setSelectedAssetId(null)
+      setActiveRoomId('')
+      setRoomError(null)
+      setExportNotice(null)
     }
     return loaded
   }
@@ -195,11 +291,25 @@ function App() {
       const raw = serializeSpatialDraft(workspaceStore.draft)
       const url = URL.createObjectURL(new Blob([raw], { type: 'application/json;charset=utf-8' }))
       const link = document.createElement('a')
-      const name = workspaceStore.draft.workspace.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'espace'
-      link.href = url; link.download = `sureau-${name}-brouillon.json`
-      document.body.append(link); link.click(); link.remove()
+      const name =
+        workspaceStore.draft.workspace.name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'espace'
+      link.href = url
+      link.download = `sureau-${name}-brouillon.json`
+      document.body.append(link)
+      link.click()
+      link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setExportNotice({ error: false, text: t('Copie préparée avec les étages, les salles, le mobilier et les localisations. L’inventaire et les comptes restent dans la base de cette instance.') })
+      setExportNotice({
+        error: false,
+        text: t(
+          'Copie préparée avec les étages, les salles, le mobilier et les localisations. L’inventaire et les comptes restent dans la base de cette instance.',
+        ),
+      })
       return true
     } catch {
       const text = t('La copie n’a pas pu être préparée. Votre brouillon est conservé dans cette session.')
@@ -208,52 +318,222 @@ function App() {
     }
   }
 
-  return <AppShell tab={tab} onTabChange={navigate} workspace={workspace} activeRoomId={plan?.id ?? ''} onRoomChange={selectRoom}
-    onManageSpaces={() => { if (editable) { setManagerRequested(true); setOrganizing(true) } }}
-    {...(workspaceStore.draft ? { departureGuard: { dirty: needsDepartureGuard, saving: workspaceStore.saving, exportDraft } } : {})}>
-    {managerRequested && workspace && plan && <LazyPanel
-      load={loadWorkspaceManager}
-      panelProps={{ open: organizing, onOpenChange: setOrganizing, workspace, locations: local.locations, activeRoomId: plan.id, onSelectRoom: selectRoom, onChange: workspaceStore.replace, onSpatialChange: workspaceStore.replaceDraft, persisted, history: workspaceStore, canEdit: editable }}
-      loading={<ManagerStatus open={organizing} onOpenChange={setOrganizing} persisted={persisted} />}
-      failure={(retry) => <ManagerStatus open={organizing} onOpenChange={setOrganizing} retry={retry} persisted={persisted} />}
-    />}
-    <div className="workspace-heading"><div><p className="eyebrow">{tab === 'spaces' ? t('ESPACE PARTAGÉ / {floor}', { floor: floorName.toLocaleUpperCase() }) : t('PARC INFORMATIQUE')}</p><h1>{tab === 'spaces' ? plan?.name ?? t('Vos espaces') : t('Matériel')}</h1><p className="workspace-description">{tab === 'spaces' ? t('Votre matériel, dans son environnement.') : t('Une vue commune sur tous vos équipements.')}</p></div><Badge variant="outline">{tab === 'spaces' ? workspaceStore.dirty ? t('Brouillon') : t('Espace partagé') : t('Inventaire')}</Badge></div>
-    <WorkspaceConnectionBar store={workspaceStore} canEdit={canEdit} hasOpenForms={hasOpenForms} onReload={reloadWorkspace} onExport={exportDraft} exportNotice={exportNotice} />
-    {roomError && tab === 'spaces' && <p className="storage-warning px-8 pb-4" role="alert">{roomError}</p>}
-    {tab === 'inventory' ? <LazyPanel
-      load={loadInventoryPanel}
-      loading={<PanelStatus label={t('Préparation de l’inventaire…')} />}
-      failure={(retry) => <PanelStatus label={t('L’inventaire n’a pas pu être chargé.')} retry={retry} persisted={persisted} />}
-      panelProps={{
-        inventory, selectedAssetId, onSelect: selectAsset,
-        locationLabel: (id) => {
-          if (!workspace) return t('Localisation indisponible')
-          const target = findWorkspaceStation(workspace, local.locations[id] || null)
-          return target ? `${target.station.label} · ${target.room.plan.name} · ${target.floor.name}` : local.locations[id] ? t('Poste absent des salles') : t('Non localisé')
-        },
-        renderAssetActions: (asset) => workspace && plan
-          ? <AssetLocationActions asset={asset} local={local} onShowInPlan={showInPlan} plan={plan} workspace={workspace} canEdit={editable} />
-          : <section className="workspace-location-unavailable" aria-label={t('Localisation de {tag}', { tag: asset.assetTag })}><h3><MapPin size={13} aria-hidden="true" />{t('Localisation dans le plan')}</h3><select disabled aria-label={t('Poste de travail indisponible')} value=""><option value="">{t('Localisation indisponible')}</option></select><p>{t('Chargez ou préparez l’espace partagé pour retrouver les postes et modifier les localisations. La fiche du matériel reste accessible.')}</p></section>,
+  return (
+    <AppShell
+      tab={tab}
+      onTabChange={navigate}
+      workspace={workspace}
+      activeRoomId={plan?.id ?? ''}
+      onRoomChange={selectRoom}
+      onManageSpaces={() => {
+        if (editable) {
+          setManagerRequested(true)
+          setOrganizing(true)
+        }
       }}
-    /> : workspace && plan ? <SpatialViewer
-      key={plan.id}
-      plan={plan} history={planStore} editing={editing} canEdit={editable} persisted={persisted}
-      onEditingChange={(value) => { if (!value || editable) { setEditing(value); setSelectedAssetId(null) } }}
-      onMove={(id, x, z) => { if (editable) replacePlan(translateSelection(plan, selectedIds.includes(id) ? selectedIds : [id], id, x, z, false)) }}
-      view={spatialView} onViewChange={setSpatialView} selectedWorkstationId={selectedWorkstationId} selectedIds={selectedIds}
-      onSelectionChange={(ids) => { setSelection(ids); setSelectedAssetId(null) }} onSelectWorkstation={selectWorkstation} localizedCounts={localizedCounts}
-      inspector={editing ? <LazyPanel
-        key={plan.id}
-        load={loadWorkstationEditor}
-        panelProps={{ plan, persisted, selectedId: selectedWorkstationId, selectedIds, onChange: replacePlan, onSelect: selectWorkstation, onSelectionChange: setSelection, workspace, onWorkspaceChange: workspaceStore.replace, onSelectionMoved: (roomId, ids) => { setActiveRoomId(roomId); setSelection(ids); setSelectedAssetId(null) }, canEdit: editable }}
-        loading={<aside className="asset-inspector plan-editor" aria-label={t('Chargement de l’éditeur')}><PanelStatus label={t('Préparation de l’atelier…')} /></aside>}
-        failure={(retry) => <aside className="asset-inspector plan-editor" aria-label={t('Éditeur indisponible')}><PanelStatus label={t('L’atelier n’a pas pu être chargé.')} retry={retry} persisted={persisted} /></aside>}
-      /> : selectedFurniture ? <aside className="asset-inspector" aria-label={t('Fiche du mobilier')}><FurnitureSummary item={selectedFurniture} /></aside> : <SpatialInspector
-        plan={plan} workspace={workspace} selectedWorkstationId={selectedWorkstationId} selectedAssetId={selectedAssetId}
-        onSelectAsset={selectAsset} onOpenInventory={() => navigate('inventory')} onShowInPlan={showInPlan} inventory={inventory} local={local} canEdit={editable}
-      />}
-    /> : <WorkspaceStartPanel store={workspaceStore} canEdit={canEdit} onInitialize={initialize} onRecover={recoverInitialWorkspace} onRetry={() => { void reloadWorkspace() }} onOpenInventory={() => navigate('inventory')} />}
-  </AppShell>
+      {...(workspaceStore.draft
+        ? { departureGuard: { dirty: needsDepartureGuard, saving: workspaceStore.saving, exportDraft } }
+        : {})}
+    >
+      {managerRequested && workspace && plan && (
+        <LazyPanel
+          load={loadWorkspaceManager}
+          panelProps={{
+            open: organizing,
+            onOpenChange: setOrganizing,
+            workspace,
+            locations: local.locations,
+            activeRoomId: plan.id,
+            onSelectRoom: selectRoom,
+            onChange: workspaceStore.replace,
+            onSpatialChange: workspaceStore.replaceDraft,
+            persisted,
+            history: workspaceStore,
+            canEdit: editable,
+          }}
+          loading={<ManagerStatus open={organizing} onOpenChange={setOrganizing} persisted={persisted} />}
+          failure={(retry) => (
+            <ManagerStatus open={organizing} onOpenChange={setOrganizing} retry={retry} persisted={persisted} />
+          )}
+        />
+      )}
+      <div className="workspace-heading">
+        <div>
+          <p className="eyebrow">
+            {tab === 'spaces'
+              ? t('ESPACE PARTAGÉ / {floor}', { floor: floorName.toLocaleUpperCase() })
+              : t('PARC INFORMATIQUE')}
+          </p>
+          <h1>{tab === 'spaces' ? (plan?.name ?? t('Vos espaces')) : t('Matériel')}</h1>
+          <p className="workspace-description">
+            {tab === 'spaces'
+              ? t('Votre matériel, dans son environnement.')
+              : t('Une vue commune sur tous vos équipements.')}
+          </p>
+        </div>
+        <Badge variant="outline">
+          {tab === 'spaces' ? (workspaceStore.dirty ? t('Brouillon') : t('Espace partagé')) : t('Inventaire')}
+        </Badge>
+      </div>
+      <WorkspaceConnectionBar
+        store={workspaceStore}
+        canEdit={canEdit}
+        hasOpenForms={hasOpenForms}
+        onReload={reloadWorkspace}
+        onExport={exportDraft}
+        exportNotice={exportNotice}
+      />
+      {roomError && tab === 'spaces' && (
+        <p className="storage-warning px-8 pb-4" role="alert">
+          {roomError}
+        </p>
+      )}
+      {tab === 'inventory' ? (
+        <LazyPanel
+          load={loadInventoryPanel}
+          loading={<PanelStatus label={t('Préparation de l’inventaire…')} />}
+          failure={(retry) => (
+            <PanelStatus label={t('L’inventaire n’a pas pu être chargé.')} retry={retry} persisted={persisted} />
+          )}
+          panelProps={{
+            inventory,
+            selectedAssetId,
+            onSelect: selectAsset,
+            locationLabel: (id) => {
+              if (!workspace) return t('Localisation indisponible')
+              const target = findWorkspaceStation(workspace, local.locations[id] || null)
+              return target
+                ? `${target.station.label} · ${target.room.plan.name} · ${target.floor.name}`
+                : local.locations[id]
+                  ? t('Poste absent des salles')
+                  : t('Non localisé')
+            },
+            renderAssetActions: (asset) =>
+              workspace && plan ? (
+                <AssetLocationActions
+                  asset={asset}
+                  local={local}
+                  onShowInPlan={showInPlan}
+                  plan={plan}
+                  workspace={workspace}
+                  canEdit={editable}
+                />
+              ) : (
+                <section
+                  className="workspace-location-unavailable"
+                  aria-label={t('Localisation de {tag}', { tag: asset.assetTag })}
+                >
+                  <h3>
+                    <MapPin size={13} aria-hidden="true" />
+                    {t('Localisation dans le plan')}
+                  </h3>
+                  <select disabled aria-label={t('Poste de travail indisponible')} value="">
+                    <option value="">{t('Localisation indisponible')}</option>
+                  </select>
+                  <p>
+                    {t(
+                      'Chargez ou préparez l’espace partagé pour retrouver les postes et modifier les localisations. La fiche du matériel reste accessible.',
+                    )}
+                  </p>
+                </section>
+              ),
+          }}
+        />
+      ) : workspace && plan ? (
+        <SpatialViewer
+          key={plan.id}
+          plan={plan}
+          history={planStore}
+          editing={editing}
+          canEdit={editable}
+          persisted={persisted}
+          onEditingChange={(value) => {
+            if (!value || editable) {
+              setEditing(value)
+              setSelectedAssetId(null)
+            }
+          }}
+          onMove={(id, x, z) => {
+            if (editable)
+              replacePlan(translateSelection(plan, selectedIds.includes(id) ? selectedIds : [id], id, x, z, false))
+          }}
+          view={spatialView}
+          onViewChange={setSpatialView}
+          selectedWorkstationId={selectedWorkstationId}
+          selectedIds={selectedIds}
+          onSelectionChange={(ids) => {
+            setSelection(ids)
+            setSelectedAssetId(null)
+          }}
+          onSelectWorkstation={selectWorkstation}
+          localizedCounts={localizedCounts}
+          inspector={
+            editing ? (
+              <LazyPanel
+                key={plan.id}
+                load={loadWorkstationEditor}
+                panelProps={{
+                  plan,
+                  persisted,
+                  selectedId: selectedWorkstationId,
+                  selectedIds,
+                  onChange: replacePlan,
+                  onSelect: selectWorkstation,
+                  onSelectionChange: setSelection,
+                  workspace,
+                  onWorkspaceChange: workspaceStore.replace,
+                  onSelectionMoved: (roomId, ids) => {
+                    setActiveRoomId(roomId)
+                    setSelection(ids)
+                    setSelectedAssetId(null)
+                  },
+                  canEdit: editable,
+                }}
+                loading={
+                  <aside className="asset-inspector plan-editor" aria-label={t('Chargement de l’éditeur')}>
+                    <PanelStatus label={t('Préparation de l’atelier…')} />
+                  </aside>
+                }
+                failure={(retry) => (
+                  <aside className="asset-inspector plan-editor" aria-label={t('Éditeur indisponible')}>
+                    <PanelStatus label={t('L’atelier n’a pas pu être chargé.')} retry={retry} persisted={persisted} />
+                  </aside>
+                )}
+              />
+            ) : selectedFurniture ? (
+              <aside className="asset-inspector" aria-label={t('Fiche du mobilier')}>
+                <FurnitureSummary item={selectedFurniture} />
+              </aside>
+            ) : (
+              <SpatialInspector
+                plan={plan}
+                workspace={workspace}
+                selectedWorkstationId={selectedWorkstationId}
+                selectedAssetId={selectedAssetId}
+                onSelectAsset={selectAsset}
+                onOpenInventory={() => navigate('inventory')}
+                onShowInPlan={showInPlan}
+                inventory={inventory}
+                local={local}
+                canEdit={editable}
+              />
+            )
+          }
+        />
+      ) : (
+        <WorkspaceStartPanel
+          store={workspaceStore}
+          canEdit={canEdit}
+          onInitialize={initialize}
+          onRecover={recoverInitialWorkspace}
+          onRetry={() => {
+            void reloadWorkspace()
+          }}
+          onOpenInventory={() => navigate('inventory')}
+        />
+      )}
+    </AppShell>
+  )
 }
 
 export default App

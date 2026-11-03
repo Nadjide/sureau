@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionUser } from './auth-api'
-import { authenticatedSession, expiredSession, initialSession, sessionPermissions, signedOutSession, updateSessionUser, type SessionState } from './session-state'
+import {
+  authenticatedSession,
+  expiredSession,
+  initialSession,
+  sessionPermissions,
+  signedOutSession,
+  updateSessionUser,
+  type SessionState,
+} from './session-state'
 
 const user: SessionUser = { id: 1, username: 'nadjide', displayName: 'Nadjide', role: 'ADMIN' }
 
@@ -59,8 +67,12 @@ describe('cycle de session et brouillon', () => {
 
     expect(suspended).toEqual({ ...connected, phase: 'expired', error: reason })
     expect(sessionPermissions(suspended)).toEqual({ canEdit: false, canAdmin: false })
-    expect(updateSessionUser(suspended, { id: user.id, displayName: 'Nom confirmé' }))
-      .toMatchObject({ phase: 'expired', generation: 8, error: reason, user: { id: user.id, displayName: 'Nom confirmé' } })
+    expect(updateSessionUser(suspended, { id: user.id, displayName: 'Nom confirmé' })).toMatchObject({
+      phase: 'expired',
+      generation: 8,
+      error: reason,
+      user: { id: user.id, displayName: 'Nom confirmé' },
+    })
   })
 
   it('efface la raison après la reconnexion sans changer la génération du même compte', () => {
@@ -79,7 +91,12 @@ describe('cycle de session et brouillon', () => {
 describe('actualisation du nom du compte courant', () => {
   it('applique uniquement le nom confirmé du même compte en conservant son rôle et son brouillon', () => {
     const connected = authenticatedSession({ ...initialSession, generation: 7 }, user)
-    const incoming: SessionUser = { ...user, displayName: 'Équipe Sureau', username: 'autre-identifiant', role: 'VIEWER' }
+    const incoming: SessionUser = {
+      ...user,
+      displayName: 'Équipe Sureau',
+      username: 'autre-identifiant',
+      role: 'VIEWER',
+    }
 
     const updated = updateSessionUser(connected, incoming)
 
@@ -105,13 +122,19 @@ describe('actualisation du nom du compte courant', () => {
   it('ignore la réponse de l’ancien compte lorsque la reconnexion a changé d’identité', () => {
     const connected = authenticatedSession(initialSession, user)
     const replacement = authenticatedSession(expiredSession(connected), {
-      id: 73, username: 'collegue', displayName: 'Collègue', role: 'EDITOR',
+      id: 73,
+      username: 'collegue',
+      displayName: 'Collègue',
+      role: 'EDITOR',
     })
 
     const afterLateResponse = updateSessionUser(replacement, { id: user.id, displayName: 'Ancienne réponse' })
 
     expect(afterLateResponse).toBe(replacement)
-    expect(afterLateResponse).toMatchObject({ generation: connected.generation + 1, user: { id: 73, displayName: 'Collègue' } })
+    expect(afterLateResponse).toMatchObject({
+      generation: connected.generation + 1,
+      user: { id: 73, displayName: 'Collègue' },
+    })
     expect(sessionPermissions(afterLateResponse)).toEqual({ canEdit: true, canAdmin: false })
   })
 

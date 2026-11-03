@@ -17,7 +17,14 @@ interface Props {
   onShowInPlan: (id: number) => void
 }
 
-export function AssetLocationActions({ asset, local, canEdit = true, onShowInPlan, plan = defaultPlan, workspace }: Props) {
+export function AssetLocationActions({
+  asset,
+  local,
+  canEdit = true,
+  onShowInPlan,
+  plan = defaultPlan,
+  workspace,
+}: Props) {
   const stationId = local.locations[asset.id] || ''
   const station = workspace
     ? findWorkspaceStation(workspace, stationId)?.station
@@ -34,25 +41,31 @@ export function AssetLocationActions({ asset, local, canEdit = true, onShowInPla
         id={`location-${asset.id}`}
         value={stationId}
         disabled={!canEdit}
-        onChange={(event) => { if (canEdit) local.associate(asset.id, event.target.value || null) }}
+        onChange={(event) => {
+          if (canEdit) local.associate(asset.id, event.target.value || null)
+        }}
       >
         <option value="">{t('Non localisé')}</option>
         {stationId && !station && <option value={stationId}>{t('Poste absent du plan · lien conservé')}</option>}
         {workspace
-          ? workspace.floors.flatMap((floor) => workspace.rooms
-            .filter((room) => room.floorId === floor.id && room.plan.workstations.length > 0)
-            .map((room) => (
-              <optgroup key={room.plan.id} label={`${floor.name} · ${room.plan.name}`}>
-                {room.plan.workstations.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
-                ))}
-              </optgroup>
-            )))
+          ? workspace.floors.flatMap((floor) =>
+              workspace.rooms
+                .filter((room) => room.floorId === floor.id && room.plan.workstations.length > 0)
+                .map((room) => (
+                  <optgroup key={room.plan.id} label={`${floor.name} · ${room.plan.name}`}>
+                    {room.plan.workstations.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )),
+            )
           : plan.workstations.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label} · {plan.name}
-            </option>
-          ))}
+              <option key={item.id} value={item.id}>
+                {item.label} · {plan.name}
+              </option>
+            ))}
       </select>
       {station && (
         <Button variant="outline" className="w-full mt-3" onClick={() => onShowInPlan(asset.id)}>
@@ -65,7 +78,9 @@ export function AssetLocationActions({ asset, local, canEdit = true, onShowInPla
         {local.persisted ? t('Localisation enregistrée sur le serveur') : t('Brouillon · enregistrer pour partager')}
       </p>
       <p className="location-help">
-        {t('Cette localisation fait partie de l’espace partagé. Appliquez vos changements avec Enregistrer l’espace. Le statut du matériel reste inchangé.')}
+        {t(
+          'Cette localisation fait partie de l’espace partagé. Appliquez vos changements avec Enregistrer l’espace. Le statut du matériel reste inchangé.',
+        )}
       </p>
       {local.warning && (
         <p className="storage-warning" role="alert">

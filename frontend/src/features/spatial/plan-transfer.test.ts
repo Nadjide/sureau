@@ -9,7 +9,14 @@ describe('transfert de plans', () => {
     const current = { ...structuredClone(candidate), id: 'room-target' }
     expect(isSameRoomPlan(current, candidate)).toBe(true)
     expect(isSameRoomPlan(current, { ...candidate, name: 'Une autre implantation' })).toBe(false)
-    expect(isSameRoomPlan(current, { ...candidate, workstations: candidate.workstations.map((item, index) => index === 0 ? { ...item, id: 'desk-replacement' } : item) })).toBe(false)
+    expect(
+      isSameRoomPlan(current, {
+        ...candidate,
+        workstations: candidate.workstations.map((item, index) =>
+          index === 0 ? { ...item, id: 'desk-replacement' } : item,
+        ),
+      }),
+    ).toBe(false)
     expect(candidate.id).toBe('plateau-a')
   })
   it('exporte et réimporte le plateau versionné sans altérer ses propriétés', () => {
@@ -58,7 +65,9 @@ describe('transfert de plans', () => {
     first.workstations[0]!.position[0] = 0
     first.display.walls = false
     expect(second).toEqual(defaultPlan)
-    expect(second.workstations.map((station) => station.id)).toEqual(defaultPlan.workstations.map((station) => station.id))
+    expect(second.workstations.map((station) => station.id)).toEqual(
+      defaultPlan.workstations.map((station) => station.id),
+    )
     expect(first.workstations).not.toBe(defaultPlan.workstations)
   })
 

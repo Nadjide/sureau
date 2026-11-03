@@ -28,29 +28,39 @@ export function parseCsv(text: string): string[][] {
     const char = source[index]!
     if (quoted) {
       if (char !== '"') field += char
-      else if (source[index + 1] === '"') { field += '"'; index++ }
-      else quoted = false
+      else if (source[index + 1] === '"') {
+        field += '"'
+        index++
+      } else quoted = false
     } else if (char === '"' && !fieldStarted) {
       quoted = true
       fieldStarted = true
     } else if (char === separator) {
-      row.push(field); field = ''; fieldStarted = false
+      row.push(field)
+      field = ''
+      fieldStarted = false
     } else if (char === '\n' || char === '\r') {
       if (char === '\r' && source[index + 1] === '\n') index++
-      row.push(field); rows.push(row)
-      row = []; field = ''; fieldStarted = false
+      row.push(field)
+      rows.push(row)
+      row = []
+      field = ''
+      fieldStarted = false
     } else {
       field += char
       fieldStarted = true
     }
   }
-  if (fieldStarted || row.length > 0) { row.push(field); rows.push(row) }
+  if (fieldStarted || row.length > 0) {
+    row.push(field)
+    rows.push(row)
+  }
   return rows.filter((cells) => cells.some((cell) => cell.trim() !== ''))
 }
 
 /** Semicolons and a byte order mark, as spreadsheets expect in French locales. */
 export function toCsv(rows: readonly (readonly string[])[]): string {
-  const quote = (cell: string) => /[";,\r\n]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell
+  const quote = (cell: string) => (/[";,\r\n]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell)
   return `﻿${rows.map((cells) => cells.map(quote).join(';')).join('\r\n')}\r\n`
 }
 

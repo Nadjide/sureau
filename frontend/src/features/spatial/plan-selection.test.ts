@@ -3,12 +3,21 @@ import { createFurniture } from './furniture-catalog'
 import { defaultPlan, parsePlan } from './plan-document'
 import { footprintBounds, mixedOverlaps } from './plan-geometry'
 import { createPlanHistory, pushPlanChange, redoPlan, undoPlan } from './plan-history'
-import { duplicateSelection, removeSelection, resolveSelection, rotateSelection, selectIds, translateSelection } from './plan-selection'
+import {
+  duplicateSelection,
+  removeSelection,
+  resolveSelection,
+  rotateSelection,
+  selectIds,
+  translateSelection,
+} from './plan-selection'
 import type { SpatialPlan } from './room-model'
 
 function fixture(): SpatialPlan {
   return {
-    ...structuredClone(defaultPlan), width: 10, depth: 8,
+    ...structuredClone(defaultPlan),
+    width: 10,
+    depth: 8,
     workstations: [
       { ...defaultPlan.workstations[0]!, id: 'desk-first', position: [-2, 0, -1], rotation: 0 },
       { ...defaultPlan.workstations[1]!, id: 'desk-second', position: [1, 0, 1], rotation: Math.PI / 2 },
@@ -23,8 +32,10 @@ function fixture(): SpatialPlan {
 describe('sélection des objets du plan', () => {
   it('résout une sélection mixte sans doublons, en ignorant les identifiants absents', () => {
     const plan = fixture()
-    expect(resolveSelection(plan, ['furniture-table', 'desk-second', 'desk-second', 'desk-missing']))
-      .toEqual([plan.workstations[1], plan.furniture[1]])
+    expect(resolveSelection(plan, ['furniture-table', 'desk-second', 'desk-second', 'desk-missing'])).toEqual([
+      plan.workstations[1],
+      plan.furniture[1],
+    ])
     expect(resolveSelection(plan, [])).toEqual([])
   })
 
@@ -56,7 +67,8 @@ describe('translation commune de la sélection', () => {
   })
 
   it('déplace postes et meubles ensemble, sans toucher aux autres objets ni au plan source', () => {
-    const plan = fixture(), source = structuredClone(plan)
+    const plan = fixture(),
+      source = structuredClone(plan)
     const result = translateSelection(plan, ['desk-second', 'furniture-table'], 'desk-second', 2, 0.5, false)
     expect(result.workstations[1]!.position).toEqual([2, 0, 0.5])
     expect(result.furniture[1]!.position).toEqual([3, 0, -2.5])
@@ -109,7 +121,8 @@ describe('translation commune de la sélection', () => {
   })
 
   it('refuse les coordonnées non finies et une sélection plus grande que la salle', () => {
-    const plan = fixture(), source = structuredClone(plan)
+    const plan = fixture(),
+      source = structuredClone(plan)
     for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
       expect(() => translateSelection(plan, ['desk-first'], 'desk-first', value, 0, true)).toThrow()
       expect(() => translateSelection(plan, ['desk-first'], 'desk-first', 0, value, false)).toThrow()
@@ -121,28 +134,46 @@ describe('translation commune de la sélection', () => {
 
   it('borne les cibles finies extrêmes sans produire de coordonnées infinies', () => {
     const plan = fixture()
-    const result = translateSelection(plan, ['desk-second', 'furniture-table'], 'desk-second', Number.MAX_VALUE, -Number.MAX_VALUE, true)
+    const result = translateSelection(
+      plan,
+      ['desk-second', 'furniture-table'],
+      'desk-second',
+      Number.MAX_VALUE,
+      -Number.MAX_VALUE,
+      true,
+    )
     expect(parsePlan(JSON.stringify(result))).toEqual(result)
     expect(result.workstations[1]!.position[0]).toBeCloseTo(2.8)
   })
 
   it('annule et rétablit le déplacement de plusieurs objets en une seule étape', () => {
     const initial = createPlanHistory(fixture())
-    const candidate = translateSelection(initial.present, ['desk-second', 'furniture-table'], 'desk-second', 2, 0.5, false)
+    const candidate = translateSelection(
+      initial.present,
+      ['desk-second', 'furniture-table'],
+      'desk-second',
+      2,
+      0.5,
+      false,
+    )
     const changed = pushPlanChange(initial, candidate)
     expect(changed.past).toHaveLength(1)
     const undone = undoPlan(changed)
     expect(undone.present).toEqual(initial.present)
     expect(redoPlan(undone).present).toEqual(changed.present)
-    expect(pushPlanChange(undone, translateSelection(undone.present, ['desk-first'], 'desk-first', -2, -1, true))).toBe(undone)
+    expect(pushPlanChange(undone, translateSelection(undone.present, ['desk-first'], 'desk-first', -2, -1, true))).toBe(
+      undone,
+    )
   })
 })
 
 describe('actions sur toute la sélection', () => {
   it('pivote les origines et les orientations autour d’un pivot commun avec la convention de la vue 3D', () => {
-    const plan = fixture(), source = structuredClone(plan)
+    const plan = fixture(),
+      source = structuredClone(plan)
     const ids = ['desk-second', 'furniture-table']
-    const items = resolveSelection(plan, ids), boxes = items.map(footprintBounds)
+    const items = resolveSelection(plan, ids),
+      boxes = items.map(footprintBounds)
     const pivotX = (Math.min(...boxes.map((box) => box.minX)) + Math.max(...boxes.map((box) => box.maxX))) / 2
     const pivotZ = (Math.min(...boxes.map((box) => box.minZ)) + Math.max(...boxes.map((box) => box.maxZ))) / 2
     const rotated = rotateSelection(plan, ids, Math.PI / 2)
@@ -168,7 +199,11 @@ describe('actions sur toute la sélection', () => {
       { ...createFurniture('partition', 'furniture-first'), width: 4, depth: 0.2, position: [0, 0, -3.8] },
       { ...createFurniture('plant', 'furniture-second'), position: [2.5, 0, -3.5] },
     ]
-    const rotated = rotateSelection(plan, plan.furniture.map((item) => item.id), Math.PI / 2)
+    const rotated = rotateSelection(
+      plan,
+      plan.furniture.map((item) => item.id),
+      Math.PI / 2,
+    )
     expect(rotated.furniture[1]!.position[0] - rotated.furniture[0]!.position[0]).toBeCloseTo(0.3)
     expect(rotated.furniture[1]!.position[2] - rotated.furniture[0]!.position[2]).toBeCloseTo(-2.5)
     for (const item of rotated.furniture) {
@@ -181,21 +216,32 @@ describe('actions sur toute la sélection', () => {
 
   it('refuse intégralement une rotation trop grande et les angles non finis', () => {
     const plan = fixture()
-    plan.width = 12; plan.depth = 6; plan.workstations = []
+    plan.width = 12
+    plan.depth = 6
+    plan.workstations = []
     plan.furniture = [
       { ...createFurniture('table', 'furniture-first'), width: 6, position: [-3, 0, 0] },
       { ...createFurniture('table', 'furniture-second'), width: 6, position: [3, 0, 0] },
     ]
     const source = structuredClone(plan)
-    expect(() => rotateSelection(plan, plan.furniture.map((item) => item.id), Math.PI / 2)).toThrow()
+    expect(() =>
+      rotateSelection(
+        plan,
+        plan.furniture.map((item) => item.id),
+        Math.PI / 2,
+      ),
+    ).toThrow()
     expect(() => rotateSelection(plan, [], Number.NaN)).toThrow()
     expect(() => rotateSelection(plan, [], Number.POSITIVE_INFINITY)).toThrow()
     expect(plan).toEqual(source)
   })
 
   it('copie un assemblage avec des identifiants neufs, un delta commun et aucune collision avec le plan source', () => {
-    const plan = fixture(), source = structuredClone(plan), generated: string[] = []
-    plan.width = 20; plan.depth = 16
+    const plan = fixture(),
+      source = structuredClone(plan),
+      generated: string[] = []
+    plan.width = 20
+    plan.depth = 16
     const ids = ['desk-second', 'furniture-table']
     const result = duplicateSelection(plan, ids, (type) => {
       const id = `${type}-copy-${generated.length}`
@@ -203,11 +249,16 @@ describe('actions sur toute la sélection', () => {
       return id
     })
     expect(result.selectedIds).toEqual(['desk-copy-0', 'furniture-copy-1'])
-    const originals = resolveSelection(plan, ids), copies = resolveSelection(result.plan, result.selectedIds)
+    const originals = resolveSelection(plan, ids),
+      copies = resolveSelection(result.plan, result.selectedIds)
     expect(result.plan.workstations).toHaveLength(plan.workstations.length + 1)
     expect(result.plan.furniture).toHaveLength(plan.furniture.length + 1)
-    expect(copies[1]!.position[0] - copies[0]!.position[0]).toBeCloseTo(originals[1]!.position[0] - originals[0]!.position[0])
-    expect(copies[1]!.position[2] - copies[0]!.position[2]).toBeCloseTo(originals[1]!.position[2] - originals[0]!.position[2])
+    expect(copies[1]!.position[0] - copies[0]!.position[0]).toBeCloseTo(
+      originals[1]!.position[0] - originals[0]!.position[0],
+    )
+    expect(copies[1]!.position[2] - copies[0]!.position[2]).toBeCloseTo(
+      originals[1]!.position[2] - originals[0]!.position[2],
+    )
     for (const [index, copy] of copies.entries()) {
       expect(copy.rotation).toBe(originals[index]!.rotation)
       expect(copy.label).toBe(`${originals[index]!.label} (copie)`)
@@ -222,27 +273,50 @@ describe('actions sur toute la sélection', () => {
 
   it('ne consomme aucun identifiant si tout l’assemblage ne trouve pas de place', () => {
     const plan = fixture()
-    plan.width = 6; plan.depth = 6; plan.workstations = []
+    plan.width = 6
+    plan.depth = 6
+    plan.workstations = []
     plan.furniture = [{ ...createFurniture('cabinet', 'furniture-full'), width: 6, depth: 4 }]
     let generated = 0
     const source = structuredClone(plan)
-    expect(() => duplicateSelection(plan, ['furniture-full'], () => { generated++; return 'furniture-copy' })).toThrow(/zone libre/)
+    expect(() =>
+      duplicateSelection(plan, ['furniture-full'], () => {
+        generated++
+        return 'furniture-copy'
+      }),
+    ).toThrow(/zone libre/)
     expect(generated).toBe(0)
     expect(plan).toEqual(source)
   })
 
   it('respecte chaque quota et refuse toute duplication partielle ou tout identifiant invalide', () => {
     const plan = fixture()
-    plan.width = 30; plan.depth = 30
-    plan.furniture = Array.from({ length: 64 }, (_, index) => ({ ...createFurniture('plant', `furniture-plant-${index}`), position: [0, 0, 0] }))
+    plan.width = 30
+    plan.depth = 30
+    plan.furniture = Array.from({ length: 64 }, (_, index) => ({
+      ...createFurniture('plant', `furniture-plant-${index}`),
+      position: [0, 0, 0],
+    }))
     let generated = 0
-    expect(() => duplicateSelection(plan, ['desk-first', 'furniture-plant-0'], () => { generated++; return 'furniture-copy' })).toThrow(/64/)
+    expect(() =>
+      duplicateSelection(plan, ['desk-first', 'furniture-plant-0'], () => {
+        generated++
+        return 'furniture-copy'
+      }),
+    ).toThrow(/64/)
     expect(generated).toBe(0)
     const desks = fixture()
     desks.workstations = Array.from({ length: 64 }, (_, index) => ({ ...desks.workstations[0]!, id: `desk-${index}` }))
-    expect(() => duplicateSelection(desks, ['desk-0'], () => { generated++; return 'desk-copy' })).toThrow(/64/)
+    expect(() =>
+      duplicateSelection(desks, ['desk-0'], () => {
+        generated++
+        return 'desk-copy'
+      }),
+    ).toThrow(/64/)
     expect(generated).toBe(0)
-    const free = fixture(); free.width = 30; free.depth = 30
+    const free = fixture()
+    free.width = 30
+    free.depth = 30
     const source = structuredClone(free)
     expect(() => duplicateSelection(free, ['desk-first'], () => 'desk-first')).toThrow(/identifiant/)
     expect(() => duplicateSelection(free, ['desk-first'], () => 'furniture-wrong-type')).toThrow(/identifiant/)
@@ -271,7 +345,8 @@ describe('actions sur toute la sélection', () => {
   })
 
   it('annule toute la rotation ou duplication en une seule étape', () => {
-    const initial = createPlanHistory(fixture()), ids = ['desk-second', 'furniture-table']
+    const initial = createPlanHistory(fixture()),
+      ids = ['desk-second', 'furniture-table']
     const rotation = pushPlanChange(initial, rotateSelection(initial.present, ids, Math.PI / 2))
     expect(rotation.past).toHaveLength(1)
     expect(undoPlan(rotation).present).toEqual(initial.present)

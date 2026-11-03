@@ -28,12 +28,19 @@ function snapshot(revision = 4, value = draft()): WorkspaceSnapshot {
 
 function harness(initial = snapshot()) {
   let canEdit = true
-  const getWorkspace = vi.fn<(signal?: AbortSignal) => Promise<WorkspaceSnapshot | null>>()
-    .mockResolvedValue(initial)
-  const saveWorkspace = vi.fn<(revision: number, value: SpatialDraft, signal?: AbortSignal) => Promise<WorkspaceSnapshot>>()
+  const getWorkspace = vi.fn<(signal?: AbortSignal) => Promise<WorkspaceSnapshot | null>>().mockResolvedValue(initial)
+  const saveWorkspace = vi
+    .fn<(revision: number, value: SpatialDraft, signal?: AbortSignal) => Promise<WorkspaceSnapshot>>()
     .mockImplementation(async (revision, value) => snapshot(revision + 1, value))
   const store = createSharedWorkspaceStore({ getWorkspace, saveWorkspace, canEdit: () => canEdit })
-  return { store, getWorkspace, saveWorkspace, setCanEdit: (value: boolean) => { canEdit = value } }
+  return {
+    store,
+    getWorkspace,
+    saveWorkspace,
+    setCanEdit: (value: boolean) => {
+      canEdit = value
+    },
+  }
 }
 
 function deskId(value: SpatialDraft, index = 0): string {
@@ -47,7 +54,13 @@ describe('chargement et initialisation explicite de l’espace partagé', () => 
     getWorkspace.mockReturnValueOnce(pending.promise)
     const started = store.start()
 
-    expect(store.getState()).toMatchObject({ phase: 'loading', loading: true, draft: null, revision: null, dirty: false })
+    expect(store.getState()).toMatchObject({
+      phase: 'loading',
+      loading: true,
+      draft: null,
+      revision: null,
+      dirty: false,
+    })
     expect(store.initialize(draft())).toBe(false)
     expect(store.replace(draft().workspace)).toBe(false)
     expect(await store.save()).toBe(false)
@@ -342,9 +355,13 @@ describe('confirmation et échecs d’enregistrement', () => {
 
   it.each([
     { label: 'une autre révision', value: (sent: SpatialDraft) => snapshot(6, sent) },
-    { label: 'des localisations différentes', value: (sent: SpatialDraft) => ({
-      ...snapshot(5, sent), locations: { ...sent.locations, 42: 'desk-other' },
-    }) },
+    {
+      label: 'des localisations différentes',
+      value: (sent: SpatialDraft) => ({
+        ...snapshot(5, sent),
+        locations: { ...sent.locations, 42: 'desk-other' },
+      }),
+    },
     { label: 'une date absente', value: (sent: SpatialDraft) => ({ ...snapshot(5, sent), updatedAt: '' }) },
   ])('ne considère pas $label comme la confirmation de ce brouillon', async ({ value }) => {
     const { store, saveWorkspace } = harness()

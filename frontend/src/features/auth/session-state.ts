@@ -13,7 +13,9 @@ export const initialSession: SessionState = { phase: 'checking', user: null, err
 
 export function authenticatedSession(previous: SessionState, user: SessionUser): SessionState {
   return {
-    phase: 'authenticated', user, error: null,
+    phase: 'authenticated',
+    user,
+    error: null,
     generation: previous.generation + (previous.user && previous.user.id !== user.id ? 1 : 0),
   }
 }
@@ -22,8 +24,12 @@ export function expiredSession(previous: SessionState, message: string | null = 
   return previous.user ? { ...previous, phase: 'expired', error: message } : previous
 }
 
-export function updateSessionUser(previous: SessionState, input: Pick<SessionUser, 'id' | 'displayName'>): SessionState {
-  if (!previous.user || previous.user.id !== input.id || previous.user.displayName === input.displayName) return previous
+export function updateSessionUser(
+  previous: SessionState,
+  input: Pick<SessionUser, 'id' | 'displayName'>,
+): SessionState {
+  if (!previous.user || previous.user.id !== input.id || previous.user.displayName === input.displayName)
+    return previous
   return { ...previous, user: { ...previous.user, displayName: input.displayName } }
 }
 

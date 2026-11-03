@@ -12,16 +12,39 @@ export function FurnitureIcon({ kind, size = 24 }: { kind: FurnitureKind; size?:
 
 export function FurnitureSummary({ item }: { item: FurnitureItem }) {
   const entry = furnitureCatalog.find((candidate) => candidate.kind === item.kind)!
-  return <>
-    <div className="inspector-hero"><FurnitureIcon kind={item.kind} size={34} /></div>
-    <p className="eyebrow">{t('MOBILIER DU PLAN')}</p>
-    <h2>{item.label}</h2>
-    <p className="location-help">{t(entry.label)} · {t(entry.description)}</p>
-    <dl className="asset-specs">
-      <div><dt>{t('Dimensions')}</dt><dd>{Math.round(item.width * 100)} × {Math.round(item.depth * 100)} cm</dd></div>
-      <div><dt>{t('Hauteur')}</dt><dd>{Math.round(item.height * 100)} cm</dd></div>
-      <div><dt>{t('Orientation')}</dt><dd>{Math.round(item.rotation * 180 / Math.PI)}°</dd></div>
-      <div><dt>{t('Couleur')}</dt><dd><span className="furniture-color-sample" style={{ background: item.color }} />{item.color}</dd></div>
-    </dl>
-  </>
+  return (
+    <>
+      <div className="inspector-hero">
+        <FurnitureIcon kind={item.kind} size={34} />
+      </div>
+      <p className="eyebrow">{t('MOBILIER DU PLAN')}</p>
+      <h2>{item.label}</h2>
+      <p className="location-help">
+        {t(entry.label)} · {t(entry.description)}
+      </p>
+      <dl className="asset-specs">
+        <div>
+          <dt>{t('Dimensions')}</dt>
+          <dd>
+            {Math.round(item.width * 100)} × {Math.round(item.depth * 100)} cm
+          </dd>
+        </div>
+        <div>
+          <dt>{t('Hauteur')}</dt>
+          <dd>{Math.round(item.height * 100)} cm</dd>
+        </div>
+        <div>
+          <dt>{t('Orientation')}</dt>
+          <dd>{Math.round((item.rotation * 180) / Math.PI)}°</dd>
+        </div>
+        <div>
+          <dt>{t('Couleur')}</dt>
+          <dd>
+            <span className="furniture-color-sample" style={{ background: item.color }} />
+            {item.color}
+          </dd>
+        </div>
+      </dl>
+    </>
+  )
 }

@@ -18,10 +18,13 @@ Le frontend se compile sans le projet Java, mais l’interface exige une API Sur
 ```sh
 pnpm typecheck
 pnpm lint
+pnpm format:check
 pnpm test
 pnpm build
 pnpm preview
 ```
+
+Le code est mis en forme par Prettier (`.prettierrc.json`) : `pnpm format` l’applique, `pnpm format:check` le vérifie, comme la CI.
 
 Les versions exactes des dépendances résolues sont conservées dans `pnpm-lock.yaml`.
 

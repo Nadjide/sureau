@@ -59,5 +59,5 @@ export const workstations: readonly Workstation[] = Array.from({ length: 8 }, (_
 }))
 
 export function findWorkstation(id: string | null, stations: readonly Workstation[] = workstations) {
-  return stations.find(workstation => workstation.id === id)
+  return stations.find((workstation) => workstation.id === id)
 }
