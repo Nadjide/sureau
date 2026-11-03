@@ -65,55 +65,87 @@ const furnitureSchema = z.strictObject({
   color,
 })
 
-const planSchema = z.strictObject({
-  version: z.literal(1),
-  id: z.union([z.literal(room.id), z.string().regex(/^room-[a-z0-9-]{2,80}$/)]),
-  name,
-  width: finite.min(6).max(50),
-  depth: finite.min(6).max(50),
-  colors: z.strictObject({ floor: color, wall: color, desk: color, accent: color }),
-  display: z.strictObject({ walls: z.boolean(), decor: z.boolean() }).default({ walls: true, decor: true }),
-  workstations: z.array(workstationSchema).max(64),
-  furniture: z.array(furnitureSchema).max(64).default([]),
-}).superRefine((plan, context) => {
-  const ids = new Set<string>()
-  for (const [index, station] of plan.workstations.entries()) {
-    if (ids.has(station.id)) {
-      context.addIssue({ code: 'custom', path: ['workstations', index, 'id'], message: t('Identifiant de poste dupliqué.') })
-    }
-    ids.add(station.id)
-
-    try {
-      const bounded = clampWorkstation(plan, station)
-      if (Math.abs(bounded.position[0] - station.position[0]) > 1e-6
-        || Math.abs(bounded.position[2] - station.position[2]) > 1e-6) {
-        context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: t('Le poste ou son fauteuil dépasse les limites du plateau.') })
+const planSchema = z
+  .strictObject({
+    version: z.literal(1),
+    id: z.union([z.literal(room.id), z.string().regex(/^room-[a-z0-9-]{2,80}$/)]),
+    name,
+    width: finite.min(6).max(50),
+    depth: finite.min(6).max(50),
+    colors: z.strictObject({ floor: color, wall: color, desk: color, accent: color }),
+    display: z.strictObject({ walls: z.boolean(), decor: z.boolean() }).default({ walls: true, decor: true }),
+    workstations: z.array(workstationSchema).max(64),
+    furniture: z.array(furnitureSchema).max(64).default([]),
+  })
+  .superRefine((plan, context) => {
+    const ids = new Set<string>()
+    for (const [index, station] of plan.workstations.entries()) {
+      if (ids.has(station.id)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['workstations', index, 'id'],
+          message: t('Identifiant de poste dupliqué.'),
+        })
       }
-    } catch {
-      context.addIssue({ code: 'custom', path: ['workstations', index, 'position'], message: t('Les dimensions ou la position du poste sont invalides.') })
-    }
-  }
-  for (const [index, item] of plan.furniture.entries()) {
-    if (ids.has(item.id)) {
-      context.addIssue({ code: 'custom', path: ['furniture', index, 'id'], message: t('Identifiant de mobilier dupliqué.') })
-    }
-    ids.add(item.id)
-    try {
-      const bounded = clampFurniture(plan, item)
-      if (Math.abs(bounded.position[0] - item.position[0]) > 1e-6
-        || Math.abs(bounded.position[2] - item.position[2]) > 1e-6) {
-        context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: t('Le mobilier dépasse les limites du plateau.') })
-      }
-    } catch {
-      context.addIssue({ code: 'custom', path: ['furniture', index, 'position'], message: t('Les dimensions ou la position du mobilier sont invalides.') })
-    }
-  }
-})
+      ids.add(station.id)
 
-const invalidStorageWarning =
-  msg('Le plan enregistré est illisible ou incompatible. Il a été conservé. Vos modifications restent limitées à cette session.')
-const unavailableStorageWarning =
-  msg('Le stockage local est inaccessible. Le plan reste disponible uniquement pendant cette session.')
+      try {
+        const bounded = clampWorkstation(plan, station)
+        if (
+          Math.abs(bounded.position[0] - station.position[0]) > 1e-6 ||
+          Math.abs(bounded.position[2] - station.position[2]) > 1e-6
+        ) {
+          context.addIssue({
+            code: 'custom',
+            path: ['workstations', index, 'position'],
+            message: t('Le poste ou son fauteuil dépasse les limites du plateau.'),
+          })
+        }
+      } catch {
+        context.addIssue({
+          code: 'custom',
+          path: ['workstations', index, 'position'],
+          message: t('Les dimensions ou la position du poste sont invalides.'),
+        })
+      }
+    }
+    for (const [index, item] of plan.furniture.entries()) {
+      if (ids.has(item.id)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['furniture', index, 'id'],
+          message: t('Identifiant de mobilier dupliqué.'),
+        })
+      }
+      ids.add(item.id)
+      try {
+        const bounded = clampFurniture(plan, item)
+        if (
+          Math.abs(bounded.position[0] - item.position[0]) > 1e-6 ||
+          Math.abs(bounded.position[2] - item.position[2]) > 1e-6
+        ) {
+          context.addIssue({
+            code: 'custom',
+            path: ['furniture', index, 'position'],
+            message: t('Le mobilier dépasse les limites du plateau.'),
+          })
+        }
+      } catch {
+        context.addIssue({
+          code: 'custom',
+          path: ['furniture', index, 'position'],
+          message: t('Les dimensions ou la position du mobilier sont invalides.'),
+        })
+      }
+    }
+  })
+
+const invalidStorageWarning = msg(
+  'Le plan enregistré est illisible ou incompatible. Il a été conservé. Vos modifications restent limitées à cette session.',
+)
+const unavailableStorageWarning = msg(
+  'Le stockage local est inaccessible. Le plan reste disponible uniquement pendant cette session.',
+)
 
 function freshDefaultPlan(): SpatialPlan {
   return {
@@ -126,13 +158,25 @@ function freshDefaultPlan(): SpatialPlan {
 }
 
 export function parsePlan(raw: string): SpatialPlan {
-  if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit) throw new Error(t('Ce fichier de plan est trop volumineux.'))
+  if (new TextEncoder().encode(raw).byteLength > planFileSizeLimit)
+    throw new Error(t('Ce fichier de plan est trop volumineux.'))
   try {
     let payload: unknown = JSON.parse(raw)
-    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload) && !Object.hasOwn(payload, 'furniture')) {
+    if (
+      typeof payload === 'object' &&
+      payload !== null &&
+      !Array.isArray(payload) &&
+      !Object.hasOwn(payload, 'furniture')
+    ) {
       const legacy = payload as Record<string, unknown>
-      if (typeof legacy.width === 'number' && typeof legacy.depth === 'number'
-        && legacy.width >= 6 && legacy.width <= 50 && legacy.depth >= 6 && legacy.depth <= 50) {
+      if (
+        typeof legacy.width === 'number' &&
+        typeof legacy.depth === 'number' &&
+        legacy.width >= 6 &&
+        legacy.width <= 50 &&
+        legacy.depth >= 6 &&
+        legacy.depth <= 50
+      ) {
         payload = { ...legacy, furniture: initialFurniture(legacy.width, legacy.depth) }
       }
     }
@@ -181,7 +225,9 @@ export function savePlan(storage: PlanStorage | null, plan: SpatialPlan): PlanPe
     return { warning: null, persisted: true, canPersist: true }
   } catch {
     return {
-      warning: t('L’enregistrement local du plan a échoué. Vos modifications restent disponibles pendant cette session.'),
+      warning: t(
+        'L’enregistrement local du plan a échoué. Vos modifications restent disponibles pendant cette session.',
+      ),
       persisted: false,
       canPersist: true,
     }

@@ -5,8 +5,12 @@ import { createWorkspaceFromPlan } from './workspace-document'
 import { inspectLocalWorkspace, serializeLocalRecovery } from './local-workspace-recovery'
 
 const recoveryKeys = [
-  storageKeys.workspace, legacyStorageKeys.workspace, storageKeys.plan, legacyStorageKeys.plan,
-  storageKeys.locations, legacyStorageKeys.locations,
+  storageKeys.workspace,
+  legacyStorageKeys.workspace,
+  storageKeys.plan,
+  legacyStorageKeys.plan,
+  storageKeys.locations,
+  legacyStorageKeys.locations,
 ]
 
 function workspaceRaw(name = 'Ancien atelier'): string {
@@ -26,14 +30,24 @@ function locationsRaw(associations: Record<number, string> = { 42: 'desk-01', 95
 function storage(values: Record<string, string> = {}) {
   const entries = new Map(Object.entries(values))
   const getItem = vi.fn((key: string) => entries.get(key) ?? null)
-  const setItem = vi.fn(() => { throw new Error('Recovery must never write browser storage') })
-  const removeItem = vi.fn(() => { throw new Error('Recovery must never delete browser storage') })
-  const clear = vi.fn(() => { throw new Error('Recovery must never clear browser storage') })
-  const key = vi.fn(() => { throw new Error('Recovery must never enumerate unrelated browser storage') })
+  const setItem = vi.fn(() => {
+    throw new Error('Recovery must never write browser storage')
+  })
+  const removeItem = vi.fn(() => {
+    throw new Error('Recovery must never delete browser storage')
+  })
+  const clear = vi.fn(() => {
+    throw new Error('Recovery must never clear browser storage')
+  })
+  const key = vi.fn(() => {
+    throw new Error('Recovery must never enumerate unrelated browser storage')
+  })
   return { entries, getItem, setItem, removeItem, clear, key }
 }
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('recherche explicite des anciens plans du navigateur', () => {
   it('signale l’absence de données sans inventer de géométrie ni d’exemple', () => {
@@ -41,7 +55,11 @@ describe('recherche explicite des anciens plans du navigateur', () => {
     const result = inspectLocalWorkspace(browserStorage)
 
     expect(result).toMatchObject({
-      phase: 'absent', draft: null, sourceKey: null, hasLocations: false, locationsValid: false,
+      phase: 'absent',
+      draft: null,
+      sourceKey: null,
+      hasLocations: false,
+      locationsValid: false,
     })
     expect(result.rawEntries).toEqual({})
     expect(browserStorage.getItem.mock.calls.map(([key]) => key).sort()).toEqual([...recoveryKeys].sort())
@@ -65,7 +83,12 @@ describe('recherche explicite des anciens plans du navigateur', () => {
     const browserStorage = storage(entries)
     const result = inspectLocalWorkspace(browserStorage)
 
-    expect(result).toMatchObject({ phase: 'ready', sourceKey: storageKeys.workspace, hasLocations: true, locationsValid: true })
+    expect(result).toMatchObject({
+      phase: 'ready',
+      sourceKey: storageKeys.workspace,
+      hasLocations: true,
+      locationsValid: true,
+    })
     expect(result.draft?.workspace.name).toBe('Espace Sureau')
     expect(result.draft?.locations).toEqual({ 42: 'desk-02' })
     expect(result.rawEntries).toEqual(entries)
@@ -75,24 +98,38 @@ describe('recherche explicite des anciens plans du navigateur', () => {
   })
 
   it('privilégie un véritable ancien espace Sentinel à un plan Sureau isolé', () => {
-    const result = inspectLocalWorkspace(storage({
-      [legacyStorageKeys.workspace]: workspaceRaw('Espace historique'),
-      [storageKeys.plan]: planRaw('Plan plus récent'),
-    }))
+    const result = inspectLocalWorkspace(
+      storage({
+        [legacyStorageKeys.workspace]: workspaceRaw('Espace historique'),
+        [storageKeys.plan]: planRaw('Plan plus récent'),
+      }),
+    )
 
-    expect(result).toMatchObject({ phase: 'ready', sourceKey: legacyStorageKeys.workspace, hasLocations: false, locationsValid: true })
+    expect(result).toMatchObject({
+      phase: 'ready',
+      sourceKey: legacyStorageKeys.workspace,
+      hasLocations: false,
+      locationsValid: true,
+    })
     expect(result.draft?.workspace.name).toBe('Espace historique')
     expect(result.draft?.locations).toEqual({})
   })
 
   it('récupère les vrais plans Sureau avant les plans Sentinel sans générer de mobilier supplémentaire', () => {
     const raw = JSON.stringify({ ...defaultPlan, name: 'Plan choisi', workstations: [], furniture: [] })
-    const result = inspectLocalWorkspace(storage({
-      [storageKeys.plan]: raw,
-      [legacyStorageKeys.plan]: planRaw('Autre implantation'),
-    }))
+    const result = inspectLocalWorkspace(
+      storage({
+        [storageKeys.plan]: raw,
+        [legacyStorageKeys.plan]: planRaw('Autre implantation'),
+      }),
+    )
 
-    expect(result).toMatchObject({ phase: 'ready', sourceKey: storageKeys.plan, hasLocations: false, locationsValid: true })
+    expect(result).toMatchObject({
+      phase: 'ready',
+      sourceKey: storageKeys.plan,
+      hasLocations: false,
+      locationsValid: true,
+    })
     expect(result.draft?.workspace.rooms).toHaveLength(1)
     expect(result.draft?.workspace.rooms[0]!.plan.name).toBe('Plan choisi')
     expect(result.draft?.workspace.rooms[0]!.plan.workstations).toEqual([])
@@ -110,7 +147,12 @@ describe('recherche explicite des anciens plans du navigateur', () => {
     }
     const result = inspectLocalWorkspace(storage(entries))
 
-    expect(result).toMatchObject({ phase: 'ready', sourceKey: 'sentinel-plan-v1', hasLocations: true, locationsValid: true })
+    expect(result).toMatchObject({
+      phase: 'ready',
+      sourceKey: 'sentinel-plan-v1',
+      hasLocations: true,
+      locationsValid: true,
+    })
     expect(result.draft?.workspace.rooms[0]!.plan.name).toBe('Plan historique')
     expect(result.draft?.workspace.rooms[0]!.plan.display).toEqual(defaultPlan.display)
     expect(result.draft?.workspace.rooms[0]!.plan.furniture).toEqual(defaultPlan.furniture)
@@ -119,27 +161,32 @@ describe('recherche explicite des anciens plans du navigateur', () => {
   })
 
   it('associe un espace Sureau aux liens historiques quand la nouvelle clé de localisations n’existe pas', () => {
-    const result = inspectLocalWorkspace(storage({
-      [storageKeys.workspace]: workspaceRaw(),
-      [legacyStorageKeys.locations]: locationsRaw({ 73: 'desk-introuvable' }),
-    }))
+    const result = inspectLocalWorkspace(
+      storage({
+        [storageKeys.workspace]: workspaceRaw(),
+        [legacyStorageKeys.locations]: locationsRaw({ 73: 'desk-introuvable' }),
+      }),
+    )
 
     expect(result).toMatchObject({ phase: 'ready', hasLocations: true, locationsValid: true })
     expect(result.draft?.locations).toEqual({ 73: 'desk-introuvable' })
   })
 
-  it.each(['', '{json corrompu', 'null'])('ne remplace pas une clé Sureau présente et illisible par une autre géométrie (%j)', (raw) => {
-    const entries = {
-      [storageKeys.workspace]: raw,
-      [legacyStorageKeys.workspace]: workspaceRaw('Copie historique valide'),
-      [storageKeys.plan]: planRaw('Plan valide'),
-    }
-    const result = inspectLocalWorkspace(storage(entries))
+  it.each(['', '{json corrompu', 'null'])(
+    'ne remplace pas une clé Sureau présente et illisible par une autre géométrie (%j)',
+    (raw) => {
+      const entries = {
+        [storageKeys.workspace]: raw,
+        [legacyStorageKeys.workspace]: workspaceRaw('Copie historique valide'),
+        [storageKeys.plan]: planRaw('Plan valide'),
+      }
+      const result = inspectLocalWorkspace(storage(entries))
 
-    expect(result).toMatchObject({ phase: 'invalid', draft: null, hasLocations: false, locationsValid: false })
-    expect(result.warning).toBeTruthy()
-    expect(result.rawEntries).toEqual(entries)
-  })
+      expect(result).toMatchObject({ phase: 'invalid', draft: null, hasLocations: false, locationsValid: false })
+      expect(result.warning).toBeTruthy()
+      expect(result.rawEntries).toEqual(entries)
+    },
+  )
 
   it('ne remplace pas non plus un plan Sureau corrompu par un plan Sentinel valide', () => {
     const entries = { [storageKeys.plan]: 'illisible', [legacyStorageKeys.plan]: planRaw() }
@@ -150,14 +197,17 @@ describe('recherche explicite des anciens plans du navigateur', () => {
     expect(result.rawEntries).toEqual(entries)
   })
 
-  it.each([storageKeys.locations, legacyStorageKeys.locations])('ne fabrique aucun plateau à partir des seules localisations %s', (key) => {
-    const raw = locationsRaw()
-    const result = inspectLocalWorkspace(storage({ [key]: raw }))
+  it.each([storageKeys.locations, legacyStorageKeys.locations])(
+    'ne fabrique aucun plateau à partir des seules localisations %s',
+    (key) => {
+      const raw = locationsRaw()
+      const result = inspectLocalWorkspace(storage({ [key]: raw }))
 
-    expect(result).toMatchObject({ phase: 'invalid', draft: null, hasLocations: false, locationsValid: false })
-    expect(result.rawEntries).toEqual({ [key]: raw })
-    expect(result.warning).toBeTruthy()
-  })
+      expect(result).toMatchObject({ phase: 'invalid', draft: null, hasLocations: false, locationsValid: false })
+      expect(result.rawEntries).toEqual({ [key]: raw })
+      expect(result.warning).toBeTruthy()
+    },
+  )
 
   it('garde la géométrie récupérable quand les liens Sureau sont corrompus sans reprendre les anciens liens en silence', () => {
     const entries = {
@@ -186,7 +236,11 @@ describe('recherche explicite des anciens plans du navigateur', () => {
   })
 
   it('distingue le stockage inaccessible d’une absence de plan', () => {
-    const denied = { getItem: vi.fn(() => { throw new DOMException('Access denied', 'SecurityError') }) }
+    const denied = {
+      getItem: vi.fn(() => {
+        throw new DOMException('Access denied', 'SecurityError')
+      }),
+    }
 
     expect(inspectLocalWorkspace(null)).toMatchObject({ phase: 'unavailable', draft: null, rawEntries: {} })
     const result = inspectLocalWorkspace(denied)
@@ -245,12 +299,17 @@ describe('copie brute de récupération sans modification du navigateur', () => 
     browserStorage.entries.set(storageKeys.workspace, workspaceRaw('Modification extérieure'))
 
     expect(inspection.rawEntries[storageKeys.workspace]).toBe(original)
-    expect((JSON.parse(serializeLocalRecovery(inspection)) as { entries: Record<string, string> }).entries[storageKeys.workspace])
-      .toBe(original)
+    expect(
+      (JSON.parse(serializeLocalRecovery(inspection)) as { entries: Record<string, string> }).entries[
+        storageKeys.workspace
+      ],
+    ).toBe(original)
   })
 
   it('n’accède pas au stockage lors de l’import du module', async () => {
-    const access = vi.fn(() => { throw new Error('Automatic browser storage access is forbidden') })
+    const access = vi.fn(() => {
+      throw new Error('Automatic browser storage access is forbidden')
+    })
     const browser = Object.defineProperty({}, 'localStorage', { get: access })
     vi.stubGlobal('window', browser)
     vi.stubGlobal('localStorage', browser)

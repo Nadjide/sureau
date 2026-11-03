@@ -37,9 +37,8 @@ export function SpatialInspector({
   inventory,
   local,
 }: Props) {
-  const location = workspace && selectedWorkstationId
-    ? findWorkspaceStation(workspace, selectedWorkstationId)
-    : undefined
+  const location =
+    workspace && selectedWorkstationId ? findWorkspaceStation(workspace, selectedWorkstationId) : undefined
   const station = workspace ? location?.station : findWorkstation(selectedWorkstationId, plan.workstations)
   const inspectedPlan = location?.room.plan ?? plan
   const inspectedRoom = location?.room ?? workspace?.rooms.find((room) => room.plan.id === inspectedPlan.id)
@@ -53,13 +52,15 @@ export function SpatialInspector({
       <AssetDetails
         asset={selectedAsset}
         onClose={() => onSelectAsset(null)}
-        notice={inventory.status !== 'ready' && (
-          <div className="spatial-data-notice" role={inventory.status === 'error' ? 'alert' : 'status'}>
-            {inventory.status === 'error'
-              ? t('Inventaire indisponible. Les dernières données reçues restent affichées.')
-              : t('Actualisation de l’inventaire… Les dernières informations reçues restent affichées.')}
-          </div>
-        )}
+        notice={
+          inventory.status !== 'ready' && (
+            <div className="spatial-data-notice" role={inventory.status === 'error' ? 'alert' : 'status'}>
+              {inventory.status === 'error'
+                ? t('Inventaire indisponible. Les dernières données reçues restent affichées.')
+                : t('Actualisation de l’inventaire… Les dernières informations reçues restent affichées.')}
+            </div>
+          )
+        }
       >
         <AssetLocationActions
           asset={selectedAsset}
@@ -109,7 +110,9 @@ export function SpatialInspector({
           <p className="location-help">
             {inventory.status === 'loading'
               ? t('Vérification de l’inventaire…')
-              : t('Inventaire indisponible. Les localisations sont conservées, sans vérification actuelle du matériel.')}
+              : t(
+                  'Inventaire indisponible. Les localisations sont conservées, sans vérification actuelle du matériel.',
+                )}
           </p>
         )}
         {ids.length === 0 && (
@@ -136,19 +139,21 @@ export function SpatialInspector({
               ) : (
                 <span className="missing-linked-asset">
                   {t('Matériel #{id}', { id })}
-                  <small>
-                    {verified ? t('Introuvable dans l’inventaire') : t('Localisation non vérifiée')}
-                  </small>
+                  <small>{verified ? t('Introuvable dans l’inventaire') : t('Localisation non vérifiée')}</small>
                 </span>
               )}
-              {canEdit && <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => { if (canEdit) local.associate(id, null) }}
-                aria-label={t('Retirer la localisation du matériel {tag}', { tag: asset?.assetTag || id })}
-              >
-                <Trash2 size={12} />
-              </Button>}
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => {
+                    if (canEdit) local.associate(id, null)
+                  }}
+                  aria-label={t('Retirer la localisation du matériel {tag}', { tag: asset?.assetTag || id })}
+                >
+                  <Trash2 size={12} />
+                </Button>
+              )}
             </div>
           )
         })}

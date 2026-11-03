@@ -16,7 +16,8 @@ function files(directory: string): string[] {
 }
 
 const literal = String.raw`'((?:\\.|[^'\\])*)'|"((?:\\.|[^"\\])*)"|` + '`((?:\\\\.|[^`\\\\])*)`'
-const unescape = (text: string) => text.replace(/\\(.)/g, (_, character: string) => character === 'n' ? '\n' : character)
+const unescape = (text: string) =>
+  text.replace(/\\(.)/g, (_, character: string) => (character === 'n' ? '\n' : character))
 
 /** Every literal given to t(), msg() and plural() in the application code. */
 function markedTexts(): { text: string; file: string }[] {
@@ -25,7 +26,8 @@ function markedTexts(): { text: string; file: string }[] {
   const plurals = new RegExp(String.raw`\bplural\([^,()]+(?:\([^)]*\))?,\s*(?:${literal}),\s*(?:${literal})`, 'g')
   for (const file of files(source)) {
     const code = readFileSync(file, 'utf8')
-    for (const match of code.matchAll(call)) found.push({ text: unescape(match[1] ?? match[2] ?? match[3] ?? ''), file })
+    for (const match of code.matchAll(call))
+      found.push({ text: unescape(match[1] ?? match[2] ?? match[3] ?? ''), file })
     for (const match of code.matchAll(plurals)) {
       found.push({ text: unescape(match[1] ?? match[2] ?? match[3] ?? ''), file })
       found.push({ text: unescape(match[4] ?? match[5] ?? match[6] ?? ''), file })
@@ -44,10 +46,17 @@ describe('traduction anglaise', () => {
   })
 
   it('traduit chaque texte marqué, avec les mêmes valeurs à insérer', () => {
-    const missing = [...new Set(marked.filter(({ text }) => !Object.hasOwn(english, text)).map(({ text, file }) => `${file.slice(source.length)} : ${text}`))]
+    const missing = [
+      ...new Set(
+        marked
+          .filter(({ text }) => !Object.hasOwn(english, text))
+          .map(({ text, file }) => `${file.slice(source.length)} : ${text}`),
+      ),
+    ]
     expect(missing).toEqual([])
-    const mismatched = Object.entries(english).filter(([french, translation]) =>
-      JSON.stringify(placeholders(french)) !== JSON.stringify(placeholders(translation)))
+    const mismatched = Object.entries(english).filter(
+      ([french, translation]) => JSON.stringify(placeholders(french)) !== JSON.stringify(placeholders(translation)),
+    )
     expect(mismatched).toEqual([])
   })
 

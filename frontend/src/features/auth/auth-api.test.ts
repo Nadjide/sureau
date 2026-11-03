@@ -15,7 +15,8 @@ function csrf(token: string): Response {
 
 describe('API de connexion', () => {
   it('utilise le formulaire Spring puis renouvelle CSRF après le changement de session', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('anonymous'))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(csrf('authenticated'))
@@ -28,7 +29,11 @@ describe('API de connexion', () => {
     await client.requestVoid('/api/assets/42/retire', { method: 'PATCH' })
 
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
-      '/api/auth/csrf', '/api/auth/login', '/api/auth/csrf', '/api/auth/me', '/api/assets/42/retire',
+      '/api/auth/csrf',
+      '/api/auth/login',
+      '/api/auth/csrf',
+      '/api/auth/me',
+      '/api/assets/42/retire',
     ])
     const login = fetcher.mock.calls[1]![1]
     const body = new URLSearchParams(String(login?.body))
@@ -40,7 +45,8 @@ describe('API de connexion', () => {
   })
 
   it('présente un refus de connexion sans notifier une expiration ni rejouer le mot de passe', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('anonymous'))
       .mockResolvedValueOnce(json({ code: 'INVALID_CREDENTIALS' }, 401))
     const client = createApiClient(fetcher)
@@ -48,14 +54,17 @@ describe('API de connexion', () => {
     client.subscribeAuthFailure(listener)
 
     await expect(createAuthApi(client).login(input)).rejects.toMatchObject({
-      status: 401, code: 'INVALID_CREDENTIALS', message: 'L’identifiant ou le mot de passe est incorrect.',
+      status: 401,
+      code: 'INVALID_CREDENTIALS',
+      message: 'L’identifiant ou le mot de passe est incorrect.',
     })
     expect(listener).not.toHaveBeenCalled()
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf', '/api/auth/login'])
   })
 
   it('confirme la déconnexion dès le 204 et abandonne le jeton de la session précédente', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('old-session'))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(csrf('new-session'))
@@ -68,13 +77,17 @@ describe('API de connexion', () => {
     await client.requestVoid('/api/auth/logout', { method: 'POST' })
 
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
-      '/api/auth/csrf', '/api/auth/logout', '/api/auth/csrf', '/api/auth/logout',
+      '/api/auth/csrf',
+      '/api/auth/logout',
+      '/api/auth/csrf',
+      '/api/auth/logout',
     ])
     expect(new Headers(fetcher.mock.calls[3]![1]?.headers).get('X-CSRF-TOKEN')).toBe('new-session')
   })
 
   it('ne peut pas transformer un logout confirmé en échec à cause d’une requête supplémentaire', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('session'))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockRejectedValue(new TypeError('The network is now offline'))
@@ -84,7 +97,8 @@ describe('API de connexion', () => {
   })
 
   it('annonce la connexion d’entreprise seulement quand l’instance la propose', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ setupRequired: false, sso: { name: 'Microsoft' } }))
       .mockResolvedValueOnce(json({ setupRequired: false, sso: { name: null } }))
       .mockResolvedValueOnce(json({ setupRequired: false }))
@@ -113,7 +127,8 @@ describe('API de connexion', () => {
   })
 
   it('crée le premier administrateur puis ouvre sa session avec un nouveau jeton', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('setup'))
       .mockResolvedValueOnce(json(administrator, 201))
       .mockResolvedValueOnce(csrf('login'))
@@ -124,14 +139,20 @@ describe('API de connexion', () => {
 
     await expect(createAuthApi(createApiClient(fetcher)).setup(setup)).resolves.toEqual(administrator)
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
-      '/api/auth/csrf', '/api/auth/setup', '/api/auth/csrf', '/api/auth/login', '/api/auth/csrf', '/api/auth/me',
+      '/api/auth/csrf',
+      '/api/auth/setup',
+      '/api/auth/csrf',
+      '/api/auth/login',
+      '/api/auth/csrf',
+      '/api/auth/me',
     ])
     expect(JSON.parse(String(fetcher.mock.calls[1]![1]?.body))).toEqual(setup)
     expect(new Headers(fetcher.mock.calls[3]![1]?.headers).get('X-CSRF-TOKEN')).toBe('login')
   })
 
   it('permet de vérifier puis rejoindre un compte créé même si sa connexion automatique a échoué', async () => {
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('setup'))
       .mockResolvedValueOnce(json(administrator, 201))
       .mockRejectedValueOnce(new TypeError('Offline after setup'))
@@ -142,8 +163,9 @@ describe('API de connexion', () => {
       .mockResolvedValueOnce(json(administrator))
     const auth = createAuthApi(createApiClient(fetcher))
 
-    await expect(auth.setup({ ...input, setupToken: 'installer-generated-token', displayName: 'Nadjide' }))
-      .rejects.toMatchObject({ name: 'AccountCreatedError', cause: { kind: 'network' } })
+    await expect(
+      auth.setup({ ...input, setupToken: 'installer-generated-token', displayName: 'Nadjide' }),
+    ).rejects.toMatchObject({ name: 'AccountCreatedError', cause: { kind: 'network' } })
     await expect(auth.status()).resolves.toEqual({ setupRequired: false, sso: null })
     await expect(auth.login(input)).resolves.toEqual(administrator)
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/auth/setup')).toHaveLength(1)
@@ -151,15 +173,17 @@ describe('API de connexion', () => {
 
   it('arrête la connexion annulée avant de lire le profil ou de notifier une session expirée', async () => {
     const controller = new AbortController()
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf('anonymous'))
       .mockImplementationOnce(async () => {
         controller.abort()
         return new Response(null, { status: 204 })
       })
 
-    await expect(createAuthApi(createApiClient(fetcher)).login(input, controller.signal))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(createAuthApi(createApiClient(fetcher)).login(input, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf', '/api/auth/login'])
   })
 })

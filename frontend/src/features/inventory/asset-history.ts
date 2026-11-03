@@ -27,8 +27,10 @@ export type AssetChange = z.infer<typeof assetChangeSchema>
 export const historyLimit = 200
 
 export function getAssetHistory(id: number, signal: AbortSignal, fetcher?: typeof fetch): Promise<AssetEvent[]> {
-  return apiClient.requestJson(`/api/assets/${id}/history`, (payload) => assetHistorySchema.parse(payload),
-    { signal, ...(fetcher ? { fetcher } : {}) })
+  return apiClient.requestJson(`/api/assets/${id}/history`, (payload) => assetHistorySchema.parse(payload), {
+    signal,
+    ...(fetcher ? { fetcher } : {}),
+  })
 }
 
 const fieldLabels: Record<string, string> = {
@@ -60,17 +62,22 @@ export function changeValue(field: string, value: string | null): string {
 
 export function eventTitle(event: AssetEvent): string {
   switch (event.action) {
-    case 'CREATED': return t('Fiche créée')
-    case 'IMPORTED': return t('Importé depuis un fichier')
-    case 'UPDATED': return t('Fiche modifiée')
-    case 'RETIRED': return t('Retiré du parc')
+    case 'CREATED':
+      return t('Fiche créée')
+    case 'IMPORTED':
+      return t('Importé depuis un fichier')
+    case 'UPDATED':
+      return t('Fiche modifiée')
+    case 'RETIRED':
+      return t('Retiré du parc')
     case 'LOCATED': {
       const move = event.changes.find((change) => change.field === 'location')
       if (move?.from === null) return t('Placé sur un poste')
       if (move?.to === null) return t('Retiré de son poste')
       return t('Changé de poste')
     }
-    default: return t('Changement enregistré')
+    default:
+      return t('Changement enregistré')
   }
 }
 

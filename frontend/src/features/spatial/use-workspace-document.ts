@@ -1,8 +1,17 @@
 import { useCallback, useRef, useState } from 'react'
 import type { SpatialPlan } from './plan-document'
 import {
-  createWorkspaceHistory, loadWorkspace, pushWorkspaceChange, redoWorkspace, replaceWorkspaceRoom,
-  saveWorkspace, undoWorkspace, type WorkspaceDocument, type WorkspaceHistory, type WorkspacePersistence, type WorkspaceStorage,
+  createWorkspaceHistory,
+  loadWorkspace,
+  pushWorkspaceChange,
+  redoWorkspace,
+  replaceWorkspaceRoom,
+  saveWorkspace,
+  undoWorkspace,
+  type WorkspaceDocument,
+  type WorkspaceHistory,
+  type WorkspacePersistence,
+  type WorkspaceStorage,
 } from './workspace-document'
 import { t } from '@/lib/i18n'
 
@@ -32,7 +41,12 @@ function initialWorkspace(): WorkspaceState {
     // Browser privacy settings may deny access to the storage property itself.
   }
   const { workspace, ...persistence } = loadWorkspace(storage)
-  return { ...persistence, storage, history: createWorkspaceHistory(workspace), persistenceWarning: persistence.warning }
+  return {
+    ...persistence,
+    storage,
+    history: createWorkspaceHistory(workspace),
+    persistenceWarning: persistence.warning,
+  }
 }
 
 function persistHistory(previous: WorkspaceState, history: WorkspaceHistory): WorkspaceState {
@@ -72,8 +86,11 @@ export function useWorkspaceDocument(): WorkspaceDocumentResult {
   }, [])
 
   const replace = useCallback((candidate: WorkspaceDocument) => commit(() => candidate), [commit])
-  const replaceRoom = useCallback((roomId: string, plan: SpatialPlan) =>
-    commit(() => replaceWorkspaceRoom(current.current.history.present, roomId, plan)), [commit])
+  const replaceRoom = useCallback(
+    (roomId: string, plan: SpatialPlan) =>
+      commit(() => replaceWorkspaceRoom(current.current.history.present, roomId, plan)),
+    [commit],
+  )
 
   const undo = useCallback(() => {
     const previous = current.current
@@ -94,8 +111,14 @@ export function useWorkspaceDocument(): WorkspaceDocumentResult {
   }, [])
 
   return {
-    workspace: state.history.present, replace, replaceRoom, undo, redo,
-    canUndo: state.history.past.length > 0, canRedo: state.history.future.length > 0,
-    persisted: state.persisted, warning: state.warning,
+    workspace: state.history.present,
+    replace,
+    replaceRoom,
+    undo,
+    redo,
+    canUndo: state.history.past.length > 0,
+    canRedo: state.history.future.length > 0,
+    persisted: state.persisted,
+    warning: state.warning,
   }
 }

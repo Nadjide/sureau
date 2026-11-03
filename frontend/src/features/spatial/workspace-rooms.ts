@@ -1,6 +1,12 @@
 import { defaultPlan, parsePlan } from './plan-document'
 import type { SpatialPlan, Workstation } from './room-model'
-import { parseWorkspace, workspaceRoomLimit, type WorkspaceDocument, type WorkspaceFloor, type WorkspaceRoom } from './workspace-document'
+import {
+  parseWorkspace,
+  workspaceRoomLimit,
+  type WorkspaceDocument,
+  type WorkspaceFloor,
+  type WorkspaceRoom,
+} from './workspace-document'
 import { t } from '@/lib/i18n'
 
 export type WorkspaceIdFactory = (type: 'room' | 'desk' | 'furniture') => string
@@ -27,14 +33,20 @@ function roomName(name: string): string {
 function usedIds(workspace: WorkspaceDocument): Set<string> {
   return new Set([
     ...workspace.floors.map((floor) => floor.id),
-    ...workspace.rooms.flatMap((room) => [room.plan.id, ...room.plan.workstations.map((item) => item.id), ...room.plan.furniture.map((item) => item.id)]),
+    ...workspace.rooms.flatMap((room) => [
+      room.plan.id,
+      ...room.plan.workstations.map((item) => item.id),
+      ...room.plan.furniture.map((item) => item.id),
+    ]),
   ])
 }
 
 function nextId(type: 'room' | 'desk' | 'furniture', used: Set<string>, createId: WorkspaceIdFactory): string {
   const id = createId(type)
   if (!new RegExp(`^${type}-[a-z0-9-]{2,80}$`).test(id) || used.has(id)) {
-    throw new RangeError(t('Un identifiant de salle ou d’objet est invalide ou déjà utilisé. Aucun changement n’a été appliqué.'))
+    throw new RangeError(
+      t('Un identifiant de salle ou d’objet est invalide ou déjà utilisé. Aucun changement n’a été appliqué.'),
+    )
   }
   used.add(id)
   return id
@@ -47,12 +59,18 @@ function validated(workspace: WorkspaceDocument): WorkspaceDocument {
 }
 
 function canAddRoom(workspace: WorkspaceDocument, floorId: string) {
-  if (workspace.rooms.length >= workspaceRoomLimit) throw new RangeError(t('Cet espace peut contenir jusqu’à {count} salles.', { count: workspaceRoomLimit }))
-  if (!workspace.floors.some((floor) => floor.id === floorId)) throw new RangeError(t('Cet étage n’existe pas dans l’espace de travail.'))
+  if (workspace.rooms.length >= workspaceRoomLimit)
+    throw new RangeError(t('Cet espace peut contenir jusqu’à {count} salles.', { count: workspaceRoomLimit }))
+  if (!workspace.floors.some((floor) => floor.id === floorId))
+    throw new RangeError(t('Cet étage n’existe pas dans l’espace de travail.'))
 }
 
 export function createRoom(
-  workspace: WorkspaceDocument, floorId: string, name: string, template: SpatialPlan = defaultPlan, createId: WorkspaceIdFactory = defaultId,
+  workspace: WorkspaceDocument,
+  floorId: string,
+  name: string,
+  template: SpatialPlan = defaultPlan,
+  createId: WorkspaceIdFactory = defaultId,
 ): { workspace: WorkspaceDocument; roomId: string } {
   canAddRoom(workspace, floorId)
   const normalizedName = roomName(name)
@@ -63,7 +81,10 @@ export function createRoom(
 }
 
 export function duplicateRoom(
-  workspace: WorkspaceDocument, roomId: string, name?: string, createId: WorkspaceIdFactory = defaultId,
+  workspace: WorkspaceDocument,
+  roomId: string,
+  name?: string,
+  createId: WorkspaceIdFactory = defaultId,
 ): { workspace: WorkspaceDocument; roomId: string } {
   const room = roomIn(workspace, roomId)
   canAddRoom(workspace, room.floorId)
@@ -72,18 +93,28 @@ export function duplicateRoom(
   const used = usedIds(workspace)
   const id = nextId('room', used, createId)
   const plan: SpatialPlan = {
-    ...source, id, name: normalizedName,
+    ...source,
+    id,
+    name: normalizedName,
     workstations: source.workstations.map((item) => ({ ...item, id: nextId('desk', used, createId) })),
     furniture: source.furniture.map((item) => ({ ...item, id: nextId('furniture', used, createId) })),
   }
-  return { workspace: validated({ ...workspace, rooms: [...workspace.rooms, { floorId: room.floorId, plan }] }), roomId: id }
+  return {
+    workspace: validated({ ...workspace, rooms: [...workspace.rooms, { floorId: room.floorId, plan }] }),
+    roomId: id,
+  }
 }
 
 export function renameRoom(workspace: WorkspaceDocument, roomId: string, name: string): WorkspaceDocument {
   const room = roomIn(workspace, roomId)
   const normalizedName = roomName(name)
   if (room.plan.name === normalizedName) return workspace
-  return validated({ ...workspace, rooms: workspace.rooms.map((item) => item === room ? { ...room, plan: { ...room.plan, name: normalizedName } } : item) })
+  return validated({
+    ...workspace,
+    rooms: workspace.rooms.map((item) =>
+      item === room ? { ...room, plan: { ...room.plan, name: normalizedName } } : item,
+    ),
+  })
 }
 
 export function deleteRoom(workspace: WorkspaceDocument, roomId: string): WorkspaceDocument {
@@ -92,7 +123,10 @@ export function deleteRoom(workspace: WorkspaceDocument, roomId: string): Worksp
   return validated({ ...workspace, rooms: workspace.rooms.filter((room) => room.plan.id !== roomId) })
 }
 
-export function findWorkspaceStation(workspace: WorkspaceDocument, stationId: string | null | undefined): WorkspaceStation | undefined {
+export function findWorkspaceStation(
+  workspace: WorkspaceDocument,
+  stationId: string | null | undefined,
+): WorkspaceStation | undefined {
   if (!stationId) return undefined
   for (const room of workspace.rooms) {
     const station = room.plan.workstations.find((item) => item.id === stationId)
@@ -104,19 +138,35 @@ export function findWorkspaceStation(workspace: WorkspaceDocument, stationId: st
 }
 
 export function prepareRoomReplacement(
-  workspace: WorkspaceDocument, roomId: string, candidate: SpatialPlan, createId: WorkspaceIdFactory = defaultId,
+  workspace: WorkspaceDocument,
+  roomId: string,
+  candidate: SpatialPlan,
+  createId: WorkspaceIdFactory = defaultId,
 ): SpatialPlan {
   roomIn(workspace, roomId)
   const plan = parsePlan(JSON.stringify({ ...candidate, id: roomId }))
-  const conflicting = new Set(workspace.rooms.filter((room) => room.plan.id !== roomId)
-    .flatMap((room) => [...room.plan.workstations.map((item) => item.id), ...room.plan.furniture.map((item) => item.id)]))
+  const conflicting = new Set(
+    workspace.rooms
+      .filter((room) => room.plan.id !== roomId)
+      .flatMap((room) => [
+        ...room.plan.workstations.map((item) => item.id),
+        ...room.plan.furniture.map((item) => item.id),
+      ]),
+  )
   const used = usedIds(workspace)
   for (const item of [...plan.workstations, ...plan.furniture]) used.add(item.id)
   const prepared: SpatialPlan = {
     ...plan,
-    workstations: plan.workstations.map((item) => conflicting.has(item.id) ? { ...item, id: nextId('desk', used, createId) } : item),
-    furniture: plan.furniture.map((item) => conflicting.has(item.id) ? { ...item, id: nextId('furniture', used, createId) } : item),
+    workstations: plan.workstations.map((item) =>
+      conflicting.has(item.id) ? { ...item, id: nextId('desk', used, createId) } : item,
+    ),
+    furniture: plan.furniture.map((item) =>
+      conflicting.has(item.id) ? { ...item, id: nextId('furniture', used, createId) } : item,
+    ),
   }
-  validated({ ...workspace, rooms: workspace.rooms.map((room) => room.plan.id === roomId ? { ...room, plan: prepared } : room) })
+  validated({
+    ...workspace,
+    rooms: workspace.rooms.map((room) => (room.plan.id === roomId ? { ...room, plan: prepared } : room)),
+  })
   return prepared
 }

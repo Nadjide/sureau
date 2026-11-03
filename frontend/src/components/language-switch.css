@@ -1,4 +1,24 @@
-.language-switch { display: inline-flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 12px; }
-.language-switch select { height: 32px; padding: 0 8px; border: 1px solid var(--input); border-radius: 7px; background: var(--card); color: var(--foreground); font-size: 12px; cursor: pointer; }
-.language-switch select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.language-switch-label { flex: 1; }
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.language-switch select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--input);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 12px;
+  cursor: pointer;
+}
+.language-switch select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.language-switch-label {
+  flex: 1;
+}

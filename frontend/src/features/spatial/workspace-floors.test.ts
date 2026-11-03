@@ -1,31 +1,57 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defaultPlan } from './plan-document'
 import {
-  createWorkspaceFromPlan, createWorkspaceHistory, parseWorkspace, pushWorkspaceChange,
-  redoWorkspace, undoWorkspace, workspaceFloorLimit,
+  createWorkspaceFromPlan,
+  createWorkspaceHistory,
+  parseWorkspace,
+  pushWorkspaceChange,
+  redoWorkspace,
+  undoWorkspace,
+  workspaceFloorLimit,
 } from './workspace-document'
-import { createFloor, moveRoomToFloor, removeFloor, renameFloor, renameWorkspace, reorderFloor } from './workspace-floors'
+import {
+  createFloor,
+  moveRoomToFloor,
+  removeFloor,
+  renameFloor,
+  renameWorkspace,
+  reorderFloor,
+} from './workspace-floors'
 import { findWorkspaceStation } from './workspace-rooms'
 
 function threeFloors() {
   const workspace = createWorkspaceFromPlan()
   workspace.floors.push({ id: 'floor-support', name: 'Support' }, { id: 'floor-reserve', name: 'Réserve' })
-  workspace.rooms.push({
-    floorId: 'floor-support',
-    plan: {
-      ...structuredClone(defaultPlan), id: 'room-support', name: 'Salle support',
-      workstations: [{ ...structuredClone(defaultPlan.workstations[0]!), id: 'desk-support' }], furniture: [],
+  workspace.rooms.push(
+    {
+      floorId: 'floor-support',
+      plan: {
+        ...structuredClone(defaultPlan),
+        id: 'room-support',
+        name: 'Salle support',
+        workstations: [{ ...structuredClone(defaultPlan.workstations[0]!), id: 'desk-support' }],
+        furniture: [],
+      },
     },
-  }, {
-    floorId: 'floor-01',
-    plan: { ...structuredClone(defaultPlan), id: 'room-extension', name: 'Salle projet', workstations: [], furniture: [] },
-  })
+    {
+      floorId: 'floor-01',
+      plan: {
+        ...structuredClone(defaultPlan),
+        id: 'room-extension',
+        name: 'Salle projet',
+        workstations: [],
+        furniture: [],
+      },
+    },
+  )
   return workspace
 }
 
 describe('gestion des étages', () => {
   it('crée un étage vide au bout de la liste sans modifier les plans ou leurs identifiants', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace), factory = vi.fn(() => 'floor-design')
+    const workspace = threeFloors(),
+      source = structuredClone(workspace),
+      factory = vi.fn(() => 'floor-design')
     const result = createFloor(workspace, '  Design  ', factory)
     expect(result.floorId).toBe('floor-design')
     expect(result.workspace.floors.at(-1)).toEqual({ id: 'floor-design', name: 'Design' })
@@ -37,22 +63,32 @@ describe('gestion des étages', () => {
   })
 
   it('bloque le neuvième étage avant de générer un identifiant', () => {
-    const workspace = createWorkspaceFromPlan(), factory = vi.fn(() => 'floor-overflow')
-    workspace.floors = Array.from({ length: workspaceFloorLimit }, (_, index) => ({ id: `floor-cap-${index + 1}`, name: `Étage ${index + 1}` }))
+    const workspace = createWorkspaceFromPlan(),
+      factory = vi.fn(() => 'floor-overflow')
+    workspace.floors = Array.from({ length: workspaceFloorLimit }, (_, index) => ({
+      id: `floor-cap-${index + 1}`,
+      name: `Étage ${index + 1}`,
+    }))
     workspace.rooms[0]!.floorId = workspace.floors[0]!.id
     expect(() => createFloor(workspace, 'Encore', factory)).toThrow(/8 étages/)
     expect(factory).not.toHaveBeenCalled()
     expect(workspace.floors).toHaveLength(workspaceFloorLimit)
   })
 
-  it.each(['floor-01', 'floor-support', 'bad', 'floor-AZ', 'floor-a'])('refuse un identifiant pris ou invalide : %s', (id) => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
-    expect(() => createFloor(workspace, 'Nouvel étage', () => id)).toThrow(/identifiant/)
-    expect(workspace).toEqual(source)
-  })
+  it.each(['floor-01', 'floor-support', 'bad', 'floor-AZ', 'floor-a'])(
+    'refuse un identifiant pris ou invalide : %s',
+    (id) => {
+      const workspace = threeFloors(),
+        source = structuredClone(workspace)
+      expect(() => createFloor(workspace, 'Nouvel étage', () => id)).toThrow(/identifiant/)
+      expect(workspace).toEqual(source)
+    },
+  )
 
   it.each(['', '   ', 'x'.repeat(61)])('refuse un nom vide ou trop long sans modifier l’espace', (name) => {
-    const workspace = threeFloors(), source = structuredClone(workspace), factory = vi.fn(() => 'floor-design')
+    const workspace = threeFloors(),
+      source = structuredClone(workspace),
+      factory = vi.fn(() => 'floor-design')
     expect(() => createFloor(workspace, name, factory)).toThrow(/nom/)
     expect(() => renameFloor(workspace, 'floor-support', name)).toThrow(/nom/)
     expect(() => renameWorkspace(workspace, name)).toThrow(/nom/)
@@ -61,7 +97,8 @@ describe('gestion des étages', () => {
   })
 
   it('accepte les noms de soixante caractères et normalise seulement les espaces extérieurs', () => {
-    const workspace = threeFloors(), name = 'x'.repeat(60)
+    const workspace = threeFloors(),
+      name = 'x'.repeat(60)
     expect(createFloor(workspace, ` ${name} `, () => 'floor-long').workspace.floors.at(-1)!.name).toBe(name)
     expect(renameFloor(workspace, 'floor-support', ` ${name} `).floors[1]!.name).toBe(name)
     expect(renameWorkspace(workspace, '  Atelier   Paris  ').name).toBe('Atelier   Paris')
@@ -82,7 +119,8 @@ describe('gestion des étages', () => {
   })
 
   it('déplace une salle en conservant le même plan et les localisations de ses postes', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
+    const workspace = threeFloors(),
+      source = structuredClone(workspace)
     const moved = moveRoomToFloor(workspace, 'plateau-a', 'floor-support')
     expect(moved.rooms[0]!.floorId).toBe('floor-support')
     expect(moved.rooms[0]!.plan).toBe(workspace.rooms[0]!.plan)
@@ -96,7 +134,8 @@ describe('gestion des étages', () => {
   })
 
   it('ordonne les étages sans réordonner ni reconstruire les salles et ignore une borne déjà atteinte', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
+    const workspace = threeFloors(),
+      source = structuredClone(workspace)
     const raised = reorderFloor(workspace, 'floor-support', -1)
     expect(raised.floors.map((floor) => floor.id)).toEqual(['floor-support', 'floor-01', 'floor-reserve'])
     expect(raised.floors[0]).toBe(workspace.floors[1])
@@ -117,7 +156,8 @@ describe('gestion des étages', () => {
   })
 
   it('exige un autre étage existant avant de supprimer un étage occupé et préserve le dernier étage', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
+    const workspace = threeFloors(),
+      source = structuredClone(workspace)
     expect(() => removeFloor(workspace, 'floor-01')).toThrow(/autre étage/)
     expect(() => removeFloor(workspace, 'floor-01', 'floor-01')).toThrow(/autre étage/)
     expect(() => removeFloor(workspace, 'floor-01', 'floor-missing')).toThrow(/étage/)
@@ -126,7 +166,8 @@ describe('gestion des étages', () => {
   })
 
   it('reloge toutes les salles d’un étage supprimé sans perdre de poste, de meuble ou d’ID', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
+    const workspace = threeFloors(),
+      source = structuredClone(workspace)
     const removed = removeFloor(workspace, 'floor-01', 'floor-support')
     expect(removed.floors.map((floor) => floor.id)).toEqual(['floor-support', 'floor-reserve'])
     expect(removed.rooms).toHaveLength(workspace.rooms.length)
@@ -153,7 +194,8 @@ describe('gestion des étages', () => {
   })
 
   it('refuse les ressources absentes et les directions invalides sans mutation', () => {
-    const workspace = threeFloors(), source = structuredClone(workspace)
+    const workspace = threeFloors(),
+      source = structuredClone(workspace)
     expect(() => renameFloor(workspace, 'floor-missing', 'Étage')).toThrow(/étage/)
     expect(() => moveRoomToFloor(workspace, 'room-missing', 'floor-01')).toThrow(/salle/)
     expect(() => moveRoomToFloor(workspace, 'plateau-a', 'floor-missing')).toThrow(/étage/)

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPlan } from './plan-document'
-import { applySpatialTransfer, createInitialSpatialDraft, parseSpatialTransfer, serializeSpatialDraft, spatialTransferFileSizeLimit } from './shared-workspace-transfer'
+import {
+  applySpatialTransfer,
+  createInitialSpatialDraft,
+  parseSpatialTransfer,
+  serializeSpatialDraft,
+  spatialTransferFileSizeLimit,
+} from './shared-workspace-transfer'
 
 describe('préparation explicite d’un espace partagé', () => {
   it('prépare une salle vide valide avec un étage et aucune association', () => {
@@ -29,9 +35,14 @@ describe('restauration explicite des copies spatiales', () => {
     const draft = createInitialSpatialDraft('example')
     draft.workspace.name = 'Entreprise Montréal 🪴'
     draft.workspace.floors.push({ id: 'floor-support', name: 'Support' })
-    draft.workspace.rooms.push({ floorId: 'floor-support', plan: {
-      ...createInitialSpatialDraft('empty').workspace.rooms[0]!.plan, id: 'room-support', name: 'Salle support',
-    } })
+    draft.workspace.rooms.push({
+      floorId: 'floor-support',
+      plan: {
+        ...createInitialSpatialDraft('empty').workspace.rooms[0]!.plan,
+        id: 'room-support',
+        name: 'Salle support',
+      },
+    })
     return { ...draft, locations: { 42: 'desk-01', 950: 'desk-disparu' } }
   }
 
@@ -41,7 +52,12 @@ describe('restauration explicite des copies spatiales', () => {
     expect(parsed).toEqual({ draft: source, hasLocations: true, kind: 'snapshot' })
     source.workspace.rooms[0]!.plan.name = 'Modification après lecture'
     expect(parsed.draft.workspace.rooms[0]!.plan.name).toBe(defaultPlan.name)
-    expect(Object.keys(JSON.parse(serializeSpatialDraft(parsed.draft)) as object)).toEqual(['format', 'version', 'workspace', 'locations'])
+    expect(Object.keys(JSON.parse(serializeSpatialDraft(parsed.draft)) as object)).toEqual([
+      'format',
+      'version',
+      'workspace',
+      'locations',
+    ])
   })
 
   it('importe un ancien espace sans inventer de localisations et garde ses migrations explicites', () => {
@@ -56,11 +72,16 @@ describe('restauration explicite des copies spatiales', () => {
     expect(parsed.draft.workspace.rooms[0]!.plan.furniture).toEqual(defaultPlan.furniture)
   })
 
-  it.each(['display', 'furniture'])('refuse une copie Sureau tronquée sans %s au lieu de fabriquer un contenu', (field) => {
-    const payload = JSON.parse(serializeSpatialDraft(fixture())) as { workspace: ReturnType<typeof fixture>['workspace'] }
-    Reflect.deleteProperty(payload.workspace.rooms[0]!.plan, field)
-    expect(() => parseSpatialTransfer(JSON.stringify(payload))).toThrow()
-  })
+  it.each(['display', 'furniture'])(
+    'refuse une copie Sureau tronquée sans %s au lieu de fabriquer un contenu',
+    (field) => {
+      const payload = JSON.parse(serializeSpatialDraft(fixture())) as {
+        workspace: ReturnType<typeof fixture>['workspace']
+      }
+      Reflect.deleteProperty(payload.workspace.rooms[0]!.plan, field)
+      expect(() => parseSpatialTransfer(JSON.stringify(payload))).toThrow()
+    },
+  )
 
   it.each([
     { format: 'autre-format', version: 1 },
@@ -72,22 +93,32 @@ describe('restauration explicite des copies spatiales', () => {
     expect(() => parseSpatialTransfer(JSON.stringify({ ...payload, ...properties }))).toThrow()
   })
 
-  it.each(['workspace', 'locations', 'version'])('ne transforme pas un snapshot incomplet sans %s en ancien espace', (field) => {
-    const payload = JSON.parse(serializeSpatialDraft(fixture())) as Record<string, unknown>
-    delete payload[field]
-    expect(() => parseSpatialTransfer(JSON.stringify(payload))).toThrow()
-  })
+  it.each(['workspace', 'locations', 'version'])(
+    'ne transforme pas un snapshot incomplet sans %s en ancien espace',
+    (field) => {
+      const payload = JSON.parse(serializeSpatialDraft(fixture())) as Record<string, unknown>
+      delete payload[field]
+      expect(() => parseSpatialTransfer(JSON.stringify(payload))).toThrow()
+    },
+  )
 
-  it.each(['{', 'null', '[]', '42', '"un texte"', '<html>Sureau</html>'])('refuse le fichier incompatible %s', (raw) => {
-    expect(() => parseSpatialTransfer(raw)).toThrow()
-  })
+  it.each(['{', 'null', '[]', '42', '"un texte"', '<html>Sureau</html>'])(
+    'refuse le fichier incompatible %s',
+    (raw) => {
+      expect(() => parseSpatialTransfer(raw)).toThrow()
+    },
+  )
 
   it('valide les localisations et la géométrie avant de proposer la restauration', () => {
     const invalidLink = { ...fixture(), locations: { '0042': 'desk-01' } }
-    expect(() => parseSpatialTransfer(JSON.stringify({ format: 'sureau-spatial', version: 1, ...invalidLink }))).toThrow()
+    expect(() =>
+      parseSpatialTransfer(JSON.stringify({ format: 'sureau-spatial', version: 1, ...invalidLink })),
+    ).toThrow()
     const invalidGeometry = fixture()
     invalidGeometry.workspace.rooms[0]!.plan.workstations[0]!.position = [1000, 0, 1000]
-    expect(() => parseSpatialTransfer(JSON.stringify({ format: 'sureau-spatial', version: 1, ...invalidGeometry }))).toThrow()
+    expect(() =>
+      parseSpatialTransfer(JSON.stringify({ format: 'sureau-spatial', version: 1, ...invalidGeometry })),
+    ).toThrow()
   })
 
   it('mesure la taille UTF-8 et accepte exactement la limite sans tronquer', () => {
@@ -99,9 +130,9 @@ describe('restauration explicite des copies spatiales', () => {
   })
 
   it('permet un aller-retour dense de vingt mille liens, y compris les grands identifiants', () => {
-    const locations = Object.fromEntries(Array.from({ length: 20_000 }, (_, index) => [
-      Number.MAX_SAFE_INTEGER - index, `desk-${'a'.repeat(80)}`,
-    ]))
+    const locations = Object.fromEntries(
+      Array.from({ length: 20_000 }, (_, index) => [Number.MAX_SAFE_INTEGER - index, `desk-${'a'.repeat(80)}`]),
+    )
     const source = { ...fixture(), locations }
     const raw = serializeSpatialDraft(source)
     expect(new TextEncoder().encode(raw).byteLength).toBeLessThanOrEqual(spatialTransferFileSizeLimit)

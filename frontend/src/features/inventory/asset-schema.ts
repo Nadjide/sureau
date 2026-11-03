@@ -13,13 +13,7 @@ export const assetCategorySchema = z.enum([
   'OTHER',
 ])
 
-export const assetStatusSchema = z.enum([
-  'AVAILABLE',
-  'ASSIGNED',
-  'MAINTENANCE',
-  'RETIRED',
-  'LOST',
-])
+export const assetStatusSchema = z.enum(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'RETIRED', 'LOST'])
 
 export const assigneeSchema = z.object({
   name: z.string(),

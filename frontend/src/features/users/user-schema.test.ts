@@ -1,14 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import {
-  adminUserListSchema, adminUserSchema, changeOwnPasswordInputSchema, createUserInputSchema,
-  resetPasswordInputSchema, sameEmail, updateUserInputSchema,
+  adminUserListSchema,
+  adminUserSchema,
+  changeOwnPasswordInputSchema,
+  createUserInputSchema,
+  resetPasswordInputSchema,
+  sameEmail,
+  updateUserInputSchema,
 } from './user-schema'
 
 const creation = {
-  username: 'equipe.atelier', displayName: 'Équipe Atelier', role: 'EDITOR', password: 'Sureau-test-only-42!',
+  username: 'equipe.atelier',
+  displayName: 'Équipe Atelier',
+  role: 'EDITOR',
+  password: 'Sureau-test-only-42!',
 }
 const update = { displayName: creation.displayName, role: creation.role, enabled: true, email: null }
-const user = { id: 42, username: creation.username, displayName: creation.displayName, role: creation.role, enabled: true, email: null }
+const user = {
+  id: 42,
+  username: creation.username,
+  displayName: creation.displayName,
+  role: creation.role,
+  enabled: true,
+  email: null,
+}
 
 function newPasswordResults(password: unknown): boolean[] {
   return [
@@ -21,18 +36,28 @@ function newPasswordResults(password: unknown): boolean[] {
 describe('saisie des comptes de l’instance', () => {
   it('normalise uniquement l’identifiant et le nom sans modifier les espaces du mot de passe', () => {
     const password = '  secret pour atelier  '
-    expect(createUserInputSchema.parse({
-      ...creation, username: '  ÉQUIPE  '.replace('É', 'E'), displayName: '  Équipe Atelier 🪴  ', password,
-    })).toEqual({ username: 'equipe', displayName: 'Équipe Atelier 🪴', password, role: 'EDITOR', email: null })
-    expect(updateUserInputSchema.parse({ ...update, displayName: '  Équipe Atelier  ', enabled: false }))
-      .toEqual({ ...update, enabled: false })
+    expect(
+      createUserInputSchema.parse({
+        ...creation,
+        username: '  ÉQUIPE  '.replace('É', 'E'),
+        displayName: '  Équipe Atelier 🪴  ',
+        password,
+      }),
+    ).toEqual({ username: 'equipe', displayName: 'Équipe Atelier 🪴', password, role: 'EDITOR', email: null })
+    expect(updateUserInputSchema.parse({ ...update, displayName: '  Équipe Atelier  ', enabled: false })).toEqual({
+      ...update,
+      enabled: false,
+    })
   })
 
   it('accepte une adresse e-mail facultative pour la connexion d’entreprise', () => {
-    expect(createUserInputSchema.parse({ ...creation, email: '  Camille@Exemple.fr ' }).email).toBe('Camille@Exemple.fr')
+    expect(createUserInputSchema.parse({ ...creation, email: '  Camille@Exemple.fr ' }).email).toBe(
+      'Camille@Exemple.fr',
+    )
     expect(updateUserInputSchema.parse({ ...update, email: '   ' }).email).toBeNull()
-    expect(updateUserInputSchema.safeParse({ ...update, email: 'camille' }).error?.issues[0]?.message)
-      .toBe('Renseignez une adresse e-mail valide.')
+    expect(updateUserInputSchema.safeParse({ ...update, email: 'camille' }).error?.issues[0]?.message).toBe(
+      'Renseignez une adresse e-mail valide.',
+    )
     expect(sameEmail('Camille@Exemple.fr', ' camille@exemple.FR ')).toBe(true)
     expect(sameEmail(null, '')).toBe(true)
     expect(sameEmail('camille@exemple.fr', null)).toBe(false)
@@ -40,12 +65,15 @@ describe('saisie des comptes de l’instance', () => {
 
   it('accepte les identifiants compatibles avec le serveur aux bornes de longueur après normalisation', () => {
     for (const username of ['ABC', 'a'.repeat(50), 'a.1-b_2']) {
-      expect(createUserInputSchema.parse({ ...creation, username: ` ${username} ` }).username).toBe(username.toLowerCase())
+      expect(createUserInputSchema.parse({ ...creation, username: ` ${username} ` }).username).toBe(
+        username.toLowerCase(),
+      )
     }
   })
 
-  it.each(['ab', 'a'.repeat(51), 'equipe atelier', 'équipe', '-atelier', '_atelier', 'atelier/admin']) (
-    'refuse un identifiant incompatible sans le réparer silencieusement : %s', (username) => {
+  it.each(['ab', 'a'.repeat(51), 'equipe atelier', 'équipe', '-atelier', '_atelier', 'atelier/admin'])(
+    'refuse un identifiant incompatible sans le réparer silencieusement : %s',
+    (username) => {
       expect(createUserInputSchema.safeParse({ ...creation, username }).success).toBe(false)
     },
   )
@@ -60,8 +88,9 @@ describe('saisie des comptes de l’instance', () => {
     }
   })
 
-  it.each(['\u0000', '\ud800', '\udfff', '\ud800\ud800']) (
-    'refuse un nom incompatible avec PostgreSQL avant création ou modification : %j', (invalid) => {
+  it.each(['\u0000', '\ud800', '\udfff', '\ud800\ud800'])(
+    'refuse un nom incompatible avec PostgreSQL avant création ou modification : %j',
+    (invalid) => {
       const displayName = `Atelier${invalid}`
       expect(createUserInputSchema.safeParse({ ...creation, displayName }).success).toBe(false)
       expect(updateUserInputSchema.safeParse({ ...update, displayName }).success).toBe(false)
@@ -100,9 +129,13 @@ describe('saisie des comptes de l’instance', () => {
     expect(updateUserInputSchema.safeParse({ ...update, username: 'nouveau' }).success).toBe(false)
     expect(updateUserInputSchema.safeParse({ ...update, password: creation.password }).success).toBe(false)
     expect(resetPasswordInputSchema.safeParse({ password: creation.password, role: 'ADMIN' }).success).toBe(false)
-    expect(changeOwnPasswordInputSchema.safeParse({
-      currentPassword: creation.password, newPassword: creation.password, userId: 42,
-    }).success).toBe(false)
+    expect(
+      changeOwnPasswordInputSchema.safeParse({
+        currentPassword: creation.password,
+        newPassword: creation.password,
+        userId: 42,
+      }).success,
+    ).toBe(false)
   })
 })
 
@@ -126,8 +159,10 @@ describe('contrats des mots de passe', () => {
     expect(new TextEncoder().encode(password).byteLength).toBe(72)
     expect(createUserInputSchema.parse({ ...creation, password }).password).toBe(password)
     expect(resetPasswordInputSchema.parse({ password }).password).toBe(password)
-    expect(changeOwnPasswordInputSchema.parse({ currentPassword: password, newPassword: password }))
-      .toEqual({ currentPassword: password, newPassword: password })
+    expect(changeOwnPasswordInputSchema.parse({ currentPassword: password, newPassword: password })).toEqual({
+      currentPassword: password,
+      newPassword: password,
+    })
   })
 
   it('ne transforme pas un mot de passe absent, numérique ou entièrement blanc en secret valide', () => {
@@ -137,26 +172,47 @@ describe('contrats des mots de passe', () => {
   })
 
   it('laisse le serveur vérifier le mot de passe courant sans lui imposer le minimum d’un nouveau secret', () => {
-    expect(changeOwnPasswordInputSchema.parse({ currentPassword: 'x', newPassword: creation.password }).currentPassword).toBe('x')
+    expect(
+      changeOwnPasswordInputSchema.parse({ currentPassword: 'x', newPassword: creation.password }).currentPassword,
+    ).toBe('x')
     const currentPassword = '  ancien secret  '
-    expect(changeOwnPasswordInputSchema.parse({ currentPassword, newPassword: creation.password }).currentPassword)
-      .toBe(currentPassword)
+    expect(
+      changeOwnPasswordInputSchema.parse({ currentPassword, newPassword: creation.password }).currentPassword,
+    ).toBe(currentPassword)
   })
 
   it('refuse les mots de passe courants blancs, absents ou incompatibles avec les limites de connexion', () => {
     for (const currentPassword of [undefined, null, '', ' \t ', 'a'.repeat(65), 'é'.repeat(37)]) {
-      expect(changeOwnPasswordInputSchema.safeParse({ currentPassword, newPassword: creation.password }).success).toBe(false)
+      expect(changeOwnPasswordInputSchema.safeParse({ currentPassword, newPassword: creation.password }).success).toBe(
+        false,
+      )
     }
-    expect(changeOwnPasswordInputSchema.safeParse({ currentPassword: 'a'.repeat(64), newPassword: creation.password }).success).toBe(true)
+    expect(
+      changeOwnPasswordInputSchema.safeParse({ currentPassword: 'a'.repeat(64), newPassword: creation.password })
+        .success,
+    ).toBe(true)
   })
 })
 
 describe('réponses administratives des comptes', () => {
   it('retient seulement les six champs publics même si une réponse contient des champs internes', () => {
-    const payload = { ...user, password: 'ne-pas-conserver', passwordHash: 'hash-interne', authVersion: 8, futureField: true }
+    const payload = {
+      ...user,
+      password: 'ne-pas-conserver',
+      passwordHash: 'hash-interne',
+      authVersion: 8,
+      futureField: true,
+    }
     expect(adminUserSchema.parse(payload)).toEqual(user)
     expect(adminUserListSchema.parse([payload])).toEqual([user])
-    expect(Object.keys(adminUserSchema.parse(payload))).toEqual(['id', 'username', 'displayName', 'role', 'enabled', 'email'])
+    expect(Object.keys(adminUserSchema.parse(payload))).toEqual([
+      'id',
+      'username',
+      'displayName',
+      'role',
+      'enabled',
+      'email',
+    ])
     expect(payload.passwordHash).toBe('hash-interne')
   })
 
@@ -186,8 +242,10 @@ describe('réponses administratives des comptes', () => {
   it('rejette une liste avec des identifiants ou des noms de connexion dupliqués', () => {
     expect(adminUserListSchema.safeParse([user, { ...user, username: 'autre' }]).success).toBe(false)
     expect(adminUserListSchema.safeParse([user, { ...user, id: 73 }]).success).toBe(false)
-    expect(adminUserListSchema.parse([user, { ...user, id: 73, username: 'autre', enabled: false }]))
-      .toEqual([user, { ...user, id: 73, username: 'autre', enabled: false }])
+    expect(adminUserListSchema.parse([user, { ...user, id: 73, username: 'autre', enabled: false }])).toEqual([
+      user,
+      { ...user, id: 73, username: 'autre', enabled: false },
+    ])
     expect(adminUserListSchema.parse([])).toEqual([])
   })
 })

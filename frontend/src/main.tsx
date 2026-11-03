@@ -16,9 +16,28 @@ document.documentElement.lang = currentLanguage()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SessionProvider><AuthGate><LazyPanel load={loadApplication} panelProps={{}}
-      loading={<div className="auth-application-status" role="status"><Brand /><p>{t('Ouverture de votre atelier…')}</p></div>}
-      failure={(retry) => <div className="auth-application-status" role="alert"><Brand /><p>{t('Votre atelier n’a pas pu être chargé.')}</p><Button variant="outline" onClick={retry}>{t('Réessayer le chargement')}</Button></div>}
-    /></AuthGate></SessionProvider>
+    <SessionProvider>
+      <AuthGate>
+        <LazyPanel
+          load={loadApplication}
+          panelProps={{}}
+          loading={
+            <div className="auth-application-status" role="status">
+              <Brand />
+              <p>{t('Ouverture de votre atelier…')}</p>
+            </div>
+          }
+          failure={(retry) => (
+            <div className="auth-application-status" role="alert">
+              <Brand />
+              <p>{t('Votre atelier n’a pas pu être chargé.')}</p>
+              <Button variant="outline" onClick={retry}>
+                {t('Réessayer le chargement')}
+              </Button>
+            </div>
+          )}
+        />
+      </AuthGate>
+    </SessionProvider>
   </StrictMode>,
 )

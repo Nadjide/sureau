@@ -6,20 +6,36 @@ import { sessionPermissions, type SessionState } from '@/features/auth/session-s
 import { createWorkspaceFromPlan, type WorkspaceDocument } from '@/features/spatial/workspace-document'
 import { AppShell } from './app-shell'
 
-function render(workspace: WorkspaceDocument | null, role: 'ADMIN' | 'EDITOR' | 'VIEWER' = 'ADMIN', expired = false): string {
+function render(
+  workspace: WorkspaceDocument | null,
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER' = 'ADMIN',
+  expired = false,
+): string {
   const state: SessionState = {
-    phase: expired ? 'expired' : 'authenticated', generation: 0, error: null,
+    phase: expired ? 'expired' : 'authenticated',
+    generation: 0,
+    error: null,
     user: { id: 42, username: 'equipe', displayName: 'Équipe Atelier', role },
   }
   const session: SessionContextValue = {
-    state, enterpriseSignIn: null, ...sessionPermissions(state), busy: false,
-    login: vi.fn().mockResolvedValue(undefined), setup: vi.fn().mockResolvedValue(undefined),
-    logout: vi.fn().mockResolvedValue(undefined), refresh: vi.fn(),
-    expire: vi.fn(), updateUser: vi.fn(),
+    state,
+    enterpriseSignIn: null,
+    ...sessionPermissions(state),
+    busy: false,
+    login: vi.fn().mockResolvedValue(undefined),
+    setup: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(undefined),
+    refresh: vi.fn(),
+    expire: vi.fn(),
+    updateUser: vi.fn(),
   }
   const shellProps = {
-    workspace, activeRoomId: workspace?.rooms[0]?.plan.id ?? '', tab: 'inventory' as const,
-    onRoomChange: vi.fn(), onManageSpaces: vi.fn(), onTabChange: vi.fn(),
+    workspace,
+    activeRoomId: workspace?.rooms[0]?.plan.id ?? '',
+    tab: 'inventory' as const,
+    onRoomChange: vi.fn(),
+    onManageSpaces: vi.fn(),
+    onTabChange: vi.fn(),
     children: createElement('p', null, 'Inventaire du serveur'),
   }
   return renderToStaticMarkup(createElement(SessionContext, { value: session }, createElement(AppShell, shellProps)))

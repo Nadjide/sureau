@@ -26,7 +26,11 @@ function csrf(): Response {
 function reverseKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reverseKeys)
   if (typeof value !== 'object' || value === null) return value
-  return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reverseKeys(item)]))
+  return Object.fromEntries(
+    Object.entries(value)
+      .reverse()
+      .map(([key, item]) => [key, reverseKeys(item)]),
+  )
 }
 
 describe('lecture de l’espace partagé', () => {
@@ -66,7 +70,9 @@ describe('lecture de l’espace partagé', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('<h1>Page absente</h1>', { status: 404 }))
 
     await expect(getWorkspace(undefined, createApiClient(fetcher))).rejects.toMatchObject({
-      kind: 'http', status: 404, code: null,
+      kind: 'http',
+      status: 404,
+      code: null,
     })
   })
 
@@ -78,11 +84,14 @@ describe('lecture de l’espace partagé', () => {
     { label: 'une date sans fuseau', value: () => ({ ...snapshot(), updatedAt: '2026-10-24T10:00:00' }) },
     { label: 'une date impossible', value: () => ({ ...snapshot(), updatedAt: '2026-02-30T10:00:00Z' }) },
     { label: 'une association non canonique', value: () => ({ ...snapshot(), locations: { '042': 'desk-01' } }) },
-    { label: 'un objet déplacé hors de la salle', value: () => {
-      const value = snapshot()
-      value.workspace.rooms[0]!.plan.workstations[0]!.position = [500, 0, 500]
-      return value
-    } },
+    {
+      label: 'un objet déplacé hors de la salle',
+      value: () => {
+        const value = snapshot()
+        value.workspace.rooms[0]!.plan.workstations[0]!.position = [500, 0, 500]
+        return value
+      },
+    },
     { label: 'un faux message d’initialisation en succès', value: () => ({ code: 'WORKSPACE_NOT_INITIALIZED' }) },
   ])('refuse $label sans fabriquer un plan de secours', async ({ value }) => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(value()))
@@ -91,14 +100,19 @@ describe('lecture de l’espace partagé', () => {
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['display', 'furniture'])('refuse une réponse sans %s au lieu de migrer les données du serveur', async (field) => {
-    const value = snapshot()
-    Reflect.deleteProperty(value.workspace.rooms[0]!.plan, field)
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(value))
+  it.each(['display', 'furniture'])(
+    'refuse une réponse sans %s au lieu de migrer les données du serveur',
+    async (field) => {
+      const value = snapshot()
+      Reflect.deleteProperty(value.workspace.rooms[0]!.plan, field)
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(value))
 
-    await expect(getWorkspace(undefined, createApiClient(fetcher))).rejects.toMatchObject({ kind: 'invalid-response' })
-    expect(fetcher).toHaveBeenCalledTimes(1)
-  })
+      await expect(getWorkspace(undefined, createApiClient(fetcher))).rejects.toMatchObject({
+        kind: 'invalid-response',
+      })
+      expect(fetcher).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it('signale une page HTML servie avec un succès HTTP', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('<!doctype html><title>Sureau</title>'))
@@ -109,7 +123,10 @@ describe('lecture de l’espace partagé', () => {
   it('conserve une erreur réseau sans créer un document', async () => {
     const fetcher = vi.fn<typeof fetch>().mockRejectedValueOnce(new TypeError('Offline'))
 
-    await expect(getWorkspace(undefined, createApiClient(fetcher))).rejects.toMatchObject({ kind: 'network', status: null })
+    await expect(getWorkspace(undefined, createApiClient(fetcher))).rejects.toMatchObject({
+      kind: 'network',
+      status: null,
+    })
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
@@ -129,7 +146,9 @@ describe('lecture de l’espace partagé', () => {
     controller.abort()
     const fetcher = vi.fn<typeof fetch>()
 
-    await expect(getWorkspace(controller.signal, createApiClient(fetcher))).rejects.toMatchObject({ name: 'AbortError' })
+    await expect(getWorkspace(controller.signal, createApiClient(fetcher))).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(fetcher).not.toHaveBeenCalled()
   })
 })
@@ -140,7 +159,8 @@ describe('enregistrement atomique de l’espace et des associations', () => {
     value.workspace.name = '  Notre entreprise  '
     value.workspace.rooms[0]!.plan.name = '  Accueil  '
     const canonical = parseSpatialDraft(value)
-    const fetcher = vi.fn<typeof fetch>()
+    const fetcher = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(csrf())
       .mockResolvedValueOnce(json(reverseKeys(snapshot(8, canonical))))
 
@@ -157,7 +177,10 @@ describe('enregistrement atomique de l’espace et des associations', () => {
 
   it('initialise explicitement avec la révision zéro et n’ajoute aucune association par défaut', async () => {
     const value = { ...draft(), locations: {} }
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf()).mockResolvedValueOnce(json(snapshot(1, value)))
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
+      .mockResolvedValueOnce(json(snapshot(1, value)))
 
     await expect(saveWorkspace(0, value, undefined, createApiClient(fetcher))).resolves.toEqual(snapshot(1, value))
     expect(JSON.parse(String(fetcher.mock.calls[1]![1]?.body))).toMatchObject({ expectedRevision: 0, locations: {} })
@@ -165,18 +188,24 @@ describe('enregistrement atomique de l’espace et des associations', () => {
 
   it('accepte la dernière révision sûre confirmée par le serveur', async () => {
     const value = draft()
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf())
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
       .mockResolvedValueOnce(json(snapshot(Number.MAX_SAFE_INTEGER, value)))
 
-    await expect(saveWorkspace(Number.MAX_SAFE_INTEGER - 1, value, undefined, createApiClient(fetcher)))
-      .resolves.toMatchObject({ revision: Number.MAX_SAFE_INTEGER })
+    await expect(
+      saveWorkspace(Number.MAX_SAFE_INTEGER - 1, value, undefined, createApiClient(fetcher)),
+    ).resolves.toMatchObject({ revision: Number.MAX_SAFE_INTEGER })
   })
 
   it.each([-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1])(
-    'rejette la révision attendue %s avant le réseau', async (revision) => {
+    'rejette la révision attendue %s avant le réseau',
+    async (revision) => {
       const fetcher = vi.fn<typeof fetch>()
 
-      await expect(saveWorkspace(revision, draft(), undefined, createApiClient(fetcher))).rejects.toBeInstanceOf(RangeError)
+      await expect(saveWorkspace(revision, draft(), undefined, createApiClient(fetcher))).rejects.toBeInstanceOf(
+        RangeError,
+      )
       expect(fetcher).not.toHaveBeenCalled()
     },
   )
@@ -199,9 +228,9 @@ describe('enregistrement atomique de l’espace et des associations', () => {
   })
 
   it('borne aussi le corps complet en UTF-8 lorsque les associations dépassent 2,1 Mo', async () => {
-    const locations = Object.fromEntries(Array.from({ length: 20_000 }, (_, index) => [
-      String(Number.MAX_SAFE_INTEGER - index), `desk-${'a'.repeat(80)}`,
-    ]))
+    const locations = Object.fromEntries(
+      Array.from({ length: 20_000 }, (_, index) => [String(Number.MAX_SAFE_INTEGER - index), `desk-${'a'.repeat(80)}`]),
+    )
     const value = { ...draft(), locations }
     const fetcher = vi.fn<typeof fetch>()
 
@@ -213,8 +242,13 @@ describe('enregistrement atomique de l’espace et des associations', () => {
     const value = draft()
     const initial = structuredClone(value)
     let resolveCsrf!: (response: Response) => void
-    const csrfPending = new Promise<Response>((resolve) => { resolveCsrf = resolve })
-    const fetcher = vi.fn<typeof fetch>().mockReturnValueOnce(csrfPending).mockResolvedValueOnce(json(snapshot(2, initial)))
+    const csrfPending = new Promise<Response>((resolve) => {
+      resolveCsrf = resolve
+    })
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockReturnValueOnce(csrfPending)
+      .mockResolvedValueOnce(json(snapshot(2, initial)))
     const pending = saveWorkspace(1, value, undefined, createApiClient(fetcher))
     value.workspace.name = 'Modification pendant l’envoi'
     value.workspace.rooms[0]!.plan.workstations[0]!.label = 'Autre bureau'
@@ -244,8 +278,11 @@ describe('enregistrement atomique de l’espace et des associations', () => {
   it('n’envoie rien si la récupération CSRF est refusée', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ code: 'ACCESS_DENIED' }, 403))
 
-    await expect(saveWorkspace(1, draft(), undefined, createApiClient(fetcher)))
-      .rejects.toMatchObject({ kind: 'http', status: 403, code: 'ACCESS_DENIED' })
+    await expect(saveWorkspace(1, draft(), undefined, createApiClient(fetcher))).rejects.toMatchObject({
+      kind: 'http',
+      status: 403,
+      code: 'ACCESS_DENIED',
+    })
     expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/api/auth/csrf'])
   })
 
@@ -255,44 +292,66 @@ describe('enregistrement atomique de l’espace et des associations', () => {
     { label: 'une révision invalide', response: () => json({ ...snapshot(8), revision: '8' }) },
     { label: 'une date invalide', response: () => json({ ...snapshot(8), updatedAt: 'hier' }) },
     { label: 'une association disparue', response: () => json({ ...snapshot(8), locations: { 42: 'desk-01' } }) },
-    { label: 'une association modifiée', response: () => json({ ...snapshot(8), locations: { ...draft().locations, 42: 'desk-02' } }) },
-    { label: 'un espace modifié', response: () => {
-      const value = snapshot(8)
-      value.workspace.name = 'Un autre espace'
-      return json(value)
-    } },
-    { label: 'un plan incomplet', response: () => {
-      const value = snapshot(8)
-      Reflect.deleteProperty(value.workspace.rooms[0]!.plan, 'furniture')
-      return json(value)
-    } },
+    {
+      label: 'une association modifiée',
+      response: () => json({ ...snapshot(8), locations: { ...draft().locations, 42: 'desk-02' } }),
+    },
+    {
+      label: 'un espace modifié',
+      response: () => {
+        const value = snapshot(8)
+        value.workspace.name = 'Un autre espace'
+        return json(value)
+      },
+    },
+    {
+      label: 'un plan incomplet',
+      response: () => {
+        const value = snapshot(8)
+        Reflect.deleteProperty(value.workspace.rooms[0]!.plan, 'furniture')
+        return json(value)
+      },
+    },
     { label: 'une réponse HTML', response: () => new Response('<!doctype html><title>Sureau</title>') },
   ])('demande de vérifier le serveur après $label sans réessayer automatiquement', async ({ response }) => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf()).mockResolvedValueOnce(response())
 
     await expect(saveWorkspace(7, draft(), undefined, createApiClient(fetcher))).rejects.toMatchObject({
-      kind: 'invalid-response', status: null,
+      kind: 'invalid-response',
+      status: null,
       message: expect.stringContaining('Rechargez la version du serveur pour vérifier son état avant de réessayer'),
     })
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/workspace')).toHaveLength(1)
   })
 
   it('préserve le type réseau et demande de vérifier le résultat de l’enregistrement', async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf()).mockRejectedValueOnce(new TypeError('Connection lost'))
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
+      .mockRejectedValueOnce(new TypeError('Connection lost'))
 
     await expect(saveWorkspace(1, draft(), undefined, createApiClient(fetcher))).rejects.toMatchObject({
-      kind: 'network', status: null, code: null,
+      kind: 'network',
+      status: null,
+      code: null,
       message: expect.stringContaining('n’a pas pu être confirmé'),
     })
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/workspace')).toHaveLength(1)
   })
 
   it('conserve le statut et le code d’une panne serveur dont le résultat est incertain', async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf())
-      .mockResolvedValueOnce(json({ code: 'PERSISTENCE_ERROR', errors: [{ field: 'workspace', message: 'invalid' }] }, 503))
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
+      .mockResolvedValueOnce(
+        json({ code: 'PERSISTENCE_ERROR', errors: [{ field: 'workspace', message: 'invalid' }] }, 503),
+      )
 
     await expect(saveWorkspace(1, draft(), undefined, createApiClient(fetcher))).rejects.toMatchObject({
-      kind: 'http', status: 503, code: 'PERSISTENCE_ERROR', fieldErrors: { workspace: 'Vérifiez la valeur de ce champ.' },
+      kind: 'http',
+      status: 503,
+      code: 'PERSISTENCE_ERROR',
+      fieldErrors: { workspace: 'Vérifiez la valeur de ce champ.' },
       message: expect.stringContaining('n’a pas pu être confirmé'),
     })
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/workspace')).toHaveLength(1)
@@ -303,20 +362,25 @@ describe('enregistrement atomique de l’espace et des associations', () => {
     controller.abort()
     const fetcher = vi.fn<typeof fetch>()
 
-    await expect(saveWorkspace(1, draft(), controller.signal, createApiClient(fetcher)))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(saveWorkspace(1, draft(), controller.signal, createApiClient(fetcher))).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(fetcher).not.toHaveBeenCalled()
   })
 
   it('laisse remonter une annulation pendant l’envoi sans la convertir ni rejouer la mutation', async () => {
     const controller = new AbortController()
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(csrf()).mockImplementationOnce(async () => {
-      controller.abort()
-      return json(snapshot(2))
-    })
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(csrf())
+      .mockImplementationOnce(async () => {
+        controller.abort()
+        return json(snapshot(2))
+      })
 
-    await expect(saveWorkspace(1, draft(), controller.signal, createApiClient(fetcher)))
-      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(saveWorkspace(1, draft(), controller.signal, createApiClient(fetcher))).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(fetcher.mock.calls.filter(([path]) => path === '/api/workspace')).toHaveLength(1)
   })
 })

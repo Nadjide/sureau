@@ -4,9 +4,15 @@ import { msg, t } from '@/lib/i18n'
 export const enterpriseSignInPath = '/oauth2/authorization/oidc'
 
 const outcomes: Record<string, string> = {
-  'no-account': msg('Aucun compte Sureau actif ne correspond à votre identité. Demandez à un administrateur de renseigner votre adresse e-mail sur votre compte.'),
-  unavailable: msg('Le fournisseur d’identité de votre entreprise est injoignable pour le moment. Réessayez plus tard ou connectez-vous avec votre mot de passe.'),
-  failed: msg('La connexion par le fournisseur d’identité n’a pas abouti. Réessayez ou connectez-vous avec votre mot de passe.'),
+  'no-account': msg(
+    'Aucun compte Sureau actif ne correspond à votre identité. Demandez à un administrateur de renseigner votre adresse e-mail sur votre compte.',
+  ),
+  unavailable: msg(
+    'Le fournisseur d’identité de votre entreprise est injoignable pour le moment. Réessayez plus tard ou connectez-vous avec votre mot de passe.',
+  ),
+  failed: msg(
+    'La connexion par le fournisseur d’identité n’a pas abouti. Réessayez ou connectez-vous avec votre mot de passe.',
+  ),
 }
 
 /** The message for the `?sso=` reason the server adds when enterprise sign-in opened no session. */

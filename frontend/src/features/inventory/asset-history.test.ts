@@ -7,7 +7,9 @@ const moved: AssetEvent = {
   occurredAt: '2026-10-26T09:42:00Z',
   action: 'LOCATED',
   actor: { username: 'camille', displayName: 'Camille Bernard' },
-  changes: [{ field: 'location', from: 'Poste 1 · Atelier · Rez-de-chaussée', to: 'Poste 2 · Atelier · Rez-de-chaussée' }],
+  changes: [
+    { field: 'location', from: 'Poste 1 · Atelier · Rez-de-chaussée', to: 'Poste 2 · Atelier · Rez-de-chaussée' },
+  ],
 }
 
 function jsonResponse(payload: unknown): Response {
@@ -29,7 +31,8 @@ describe('getAssetHistory', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse([{ ...moved, changes: 'aucun' }]))
 
     await expect(getAssetHistory(42, new AbortController().signal, fetcher)).rejects.toMatchObject({
-      constructor: ApiError, kind: 'invalid-response',
+      constructor: ApiError,
+      kind: 'invalid-response',
     })
   })
 })
@@ -37,8 +40,12 @@ describe('getAssetHistory', () => {
 describe('formulation des événements', () => {
   it('distingue un placement, un déplacement et un retrait de poste', () => {
     expect(eventTitle(moved)).toBe('Changé de poste')
-    expect(eventTitle({ ...moved, changes: [{ field: 'location', from: null, to: 'Poste 1' }] })).toBe('Placé sur un poste')
-    expect(eventTitle({ ...moved, changes: [{ field: 'location', from: 'Poste 1', to: null }] })).toBe('Retiré de son poste')
+    expect(eventTitle({ ...moved, changes: [{ field: 'location', from: null, to: 'Poste 1' }] })).toBe(
+      'Placé sur un poste',
+    )
+    expect(eventTitle({ ...moved, changes: [{ field: 'location', from: 'Poste 1', to: null }] })).toBe(
+      'Retiré de son poste',
+    )
     expect(eventTitle({ ...moved, action: 'ARCHIVED_ELSEWHERE' })).toBe('Changement enregistré')
   })
 

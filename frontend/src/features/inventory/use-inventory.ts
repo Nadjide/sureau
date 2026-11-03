@@ -30,7 +30,13 @@ export function useInventory(): InventoryResult {
   const refreshAfterMutation = useCallback((asset: Asset) => {
     activeController.current?.abort()
     // This is a validated server response, never an optimistic or fabricated record.
-    setState((previous) => ({ assets: [...(previous.assets || []).filter((existing) => existing.id !== asset.id), asset].sort((a, b) => a.id - b.id), status: 'loading', error: null }))
+    setState((previous) => ({
+      assets: [...(previous.assets || []).filter((existing) => existing.id !== asset.id), asset].sort(
+        (a, b) => a.id - b.id,
+      ),
+      status: 'loading',
+      error: null,
+    }))
     setRequestVersion((version) => version + 1)
   }, [])
 

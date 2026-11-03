@@ -17,7 +17,9 @@ export const spatialLocationLimit = 20_000
 export const spatialHistoryLimit = workspaceHistoryLimit
 
 const workstationId = /^desk-[a-z0-9-]{2,80}$/
-const invalidDraftMessage = msg('Cet espace de travail ou ses localisations sont invalides. Aucun changement n’a été appliqué.')
+const invalidDraftMessage = msg(
+  'Cet espace de travail ou ses localisations sont invalides. Aucun changement n’a été appliqué.',
+)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
@@ -35,9 +37,15 @@ function parseLocations(value: unknown): LocalLocations {
     if (typeof key !== 'string') throw new Error(t(invalidDraftMessage))
     const assetId = Number(key)
     const descriptor = Object.getOwnPropertyDescriptor(value, key)
-    if (!Number.isSafeInteger(assetId) || assetId <= 0 || String(assetId) !== key
-      || !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')
-      || typeof descriptor.value !== 'string' || !workstationId.test(descriptor.value)) {
+    if (
+      !Number.isSafeInteger(assetId) ||
+      assetId <= 0 ||
+      String(assetId) !== key ||
+      !descriptor?.enumerable ||
+      !Object.hasOwn(descriptor, 'value') ||
+      typeof descriptor.value !== 'string' ||
+      !workstationId.test(descriptor.value)
+    ) {
       throw new Error(t(invalidDraftMessage))
     }
     entries.push([assetId, descriptor.value])
@@ -64,16 +72,24 @@ function isDatabaseText(value: string): boolean {
 function validateNames(workspace: WorkspaceDocument): void {
   const names = [workspace.name, ...workspace.floors.map((floor) => floor.name)]
   for (const room of workspace.rooms) {
-    names.push(room.plan.name, ...room.plan.workstations.map((station) => station.label),
-      ...room.plan.furniture.map((item) => item.label))
+    names.push(
+      room.plan.name,
+      ...room.plan.workstations.map((station) => station.label),
+      ...room.plan.furniture.map((item) => item.label),
+    )
   }
-  if (!names.every(isDatabaseText)) throw new Error(t('Un nom contient un caractère incompatible avec la base de données.'))
+  if (!names.every(isDatabaseText))
+    throw new Error(t('Un nom contient un caractère incompatible avec la base de données.'))
 }
 
 /** Validate and detach a complete atomic snapshot, preserving unresolved associations. */
 export function parseSpatialDraft(value: unknown): SpatialDraft {
-  if (!isRecord(value) || Reflect.ownKeys(value).length !== 2
-    || !Object.hasOwn(value, 'workspace') || !Object.hasOwn(value, 'locations')) {
+  if (
+    !isRecord(value) ||
+    Reflect.ownKeys(value).length !== 2 ||
+    !Object.hasOwn(value, 'workspace') ||
+    !Object.hasOwn(value, 'locations')
+  ) {
     throw new Error(t(invalidDraftMessage))
   }
   const workspace = parseWorkspace(JSON.stringify(value.workspace))
@@ -85,14 +101,20 @@ function sameValue(first: unknown, second: unknown): boolean {
   if (first === second) return true
   if (typeof first !== 'object' || first === null || typeof second !== 'object' || second === null) return false
   if (Array.isArray(first) || Array.isArray(second)) {
-    return Array.isArray(first) && Array.isArray(second) && first.length === second.length
-      && first.every((value, index) => sameValue(value, second[index]))
+    return (
+      Array.isArray(first) &&
+      Array.isArray(second) &&
+      first.length === second.length &&
+      first.every((value, index) => sameValue(value, second[index]))
+    )
   }
   const firstRecord = first as Record<string, unknown>
   const secondRecord = second as Record<string, unknown>
   const keys = Object.keys(firstRecord)
-  return keys.length === Object.keys(secondRecord).length
-    && keys.every((key) => Object.hasOwn(secondRecord, key) && sameValue(firstRecord[key], secondRecord[key]))
+  return (
+    keys.length === Object.keys(secondRecord).length &&
+    keys.every((key) => Object.hasOwn(secondRecord, key) && sameValue(firstRecord[key], secondRecord[key]))
+  )
 }
 
 /** Object property order is immaterial; floor, room and object array order remains meaningful. */
@@ -129,7 +151,9 @@ export function pushSpatialChange(history: SpatialHistory, candidate: SpatialDra
     past: [...history.past, history.present].slice(-spatialHistoryLimit),
     present: {
       workspace: shareWorkspace(history.present.workspace, validated.workspace),
-      locations: sameValue(history.present.locations, validated.locations) ? history.present.locations : validated.locations,
+      locations: sameValue(history.present.locations, validated.locations)
+        ? history.present.locations
+        : validated.locations,
     },
     future: [],
   }
@@ -139,7 +163,8 @@ export function undoSpatial(history: SpatialHistory): SpatialHistory {
   const present = history.past.at(-1)
   if (!present) return history
   return {
-    past: history.past.slice(0, -1), present,
+    past: history.past.slice(0, -1),
+    present,
     future: [history.present, ...history.future].slice(0, spatialHistoryLimit),
   }
 }
@@ -148,7 +173,8 @@ export function redoSpatial(history: SpatialHistory): SpatialHistory {
   const present = history.future[0]
   if (!present) return history
   return {
-    past: [...history.past, history.present].slice(-spatialHistoryLimit), present,
+    past: [...history.past, history.present].slice(-spatialHistoryLimit),
+    present,
     future: history.future.slice(1),
   }
 }

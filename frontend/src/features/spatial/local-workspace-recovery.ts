@@ -6,12 +6,15 @@ import { parseSpatialDraft, type SpatialDraft } from './shared-workspace-model'
 import { createWorkspaceFromPlan, parseWorkspace } from './workspace-document'
 
 const recoveryKeys = [
-  storageKeys.workspace, legacyStorageKeys.workspace,
-  storageKeys.plan, legacyStorageKeys.plan,
-  storageKeys.locations, legacyStorageKeys.locations,
+  storageKeys.workspace,
+  legacyStorageKeys.workspace,
+  storageKeys.plan,
+  legacyStorageKeys.plan,
+  storageKeys.locations,
+  legacyStorageKeys.locations,
 ] as const
 
-export type LocalRecoveryKey = typeof recoveryKeys[number]
+export type LocalRecoveryKey = (typeof recoveryKeys)[number]
 export type LocalRecoveryEntries = Readonly<Partial<Record<LocalRecoveryKey, string>>>
 
 export interface RecoveryStorage {
@@ -25,26 +28,36 @@ interface InspectionBase {
 }
 
 export type LocalWorkspaceInspection =
-  | InspectionBase & {
-    phase: 'ready'
-    draft: SpatialDraft
-    sourceKey: LocalRecoveryKey
-    hasLocations: boolean
-    locationsValid: boolean
-  }
-  | InspectionBase & {
-    phase: 'absent' | 'unavailable' | 'invalid'
-    draft: null
-    hasLocations: false
-    locationsValid: false
-  }
+  | (InspectionBase & {
+      phase: 'ready'
+      draft: SpatialDraft
+      sourceKey: LocalRecoveryKey
+      hasLocations: boolean
+      locationsValid: boolean
+    })
+  | (InspectionBase & {
+      phase: 'absent' | 'unavailable' | 'invalid'
+      draft: null
+      hasLocations: false
+      locationsValid: false
+    })
 
-const unavailableWarning = msg('Le stockage de ce navigateur n’a pas pu être lu entièrement. Aucune récupération n’a été préparée. Les valeurs déjà lues restent disponibles dans la copie brute.')
-const invalidGeometryWarning = msg('L’espace ou le plan local prioritaire est illisible ou incompatible. Il a été conservé sans utiliser une autre version à sa place. Exportez la copie brute pour le récupérer séparément.')
-const invalidLocationsWarning = msg('Les localisations locales sont illisibles ou incompatibles. Elles restent dans la copie brute. Vous pouvez récupérer uniquement l’implantation, sans importer ces liens.')
+const unavailableWarning = msg(
+  'Le stockage de ce navigateur n’a pas pu être lu entièrement. Aucune récupération n’a été préparée. Les valeurs déjà lues restent disponibles dans la copie brute.',
+)
+const invalidGeometryWarning = msg(
+  'L’espace ou le plan local prioritaire est illisible ou incompatible. Il a été conservé sans utiliser une autre version à sa place. Exportez la copie brute pour le récupérer séparément.',
+)
+const invalidLocationsWarning = msg(
+  'Les localisations locales sont illisibles ou incompatibles. Elles restent dans la copie brute. Vous pouvez récupérer uniquement l’implantation, sans importer ces liens.',
+)
 
-function incomplete(phase: 'absent' | 'unavailable' | 'invalid', rawEntries: LocalRecoveryEntries,
-  warning: string | null, sourceKey: LocalRecoveryKey | null = null): LocalWorkspaceInspection {
+function incomplete(
+  phase: 'absent' | 'unavailable' | 'invalid',
+  rawEntries: LocalRecoveryEntries,
+  warning: string | null,
+  sourceKey: LocalRecoveryKey | null = null,
+): LocalWorkspaceInspection {
   return { phase, draft: null, hasLocations: false, locationsValid: false, rawEntries, warning, sourceKey }
 }
 
@@ -63,7 +76,9 @@ export function inspectLocalWorkspace(storage: RecoveryStorage | null): LocalWor
       const raw = storage.getItem(key)
       if (typeof raw === 'string') collected[key] = raw
       else if (raw !== null) unavailable = true
-    } catch { unavailable = true }
+    } catch {
+      unavailable = true
+    }
   }
   const rawEntries: LocalRecoveryEntries = Object.freeze(collected)
   if (unavailable) return incomplete('unavailable', rawEntries, t(unavailableWarning))
@@ -73,8 +88,13 @@ export function inspectLocalWorkspace(storage: RecoveryStorage | null): LocalWor
   const planKey = firstPresent(rawEntries, [storageKeys.plan, legacyStorageKeys.plan])
   const sourceKey = workspaceKey ?? planKey
   if (sourceKey === null) {
-    return incomplete('invalid', rawEntries,
-      t('Des localisations locales sont présentes, mais aucun espace ni plan n’a été trouvé. Aucun exemple n’a été créé. Exportez la copie brute pour conserver ces données.'))
+    return incomplete(
+      'invalid',
+      rawEntries,
+      t(
+        'Des localisations locales sont présentes, mais aucun espace ni plan n’a été trouvé. Aucun exemple n’a été créé. Exportez la copie brute pour conserver ces données.',
+      ),
+    )
   }
 
   let geometry: SpatialDraft
@@ -88,7 +108,15 @@ export function inspectLocalWorkspace(storage: RecoveryStorage | null): LocalWor
 
   const locationsKey = firstPresent(rawEntries, [storageKeys.locations, legacyStorageKeys.locations])
   if (locationsKey === null) {
-    return { phase: 'ready', draft: geometry, hasLocations: false, locationsValid: true, warning: null, sourceKey, rawEntries }
+    return {
+      phase: 'ready',
+      draft: geometry,
+      hasLocations: false,
+      locationsValid: true,
+      warning: null,
+      sourceKey,
+      rawEntries,
+    }
   }
 
   try {
@@ -97,8 +125,15 @@ export function inspectLocalWorkspace(storage: RecoveryStorage | null): LocalWor
     const draft = parseSpatialDraft({ workspace: geometry.workspace, locations: decoded.locations })
     return { phase: 'ready', draft, hasLocations: true, locationsValid: true, warning: null, sourceKey, rawEntries }
   } catch {
-    return { phase: 'ready', draft: geometry, hasLocations: true, locationsValid: false,
-      warning: t(invalidLocationsWarning), sourceKey, rawEntries }
+    return {
+      phase: 'ready',
+      draft: geometry,
+      hasLocations: true,
+      locationsValid: false,
+      warning: t(invalidLocationsWarning),
+      sourceKey,
+      rawEntries,
+    }
   }
 }
 

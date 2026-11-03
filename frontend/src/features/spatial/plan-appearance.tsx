@@ -8,13 +8,32 @@ import { parsePlan } from './plan-document'
 
 // Names and notes are French keys: show them through t().
 const palettes = [
-  { name: msg('Atelier'), note: msg('Bois clair et bleu ardoise'), colors: { floor: '#e6e7e5', wall: '#e4e8ed', desk: '#d4b38c', accent: '#447cde' } },
-  { name: msg('Botanique'), note: msg('Sauge, crème et chêne'), colors: { floor: '#dce4d8', wall: '#c3d1be', desk: '#b98c62', accent: '#397761' } },
-  { name: msg('Minéral'), note: msg('Pierre, graphite et noyer'), colors: { floor: '#a6a9ad', wall: '#66717e', desk: '#755746', accent: '#bf8943' } },
-  { name: msg('Terracotta'), note: msg('Argile et tons naturels'), colors: { floor: '#eddfcd', wall: '#cb9d88', desk: '#a57a58', accent: '#b05443' } },
+  {
+    name: msg('Atelier'),
+    note: msg('Bois clair et bleu ardoise'),
+    colors: { floor: '#e6e7e5', wall: '#e4e8ed', desk: '#d4b38c', accent: '#447cde' },
+  },
+  {
+    name: msg('Botanique'),
+    note: msg('Sauge, crème et chêne'),
+    colors: { floor: '#dce4d8', wall: '#c3d1be', desk: '#b98c62', accent: '#397761' },
+  },
+  {
+    name: msg('Minéral'),
+    note: msg('Pierre, graphite et noyer'),
+    colors: { floor: '#a6a9ad', wall: '#66717e', desk: '#755746', accent: '#bf8943' },
+  },
+  {
+    name: msg('Terracotta'),
+    note: msg('Argile et tons naturels'),
+    colors: { floor: '#eddfcd', wall: '#cb9d88', desk: '#a57a58', accent: '#b05443' },
+  },
 ] as const
 
-interface Props { plan: SpatialPlan; onChange: (plan: SpatialPlan) => void }
+interface Props {
+  plan: SpatialPlan
+  onChange: (plan: SpatialPlan) => void
+}
 
 function writeColorFields(form: HTMLFormElement | null, colors: SpatialPlan['colors']) {
   for (const [name, color] of Object.entries(colors)) {
@@ -32,83 +51,214 @@ export function PlanAppearance({ plan, onChange }: Props) {
   useEffect(() => {
     writeColorFields(form.current, { floor, wall, desk, accent })
   }, [floor, wall, desk, accent])
-  const collisions = plan.workstations.filter((station) => plan.workstations.some((other) => other.id !== station.id && overlaps(station, other))).length
+  const collisions = plan.workstations.filter((station) =>
+    plan.workstations.some((other) => other.id !== station.id && overlaps(station, other)),
+  ).length
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') || '').trim()
-    const width = Number(data.get('width')), depth = Number(data.get('depth'))
-    if (!name || name.length > 60 || ![width, depth].every(Number.isFinite) || width < 6 || depth < 6 || width > 50 || depth > 50) {
-      setError(t('Indiquez un nom et des dimensions comprises entre 6 et 50 mètres.')); return
+    const width = Number(data.get('width')),
+      depth = Number(data.get('depth'))
+    if (
+      !name ||
+      name.length > 60 ||
+      ![width, depth].every(Number.isFinite) ||
+      width < 6 ||
+      depth < 6 ||
+      width > 50 ||
+      depth > 50
+    ) {
+      setError(t('Indiquez un nom et des dimensions comprises entre 6 et 50 mètres.'))
+      return
     }
     try {
       const candidate: SpatialPlan = {
-        ...plan, name, width, depth,
-        colors: { floor: String(data.get('floor')), wall: String(data.get('wall')), desk: String(data.get('desk')), accent: String(data.get('accent')) },
+        ...plan,
+        name,
+        width,
+        depth,
+        colors: {
+          floor: String(data.get('floor')),
+          wall: String(data.get('wall')),
+          desk: String(data.get('desk')),
+          accent: String(data.get('accent')),
+        },
         display: { walls: data.has('walls'), decor: data.has('decor') },
       }
       candidate.workstations = plan.workstations.map((station) => clampWorkstation(candidate, station))
       candidate.furniture = plan.furniture.map((item) => clampFurniture(candidate, item))
       const next = parsePlan(JSON.stringify(candidate))
-      const moved = next.workstations.filter((station, index) => {
-        const previous = plan.workstations[index]!
-        return Math.abs(station.position[0] - previous.position[0]) > 1e-6 || Math.abs(station.position[2] - previous.position[2]) > 1e-6
-      }).length + next.furniture.filter((item, index) => {
-        const previous = plan.furniture[index]!
-        return Math.abs(item.position[0] - previous.position[0]) > 1e-6 || Math.abs(item.position[2] - previous.position[2]) > 1e-6
-      }).length
+      const moved =
+        next.workstations.filter((station, index) => {
+          const previous = plan.workstations[index]!
+          return (
+            Math.abs(station.position[0] - previous.position[0]) > 1e-6 ||
+            Math.abs(station.position[2] - previous.position[2]) > 1e-6
+          )
+        }).length +
+        next.furniture.filter((item, index) => {
+          const previous = plan.furniture[index]!
+          return (
+            Math.abs(item.position[0] - previous.position[0]) > 1e-6 ||
+            Math.abs(item.position[2] - previous.position[2]) > 1e-6
+          )
+        }).length
       setError(null)
       if (moved) setPending({ plan: next, source: plan, moved })
       else onChange(next)
-    } catch { setError(t('Ces réglages ne permettent pas de placer le mobilier. Aucun changement appliqué.')) }
+    } catch {
+      setError(t('Ces réglages ne permettent pas de placer le mobilier. Aucun changement appliqué.'))
+    }
   }
 
-  return <div className="appearance-panel">
-    <p className="location-help">{t('Faites du plateau votre espace : dimensions réelles, matières, couleurs et environnement.')}</p>
-    <h3 className="editor-subheading"><Palette size={14} />{t('Ambiances')}</h3>
-    <div className="palette-list">
-      {palettes.map((palette) => {
-        const active = Object.entries(palette.colors).every(([key, value]) => plan.colors[key as keyof SpatialPlan['colors']] === value)
-        return <button key={palette.name} className={`palette-choice${active ? ' is-selected' : ''}`} type="button" aria-pressed={active} disabled={!!pending} onClick={() => {
-          writeColorFields(form.current, palette.colors)
-          onChange({ ...plan, colors: { ...palette.colors } })
-        }}>
-          <span className="palette-swatches" aria-hidden="true">{Object.values(palette.colors).map((color) => <i key={color} style={{ background: color }} />)}</span>
-          <span><strong>{t(palette.name)}</strong><small>{t(palette.note)}</small></span>{active && <Check size={14} />}
-        </button>
-      })}
+  return (
+    <div className="appearance-panel">
+      <p className="location-help">
+        {t('Faites du plateau votre espace : dimensions réelles, matières, couleurs et environnement.')}
+      </p>
+      <h3 className="editor-subheading">
+        <Palette size={14} />
+        {t('Ambiances')}
+      </h3>
+      <div className="palette-list">
+        {palettes.map((palette) => {
+          const active = Object.entries(palette.colors).every(
+            ([key, value]) => plan.colors[key as keyof SpatialPlan['colors']] === value,
+          )
+          return (
+            <button
+              key={palette.name}
+              className={`palette-choice${active ? ' is-selected' : ''}`}
+              type="button"
+              aria-pressed={active}
+              disabled={!!pending}
+              onClick={() => {
+                writeColorFields(form.current, palette.colors)
+                onChange({ ...plan, colors: { ...palette.colors } })
+              }}
+            >
+              <span className="palette-swatches" aria-hidden="true">
+                {Object.values(palette.colors).map((color) => (
+                  <i key={color} style={{ background: color }} />
+                ))}
+              </span>
+              <span>
+                <strong>{t(palette.name)}</strong>
+                <small>{t(palette.note)}</small>
+              </span>
+              {active && <Check size={14} />}
+            </button>
+          )
+        })}
+      </div>
+      <form
+        ref={form}
+        className="editor-form"
+        key={JSON.stringify([formRevision, plan.name, plan.width, plan.depth, plan.display])}
+        onSubmit={apply}
+      >
+        <fieldset disabled={!!pending} className="editor-form appearance-fields">
+          <label>
+            {t('Nom du plateau')}
+            <input name="name" defaultValue={plan.name} maxLength={60} required />
+          </label>
+          <div className="editor-field-pair">
+            <label>
+              Largeur (m)
+              <input name="width" type="number" min="6" max="50" step="any" defaultValue={plan.width} required />
+            </label>
+            <label>
+              Profondeur (m)
+              <input name="depth" type="number" min="6" max="50" step="any" defaultValue={plan.depth} required />
+            </label>
+          </div>
+          <h3 className="editor-subheading">{t('Couleurs libres')}</h3>
+          <div className="editor-field-pair color-fields">
+            <label>
+              {t('Sol')}
+              <input name="floor" type="color" defaultValue={plan.colors.floor} />
+            </label>
+            <label>
+              {t('Murs')}
+              <input name="wall" type="color" defaultValue={plan.colors.wall} />
+            </label>
+            <label>
+              {t('Bureaux')}
+              <input name="desk" type="color" defaultValue={plan.colors.desk} />
+            </label>
+            <label>
+              {t('Sélection')}
+              <input name="accent" type="color" defaultValue={plan.colors.accent} />
+            </label>
+          </div>
+          <label className="editor-checkbox">
+            <input name="walls" type="checkbox" defaultChecked={plan.display.walls} />
+            {t('Afficher les murs')}
+          </label>
+          <label className="editor-checkbox">
+            <input name="decor" type="checkbox" defaultChecked={plan.display.decor} />
+            {t('Afficher plantes et rangement')}
+          </label>
+          <Button variant="outline" type="submit">
+            {t('Appliquer au plateau')}
+          </Button>
+        </fieldset>
+      </form>
+      {pending && (
+        <div className="editor-delete-confirm" role="alert">
+          <p>
+            {plural(
+              pending.moved,
+              'Les nouvelles dimensions replaceront {count} élément dans les limites de la pièce. Des chevauchements sont possibles.',
+              'Les nouvelles dimensions replaceront {count} éléments dans les limites de la pièce. Des chevauchements sont possibles.',
+            )}
+          </p>
+          <Button
+            onClick={() => {
+              if (pending.source !== plan)
+                setError(
+                  t(
+                    'Le plan a changé pendant ce réglage. Réappliquez les dimensions pour conserver vos derniers déplacements.',
+                  ),
+                )
+              else onChange(pending.plan)
+              setPending(null)
+            }}
+          >
+            {t('Appliquer et replacer')}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setPending(null)
+              setFormRevision((value) => value + 1)
+            }}
+          >
+            {t('Garder les dimensions actuelles')}
+          </Button>
+        </div>
+      )}
+      {error && (
+        <p className="storage-warning" role="alert">
+          {error}
+        </p>
+      )}
+      {collisions > 0 && (
+        <p className="storage-warning" role="status">
+          {plural(
+            collisions,
+            '{count} poste chevauche un autre poste. Ajustez-le dans le plan ou dans l’onglet Poste.',
+            '{count} postes se chevauchent. Ajustez-les dans le plan ou dans l’onglet Poste.',
+          )}
+        </p>
+      )}
+      <p className="location-help">
+        {t(
+          'Les couleurs propres à un poste restent prioritaires sur l’ambiance. Appliquez vos réglages au brouillon, puis enregistrez l’espace pour les partager.',
+        )}
+      </p>
     </div>
-    <form ref={form} className="editor-form" key={JSON.stringify([formRevision, plan.name, plan.width, plan.depth, plan.display])} onSubmit={apply}>
-      <fieldset disabled={!!pending} className="editor-form appearance-fields">
-        <label>{t('Nom du plateau')}<input name="name" defaultValue={plan.name} maxLength={60} required /></label>
-        <div className="editor-field-pair">
-          <label>Largeur (m)<input name="width" type="number" min="6" max="50" step="any" defaultValue={plan.width} required /></label>
-          <label>Profondeur (m)<input name="depth" type="number" min="6" max="50" step="any" defaultValue={plan.depth} required /></label>
-        </div>
-        <h3 className="editor-subheading">{t('Couleurs libres')}</h3>
-        <div className="editor-field-pair color-fields">
-          <label>{t('Sol')}<input name="floor" type="color" defaultValue={plan.colors.floor} /></label>
-          <label>{t('Murs')}<input name="wall" type="color" defaultValue={plan.colors.wall} /></label>
-          <label>{t('Bureaux')}<input name="desk" type="color" defaultValue={plan.colors.desk} /></label>
-          <label>{t('Sélection')}<input name="accent" type="color" defaultValue={plan.colors.accent} /></label>
-        </div>
-        <label className="editor-checkbox"><input name="walls" type="checkbox" defaultChecked={plan.display.walls} />{t('Afficher les murs')}</label>
-        <label className="editor-checkbox"><input name="decor" type="checkbox" defaultChecked={plan.display.decor} />{t('Afficher plantes et rangement')}</label>
-        <Button variant="outline" type="submit">{t('Appliquer au plateau')}</Button>
-      </fieldset>
-    </form>
-    {pending && <div className="editor-delete-confirm" role="alert">
-      <p>{plural(pending.moved, 'Les nouvelles dimensions replaceront {count} élément dans les limites de la pièce. Des chevauchements sont possibles.', 'Les nouvelles dimensions replaceront {count} éléments dans les limites de la pièce. Des chevauchements sont possibles.')}</p>
-      <Button onClick={() => {
-        if (pending.source !== plan) setError(t('Le plan a changé pendant ce réglage. Réappliquez les dimensions pour conserver vos derniers déplacements.'))
-        else onChange(pending.plan)
-        setPending(null)
-      }}>{t('Appliquer et replacer')}</Button>
-      <Button variant="ghost" onClick={() => { setPending(null); setFormRevision((value) => value + 1) }}>{t('Garder les dimensions actuelles')}</Button>
-    </div>}
-    {error && <p className="storage-warning" role="alert">{error}</p>}
-    {collisions > 0 && <p className="storage-warning" role="status">{plural(collisions, '{count} poste chevauche un autre poste. Ajustez-le dans le plan ou dans l’onglet Poste.', '{count} postes se chevauchent. Ajustez-les dans le plan ou dans l’onglet Poste.')}</p>}
-    <p className="location-help">{t('Les couleurs propres à un poste restent prioritaires sur l’ambiance. Appliquez vos réglages au brouillon, puis enregistrez l’espace pour les partager.')}</p>
-  </div>
+  )
 }

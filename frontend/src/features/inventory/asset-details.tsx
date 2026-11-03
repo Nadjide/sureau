@@ -98,7 +98,11 @@ export function AssetDetails({
             <dd>
               {asset.assignee ? asset.assignee.name : t('Personne non renseignée')}
               {asset.assignee?.department && <small>{asset.assignee.department}</small>}
-              {asset.assignee?.email && <small><a href={`mailto:${asset.assignee.email}`}>{asset.assignee.email}</a></small>}
+              {asset.assignee?.email && (
+                <small>
+                  <a href={`mailto:${asset.assignee.email}`}>{asset.assignee.email}</a>
+                </small>
+              )}
             </dd>
           </div>
         )}

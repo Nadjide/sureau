@@ -44,9 +44,7 @@ describe('getAssets', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(jsonResponse([{ ...asset, purchaseDate: null, futureField: 'compatible' }]))
 
-    await expect(getAssets(new AbortController().signal, fetcher)).resolves.toEqual([
-      { ...asset, purchaseDate: null },
-    ])
+    await expect(getAssets(new AbortController().signal, fetcher)).resolves.toEqual([{ ...asset, purchaseDate: null }])
   })
 
   it('distingue un inventaire vide valide d’une erreur', async () => {
@@ -75,9 +73,7 @@ describe('getAssets', () => {
   })
 
   it('refuse une page HTML reçue comme un succès', async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response('<!doctype html><title>Frontend</title>'))
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('<!doctype html><title>Frontend</title>'))
 
     await expect(getAssets(new AbortController().signal, fetcher)).rejects.toMatchObject({
       kind: 'invalid-response',
