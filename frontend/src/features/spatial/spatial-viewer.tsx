@@ -269,8 +269,8 @@ export function SpatialViewer({
         <div className="spatial-caption">
           <span>
             <span className="local-indicator" />
-            {plan.workstations.length} poste{plan.workstations.length === 1 ? '' : 's'} · {plan.furniture.length} meuble
-            {plan.furniture.length === 1 ? '' : 's'}
+            {plural(plan.workstations.length, '{count} poste', '{count} postes')} ·{' '}
+            {plural(plan.furniture.length, '{count} meuble', '{count} meubles')}
           </span>
           <span>
             {plan.width} × {plan.depth} m

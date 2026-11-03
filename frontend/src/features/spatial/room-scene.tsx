@@ -1053,11 +1053,6 @@ export default function RoomScene({
                   pointerEvents: 'auto',
                   borderColor: selectedIds.includes(object.id) ? plan.colors.accent : undefined,
                 }}
-                aria-label={
-                  objects.length > 16 && selectedWorkstationId !== object.id
-                    ? t('{number} — {name}, sélectionner dans la vue 3D', { number: index + 1, name: object.label })
-                    : t('{name} — sélectionner dans la vue 3D', { name: object.label })
-                }
                 title={object.label}
                 aria-pressed={selectedIds.includes(object.id)}
                 onPointerDown={(event) => {
@@ -1087,6 +1082,12 @@ export default function RoomScene({
                     {localizedCounts[object.id]}
                   </span>
                 )}
+                <span className="sr-only">
+                  {' — '}
+                  {objects.length > 16 && selectedWorkstationId !== object.id
+                    ? t('{name}, sélectionner dans la vue 3D', { name: object.label })
+                    : t('sélectionner dans la vue 3D')}
+                </span>
               </button>
             ),
         )}
