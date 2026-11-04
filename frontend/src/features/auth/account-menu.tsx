@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useSession } from './use-session'
 import { roleLabels } from './session-state'
+import { SourceCodeLink } from './source-code-link'
 import { LazyPanel } from '@/components/lazy-panel'
 import { t } from '@/lib/i18n'
 
@@ -260,6 +261,9 @@ export function AccountMenu({ departureGuard }: { departureGuard?: WorkspaceDepa
                 {error}
               </p>
             )}
+            <p className="account-source">
+              {t('Sureau est un logiciel libre, sous licence AGPL-3.0.')} <SourceCodeLink />
+            </p>
           </div>
           <Dialog.Root
             open={confirmation}

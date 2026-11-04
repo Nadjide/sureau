@@ -13,6 +13,7 @@ import {
   withoutOutcome,
 } from './enterprise-sign-in'
 import { useSession } from './use-session'
+import { SourceCodeLink } from './source-code-link'
 import './auth.css'
 
 /** Enterprise sign-in leaves the page; the provider sends the person back once identified. */
@@ -307,7 +308,7 @@ function AuthPage() {
             </>
           )}
           <p className="auth-footnote">
-            SUREAU <span>·</span> {t('Le matériel, dans son espace.')}
+            SUREAU <span>·</span> {t('Le matériel, dans son espace.')} <span>·</span> <SourceCodeLink />
           </p>
         </div>
       </section>

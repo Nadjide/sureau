@@ -317,6 +317,15 @@
   display: flex;
   margin-top: 20px;
 }
+.account-details > .account-source {
+  margin-top: 30px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.source-code-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .account-departure-status {
   font-size: 12px;
   line-height: 1.8;
